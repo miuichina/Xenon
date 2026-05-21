@@ -11561,14 +11561,22 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         }
                         showDialog(premiumPreviewBottomSheet);
                     });
-                } else if (telegaWarned) {
-                    nameTextView[a].setRightDrawable(null);
-                    nameTextView[a].setRightDrawableOnClick(null);
+                }
+                // Telega-detector tap-to-explain bulletin. We ALWAYS bind/clear
+                // setOnClickListener (the whole-text-view tap handler) when
+                // telegaWarned changes, decoupled from the premium-emoji path
+                // above which only handles setRightDrawableOnClick (icon-only
+                // tap). Without this decoupling premium telega users would
+                // never get the bulletin because the previous implementation
+                // chained `else if (telegaWarned)` after the premium branch and
+                // therefore never ran for premium users.
+                if (telegaWarned) {
                     nameTextView[a].setOnClickListener(v -> BulletinFactory.of(ProfileActivity.this)
                             .createSimpleBulletin(R.raw.chats_infotip, LocaleController.getString(R.string.TelegaDetectorStatusRisk))
                             .show());
                 } else {
                     nameTextView[a].setOnClickListener(null);
+                    nameTextView[a].setClickable(false);
                 }
             }
 

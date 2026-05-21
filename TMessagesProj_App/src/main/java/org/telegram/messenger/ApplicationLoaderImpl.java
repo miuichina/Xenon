@@ -71,8 +71,27 @@ public class ApplicationLoaderImpl extends ApplicationLoader {
             public void onUpdateAvailable(GitHubUpdateHelper.GitHubRelease release) {
                 String title = !TextUtils.isEmpty(release.name) ? release.name : release.tagName;
                 String changelog = release.body;
+                String apkUrl = GitHubUpdateHelper.findApkDownloadUrl(release);
+                if (TextUtils.isEmpty(apkUrl)) {
+                    // Release exists but has no arm64-v8a APK asset (Xenon is
+                    // arm64-only — see GitHubUpdateHelper#findApkDownloadUrl).
+                    // Don't pretend an update is available: surface this as an
+                    // error so the user knows why nothing happened.
+                    FileLog.e(TAG + ": release " + release.tagName + " has no arm64 APK asset");
+                    pendingUpdate = null;
+                    pendingRelease = null;
+                    pendingApkUrl = null;
+                    AndroidUtilities.runOnUIThread(() -> {
+                        try {
+                            Toast.makeText(applicationContext,
+                                    "No arm64 build for this release", Toast.LENGTH_LONG).show();
+                        } catch (Throwable ignored) {}
+                    });
+                    if (whenDone != null) whenDone.run();
+                    return;
+                }
                 pendingRelease = release;
-                pendingApkUrl = GitHubUpdateHelper.findApkDownloadUrl(release);
+                pendingApkUrl = apkUrl;
                 pendingTitle = title;
                 // version must be parseable as "x.y.z" for BetaUpdate.higherThan().
                 // Use VERSION_NAME + ".1" so it's always >= current build.
@@ -102,10 +121,18 @@ public class ApplicationLoaderImpl extends ApplicationLoader {
                 pendingApkUrl = null;
                 // Show error to user — LaunchActivity would otherwise display
                 // "Your version is up to date" because pendingUpdate is null.
-                try {
-                    Toast.makeText(applicationContext,
-                            "Update check failed: " + error, Toast.LENGTH_LONG).show();
-                } catch (Throwable ignored) {}
+                // This callback runs on the GitHubUpdateHelper worker thread,
+                // which has no Looper; calling Toast.show() directly there
+                // throws RuntimeException ("Can't toast on a thread that has
+                // not called Looper.prepare()") and used to be silently
+                // swallowed by a broad catch — meaning the user never saw any
+                // feedback for failed checks. Always dispatch via the UI thread.
+                AndroidUtilities.runOnUIThread(() -> {
+                    try {
+                        Toast.makeText(applicationContext,
+                                "Update check failed: " + error, Toast.LENGTH_LONG).show();
+                    } catch (Throwable ignored) {}
+                });
                 if (whenDone != null) whenDone.run();
             }
         });
@@ -130,10 +157,12 @@ public class ApplicationLoaderImpl extends ApplicationLoader {
             HttpURLConnection connection = null;
             InputStream is = null;
             FileOutputStream fos = null;
+            File tempFile = null;
+            boolean cleanupPartial = false;
             try {
                 File dir = new File(applicationContext.getCacheDir(), APK_DIR);
                 if (!dir.exists()) dir.mkdirs();
-                File tempFile = new File(dir, "xenon_update.apk");
+                tempFile = new File(dir, "xenon_update.apk");
                 if (tempFile.exists()) tempFile.delete();
 
                 URL url = new URL(apkUrl);
@@ -157,7 +186,7 @@ public class ApplicationLoaderImpl extends ApplicationLoader {
                 int read;
                 while ((read = is.read(buffer)) != -1) {
                     if (!downloading) {
-                        tempFile.delete();
+                        cleanupPartial = true;
                         return;
                     }
                     fos.write(buffer, 0, read);
@@ -175,10 +204,21 @@ public class ApplicationLoaderImpl extends ApplicationLoader {
                 FileLog.e(TAG + ": download failed", e);
                 downloading = false;
                 downloadProgress = 0f;
+                cleanupPartial = true;
             } finally {
                 try { if (fos != null) fos.close(); } catch (Throwable ignored) {}
                 try { if (is != null) is.close(); } catch (Throwable ignored) {}
                 if (connection != null) connection.disconnect();
+                // Delete the partially-written APK on cancel/error so the
+                // cache doesn't accumulate broken files across failed
+                // download attempts. Only safe to do AFTER the streams are
+                // closed (Windows-style file locking is irrelevant on
+                // Android, but other writers may still be flushing).
+                if (cleanupPartial && tempFile != null && tempFile.exists()) {
+                    if (!tempFile.delete()) {
+                        FileLog.e(TAG + ": failed to delete partial APK at " + tempFile);
+                    }
+                }
             }
         }, "XenonUpdateDownload").start();
     }
@@ -187,7 +227,15 @@ public class ApplicationLoaderImpl extends ApplicationLoader {
     public void cancelDownloadingUpdate() {
         downloading = false;
         downloadProgress = 0f;
+        // If a fully-downloaded APK was already produced (download finished
+        // before the user pressed cancel), delete it too — leaving the file
+        // around would let getDownloadedUpdateFile() resurface a stale APK
+        // on the next "Install update" tap.
+        File f = downloadedApkFile;
         downloadedApkFile = null;
+        if (f != null && f.exists()) {
+            try { f.delete(); } catch (Throwable ignored) {}
+        }
     }
 
     @Override

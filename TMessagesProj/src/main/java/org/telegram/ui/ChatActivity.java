@@ -19723,6 +19723,7 @@ public class ChatActivity extends BaseFragment implements
                     final TLRPC.User user = getMessagesController().getUser(threadMessageId);
                     CharSequence userName = AndroidUtilities.removeRTL(AndroidUtilities.removeDiacritics(UserObject.getUserName(user)));
                     
+                    boolean telegaWarned = false;
                     // Добавить значок Telega детектора
                     if (NekoConfig.telegaDetectorEnabled && user != null && !user.bot) {
                         int telegaState = TelegaDetector.getState(user.id);
@@ -19734,10 +19735,12 @@ public class ChatActivity extends BaseFragment implements
                             });
                         } else if (telegaState == TelegaDetector.STATE_IS_TELEGA || telegaState == TelegaDetector.STATE_WAS_TELEGA) {
                             userName = TextUtils.concat(userName, " ⚠️");
+                            telegaWarned = true;
                         }
                     }
                     
                     avatarContainer.setTitle(userName, user.scam, user.fake, user.verified, user.premium, user.emoji_status, animated);
+                    applyTelegaTitleClick(telegaWarned);
                 } else {
                     TLRPC.Chat chat = getMessagesController().getChat(-threadMessageId);
                     if (chat == null) chat = currentChat;
@@ -19778,6 +19781,7 @@ public class ChatActivity extends BaseFragment implements
             } else if (user != null) {
                 CharSequence userName = AndroidUtilities.removeRTL(AndroidUtilities.removeDiacritics(UserObject.getUserName(user)));
                 
+                boolean telegaWarned = false;
                 // Добавить значок Telega детектора
                 if (NekoConfig.telegaDetectorEnabled && !user.bot) {
                     int telegaState = TelegaDetector.getState(user.id);
@@ -19792,10 +19796,12 @@ public class ChatActivity extends BaseFragment implements
                         });
                     } else if (telegaState == TelegaDetector.STATE_IS_TELEGA || telegaState == TelegaDetector.STATE_WAS_TELEGA) {
                         userName = TextUtils.concat(userName, " ⚠️");
+                        telegaWarned = true;
                     }
                 }
                 
                 avatarContainer.setTitle(userName);
+                applyTelegaTitleClick(telegaWarned);
             } else if (chat != null) {
                 avatarContainer.setTitle(AndroidUtilities.removeRTL(AndroidUtilities.removeDiacritics(chat.title)));
             } else {
@@ -19833,6 +19839,7 @@ public class ChatActivity extends BaseFragment implements
             } else {
                 CharSequence userName = AndroidUtilities.removeRTL(AndroidUtilities.removeDiacritics(UserObject.getUserName(currentUser)));
                 
+                boolean telegaWarned = false;
                 // Добавить значок Telega детектора
                 if (NekoConfig.telegaDetectorEnabled && !currentUser.bot) {
                     int telegaState = TelegaDetector.getState(currentUser.id);
@@ -19845,14 +19852,42 @@ public class ChatActivity extends BaseFragment implements
                         });
                     } else if (telegaState == TelegaDetector.STATE_IS_TELEGA || telegaState == TelegaDetector.STATE_WAS_TELEGA) {
                         userName = TextUtils.concat(userName, " ⚠️");
+                        telegaWarned = true;
                     }
                 }
                 
                 avatarContainer.setTitle(userName, currentUser.scam, currentUser.fake, currentUser.verified, getMessagesController().isPremiumUser(currentUser), !MessagesController.isSupportUser(currentUser) ? currentUser.emoji_status : null, animated);
+                applyTelegaTitleClick(telegaWarned);
             }
         }
         setParentActivityTitle(avatarContainer.getTitleTextView().getText());
         updateTitleIcons();
+    }
+
+    /**
+     * Wires (or clears) the on-tap bulletin for the Telega-detector warning
+     * embedded in the chat title (the trailing ⚠️ emoji). Tapping the title
+     * while the warning is active surfaces the same bottom-of-screen bulletin
+     * that {@link ProfileActivity} already shows. When the warning is
+     * inactive, the listener is cleared so taps fall through to the normal
+     * avatar-container click that opens the profile.
+     */
+    private void applyTelegaTitleClick(boolean telegaWarned) {
+        if (avatarContainer == null) {
+            return;
+        }
+        SimpleTextView title = avatarContainer.getTitleTextView();
+        if (title == null) {
+            return;
+        }
+        if (telegaWarned) {
+            title.setOnClickListener(v -> BulletinFactory.of(ChatActivity.this)
+                    .createSimpleBulletin(R.raw.chats_infotip, LocaleController.getString(R.string.TelegaDetectorStatusRisk))
+                    .show());
+        } else {
+            title.setOnClickListener(null);
+            title.setClickable(false);
+        }
     }
 
     public void updateTopicTitleIcon() {

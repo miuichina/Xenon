@@ -8,6 +8,7 @@ import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
 
 import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.BuildConfig;
 import org.telegram.messenger.FileLog;
 
@@ -101,6 +102,13 @@ public class GitHubUpdateHelper {
                 if (isSameBuild) {
                     FileLog.d(TAG + ": hashes match, no update");
                     AndroidUtilities.runOnUIThread(callback::onNoUpdate);
+                } else if (isReleaseOlderThanInstalled(release)) {
+                    // Hash differs but the GitHub "latest" was published before
+                    // the locally installed build — almost certainly a rollback
+                    // on the release page. Treat as up-to-date instead of
+                    // offering to install an older APK over the current one.
+                    FileLog.d(TAG + ": remote release is older than installed, ignoring");
+                    AndroidUtilities.runOnUIThread(callback::onNoUpdate);
                 } else {
                     String apkUrl = findApkDownloadUrl(release);
                     FileLog.d(TAG + ": update available, apk=" + apkUrl);
@@ -156,18 +164,21 @@ public class GitHubUpdateHelper {
 
     /**
      * Finds the best APK download URL from release assets.
-     * Prefers arm64-v8a release APK; falls back to any non-debug APK.
-     *
      * @param release the release to search
-     * @return download URL or null if no suitable APK found
+     * @return download URL of the arm64 APK, or {@code null} if the release
+     *         does not contain a suitable arm64 build. Xenon ships arm64-only
+     *         APKs by design (see {@code TMessagesProj_App/build.gradle}'s
+     *         {@code splits.abi.include "arm64-v8a"}); offering any other ABI
+     *         here would silently install something that won't run on a
+     *         64-bit-only device, so we deliberately do NOT fall back to a
+     *         "universal" or non-arm64 APK — better to surface "no compatible
+     *         build" than to push an APK the package installer will reject.
      */
     @Nullable
     public static String findApkDownloadUrl(GitHubRelease release) {
         if (release == null || release.assets == null) {
             return null;
         }
-        String arm64Url = null;
-        String anyApkUrl = null;
         for (GitHubAsset asset : release.assets) {
             if (asset.name == null || !asset.name.endsWith(".apk")) {
                 continue;
@@ -177,21 +188,18 @@ public class GitHubUpdateHelper {
                 continue;
             }
             if (lower.contains("arm64")) {
-                arm64Url = asset.browserDownloadUrl;
-                break;
-            }
-            if (anyApkUrl == null) {
-                anyApkUrl = asset.browserDownloadUrl;
+                return asset.browserDownloadUrl;
             }
         }
-        return arm64Url != null ? arm64Url : anyApkUrl;
+        return null;
     }
 
     /**
-     * Extracts the APK file size from release assets (best match).
+     * Extracts the arm64 APK file size from release assets.
      *
      * @param release the release to search
-     * @return file size in bytes, or -1 if not found
+     * @return file size in bytes, or {@code -1} if no arm64 APK is present
+     *         (Xenon is arm64-only — see {@link #findApkDownloadUrl}).
      */
     public static long findApkSize(GitHubRelease release) {
         if (release == null || release.assets == null) {
@@ -203,13 +211,50 @@ public class GitHubUpdateHelper {
             if (lower.contains("debug")) continue;
             if (lower.contains("arm64")) return asset.size;
         }
-        for (GitHubAsset asset : release.assets) {
-            if (asset.name != null && asset.name.endsWith(".apk")
-                    && !asset.name.toLowerCase().contains("debug")) {
-                return asset.size;
-            }
-        }
         return -1;
+    }
+
+    /**
+     * Returns {@code true} if the given GitHub release was published before or
+     * at the same time as the locally installed APK. Used to suppress the
+     * "update available" prompt on rollbacks (e.g. when {@code latest} on
+     * GitHub points back to an older build than the user already has).
+     *
+     * <p>{@code release.publishedAt} is ISO-8601 with a {@code Z} suffix
+     * (e.g. {@code 2026-05-15T19:30:00Z}); we parse it via
+     * {@link java.time.OffsetDateTime#parse} and compare against
+     * {@code PackageInfo.lastUpdateTime}. If parsing fails or local install
+     * time is unknown, we fall back to "treat as newer" so the existing
+     * hash-mismatch path can still fire and the user is not silently locked
+     * out of legitimate updates.
+     */
+    static boolean isReleaseOlderThanInstalled(GitHubRelease release) {
+        if (release == null || android.text.TextUtils.isEmpty(release.publishedAt)) {
+            return false;
+        }
+        long releaseEpochMs;
+        try {
+            releaseEpochMs = java.time.OffsetDateTime.parse(release.publishedAt)
+                    .toInstant().toEpochMilli();
+        } catch (Throwable t) {
+            FileLog.e(TAG + ": failed to parse published_at=" + release.publishedAt, t);
+            return false;
+        }
+        long installedEpochMs;
+        try {
+            android.content.pm.PackageInfo pi = ApplicationLoader.applicationContext
+                    .getPackageManager()
+                    .getPackageInfo(ApplicationLoader.applicationContext.getPackageName(), 0);
+            installedEpochMs = pi.lastUpdateTime;
+        } catch (Throwable t) {
+            return false;
+        }
+        if (installedEpochMs <= 0) {
+            return false;
+        }
+        // Allow a small skew (60s) so a release published the same minute as
+        // the local build doesn't get rejected on the boundary.
+        return releaseEpochMs + 60_000L <= installedEpochMs;
     }
 
     /**

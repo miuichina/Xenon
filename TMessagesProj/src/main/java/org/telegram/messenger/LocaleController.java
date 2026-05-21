@@ -1448,6 +1448,43 @@ public class LocaleController {
         return getStringInternal(key, null, 0, res);
     }
 
+    /**
+     * Cached Resources tied to the most recently observed default locale tag.
+     * Used for resolving Android XML strings (notably the Neko/Xenon res files
+     * which live outside the Telegram cloud langpack, so they MUST come from
+     * Android resources). We build via {@link Context#createConfigurationContext}
+     * rather than the deprecated {@code Resources.updateConfiguration} so that
+     * locale switches actually take effect on modern Android (API 30+) where
+     * {@code updateConfiguration} is silently ignored for most string lookups —
+     * the symptom being TG cloud strings rendering in the user's language while
+     * Neko fork strings stayed in the default {@code values/} (English).
+     */
+    private static volatile android.content.res.Resources cachedLocaleResources;
+    private static volatile String cachedLocaleResourcesTag;
+
+    private static android.content.res.Resources getResourcesForCurrentLocale() {
+        final Context ctx = ApplicationLoader.applicationContext;
+        if (ctx == null) return null;
+        final Locale locale = Locale.getDefault();
+        final String tag = locale.toLanguageTag();
+        android.content.res.Resources cached = cachedLocaleResources;
+        if (cached != null && tag.equals(cachedLocaleResourcesTag)) {
+            return cached;
+        }
+        try {
+            Configuration cfg = new Configuration(ctx.getResources().getConfiguration());
+            cfg.setLocale(locale);
+            Context configCtx = ctx.createConfigurationContext(cfg);
+            android.content.res.Resources newRes = configCtx.getResources();
+            cachedLocaleResources = newRes;
+            cachedLocaleResourcesTag = tag;
+            return newRes;
+        } catch (Throwable t) {
+            FileLog.e(t);
+            return ctx.getResources();
+        }
+    }
+
     private String getStringInternal(String key, String fallback, int fallbackRes, int res) {
         if (key.equals("AppName")) {
             try {
@@ -1469,12 +1506,15 @@ public class LocaleController {
                 value = localeValues.get(fallback);
             }
             if (value == null) {
+                final android.content.res.Resources localeRes = getResourcesForCurrentLocale();
+                final android.content.res.Resources resources = localeRes != null
+                        ? localeRes : ApplicationLoader.applicationContext.getResources();
                 try {
-                    value = ApplicationLoader.applicationContext.getString(res);
+                    value = resources.getString(res);
                 } catch (Exception e) {
                     if (fallbackRes != 0) {
                         try {
-                            value = ApplicationLoader.applicationContext.getString(fallbackRes);
+                            value = resources.getString(fallbackRes);
                         } catch (Exception ignored) {}
                     }
                     FileLog.e(e);
@@ -1490,9 +1530,12 @@ public class LocaleController {
     public static String getServerString(String key) {
         String value = getInstance().localeValues.get(key);
         if (value == null) {
-            int resourceId = ApplicationLoader.applicationContext.getResources().getIdentifier(key, "string", ApplicationLoader.applicationContext.getPackageName());
+            final android.content.res.Resources localeRes = getResourcesForCurrentLocale();
+            final android.content.res.Resources resources = localeRes != null
+                    ? localeRes : ApplicationLoader.applicationContext.getResources();
+            int resourceId = resources.getIdentifier(key, "string", ApplicationLoader.applicationContext.getPackageName());
             if (resourceId != 0) {
-                value = ApplicationLoader.applicationContext.getString(resourceId);
+                value = resources.getString(resourceId);
             }
         }
         return value;
@@ -1638,14 +1681,20 @@ public class LocaleController {
                 value = BuildVars.USE_CLOUD_STRINGS ? getInstance().localeValues.get(key + "_other") : null;
             }
             if (value == null) {
+                final android.content.res.Resources localeRes = getResourcesForCurrentLocale();
+                final android.content.res.Resources resources = localeRes != null
+                        ? localeRes : ApplicationLoader.applicationContext.getResources();
                 try {
-                    int resourceId = ApplicationLoader.applicationContext.getResources().getIdentifier(param, "string", ApplicationLoader.applicationContext.getPackageName());
-                    value = ApplicationLoader.applicationContext.getString(resourceId);
+                    int resourceId = resources.getIdentifier(param, "string", ApplicationLoader.applicationContext.getPackageName());
+                    value = resources.getString(resourceId);
                 } catch (Exception e2) {}
             }
             if (value == null) {
-                int resourceId = ApplicationLoader.applicationContext.getResources().getIdentifier(key + "_other", "string", ApplicationLoader.applicationContext.getPackageName());
-                value = ApplicationLoader.applicationContext.getString(resourceId);
+                final android.content.res.Resources localeRes = getResourcesForCurrentLocale();
+                final android.content.res.Resources resources = localeRes != null
+                        ? localeRes : ApplicationLoader.applicationContext.getResources();
+                int resourceId = resources.getIdentifier(key + "_other", "string", ApplicationLoader.applicationContext.getPackageName());
+                value = resources.getString(resourceId);
             }
             value = value.replace("%d", "%1$s");
             value = value.replace("%1$d", "%1$s");
@@ -1707,19 +1756,22 @@ public class LocaleController {
                     value = getInstance().localeValues.get(fallback);
                 }
                 if (value == null) {
+                    final android.content.res.Resources localeRes = getResourcesForCurrentLocale();
+                    final android.content.res.Resources resources = localeRes != null
+                            ? localeRes : ApplicationLoader.applicationContext.getResources();
                     if (res != 0) {
                         try {
-                            value = ApplicationLoader.applicationContext.getString(res);
+                            value = resources.getString(res);
                         } catch (Exception e) {
                             if (fallbackRes != 0) {
                                 try {
-                                    value = ApplicationLoader.applicationContext.getString(fallbackRes);
+                                    value = resources.getString(fallbackRes);
                                 } catch (Exception ignored) {}
                             }
                         }
                     } else if (fallbackRes != 0) {
                         try {
-                            value = ApplicationLoader.applicationContext.getString(fallbackRes);
+                            value = resources.getString(fallbackRes);
                         } catch (Exception ignored) {}
                     }
                 }

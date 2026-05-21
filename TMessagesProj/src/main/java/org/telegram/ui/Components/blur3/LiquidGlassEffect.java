@@ -3,7 +3,6 @@ package org.telegram.ui.Components.blur3;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.BlendMode;
-import android.graphics.BlurMaskFilter;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
@@ -41,7 +40,14 @@ public class LiquidGlassEffect {
             highlightShader = new RuntimeShader(highlightCode);
             highlightPaint.setStyle(Paint.Style.STROKE);
             highlightPaint.setStrokeWidth(AndroidUtilities.dp(0.35f) * 2f);
-            highlightPaint.setMaskFilter(new BlurMaskFilter(AndroidUtilities.dp(0.5f), BlurMaskFilter.Blur.NORMAL));
+            // Intentionally NOT using BlurMaskFilter on the stroke. A
+            // mask-filtered stroke with a RuntimeShader forces software
+            // rasterisation of the blurred mask every frame on every glass
+            // surface, which is what dropped frame rates from 120 Hz to
+            // 30–60 Hz once advanced glass was enabled (commit 918e5861b).
+            // The runtime shader's directional gradient already provides
+            // sufficient softness on its own; the dropped 0.5 dp Gaussian
+            // edge bleed is barely perceptible at this stroke width and alpha.
             highlightPaint.setBlendMode(BlendMode.PLUS);
             highlightPaint.setColor(Color.WHITE);
             highlightPaint.setAlpha(42);
@@ -132,6 +138,12 @@ public class LiquidGlassEffect {
     /**
      * Draw the directional edge highlight on top of the glass.
      * Call this from onDraw() AFTER the glass RenderNode has been drawn.
+     *
+     * <p>The highlight is a thin (0.7 dp) anti-aliased stroke shaded by a
+     * directional RuntimeShader and composited with PLUS blend at low alpha.
+     * Without {@code BlurMaskFilter} on the paint this is a fully
+     * GPU-accelerated draw — clipPath + drawPath with a runtime-shaded
+     * stroke costs almost nothing per frame on hardware-accelerated canvases.
      */
     public void drawHighlight(Canvas canvas, float parentAlpha) {
         if (highlightShader == null || highlightCornerRadii == null) return;
@@ -147,4 +159,3 @@ public class LiquidGlassEffect {
         canvas.restore();
     }
 }
-

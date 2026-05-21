@@ -464,6 +464,15 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
             } else {
                 textCell.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText, resourcesProvider));
             }
+            // Apply item.enabled to the cell view itself. Without this, items
+            // marked disabled via UItem#setEnabled(false) only stop the click
+            // handler in onItemClick (UniversalAdapter#isEnabled returns
+            // false), but the cell View stays enabled — so the press ripple
+            // still plays and previously-faded alpha can "stick" on a recycled
+            // holder. setEnabled(false) on the cell fades text/value to 50%
+            // alpha (because setCanDisable(true) was set above) and prevents
+            // touch feedback.
+            textCell.setEnabled(item.enabled, null);
         }
 
         public static UItem of(int id, CharSequence title) {

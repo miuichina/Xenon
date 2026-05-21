@@ -106,7 +106,12 @@ public class MainTabsSettingsActivity extends BaseNekoSettingsActivity {
             NekoConfig.setShowMainTabs(!NekoConfig.showMainTabs);
             setChecked(view, NekoConfig.showMainTabs);
             applyPreviewVisibility(true);
-            notifyItemChanged(showTabTitleRow);
+            // Rebuild the list (not just notifyItemChanged) so showTabTitleRow's
+            // UItem is recreated with a fresh setEnabled(NekoConfig.showMainTabs)
+            // — notifyItemChanged would only rebind the existing UItem whose
+            // .enabled was frozen at the previous fillItems pass, leaving the
+            // disabled state stale until the activity is reopened.
+            listView.adapter.update(true);
             hadChanges = true;
         } else if (id == showTabTitleRow) {
             NekoConfig.setShowMainTabsTitle(!NekoConfig.showMainTabsTitle);
