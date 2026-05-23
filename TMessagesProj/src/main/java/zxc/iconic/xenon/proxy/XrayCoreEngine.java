@@ -1,13 +1,18 @@
 package zxc.iconic.xenon.proxy;
 
 import android.content.Context;
+import android.net.ConnectivityManager;
 import android.os.Build;
 import android.provider.Settings;
+import android.system.OsConstants;
 import android.text.TextUtils;
 import android.util.Base64;
 
+import androidx.annotation.RequiresApi;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.FileLog;
 
@@ -20,11 +25,13 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Locale;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -33,6 +40,7 @@ import go.Seq;
 import libv2ray.CoreCallbackHandler;
 import libv2ray.CoreController;
 import libv2ray.Libv2ray;
+import libv2ray.ProcessFinder;
 
 /**
  * Canonical Xray core engine for app-only proxy mode.
@@ -51,6 +59,15 @@ final class XrayCoreEngine {
     private static final Object LOG_LOCK = new Object();
     private static final int MAX_RECENT_LOG_LINES = 200;
     private static final String DEFAULT_DELAY_TEST_URL = "https://www.gstatic.com/generate_204";
+    /**
+     * Fallback delay URLs tried in order when the primary URL fails. Mirrors v2rayNG's behaviour
+     * where {@code measureV2rayDelay} retries against an alternate endpoint before reporting failure.
+     */
+    private static final String[] FALLBACK_DELAY_TEST_URLS = {
+            "https://www.google.com/generate_204",
+            "https://cp.cloudflare.com/generate_204",
+            "https://connectivitycheck.gstatic.com/generate_204",
+    };
     private static final int PORT_CONFLICT_MAX_RETRIES = 5;
     private static final int PORT_RANGE_START = 10808;
     private static final int PORT_RANGE_END = 65535;
@@ -79,6 +96,7 @@ final class XrayCoreEngine {
     private static final SimpleDateFormat LOG_TIME_FORMAT = new SimpleDateFormat("HH:mm:ss", Locale.US);
     private static final ArrayList<String> RECENT_LOGS = new ArrayList<>();
     private static final CoreCallbackHandler CORE_CALLBACK = new CoreCallback();
+    private static final List<XrayAppProxyManager.StateListener> STATE_LISTENERS = new CopyOnWriteArrayList<>();
 
     private static volatile boolean coreEnvInitialized;
     private static volatile CoreController coreController;
@@ -86,8 +104,29 @@ final class XrayCoreEngine {
     private static volatile String currentConfigJson;
     private static volatile Method startLoopMethod;
     private static volatile boolean unsupportedAbiLogged;
+    private static volatile ProcessFinder processFinder;
 
     private XrayCoreEngine() {
+    }
+
+    /**
+     * Registers a listener for asynchronous state transitions. Idempotent.
+     */
+    static void addStateListener(XrayAppProxyManager.StateListener listener) {
+        if (listener == null || STATE_LISTENERS.contains(listener)) {
+            return;
+        }
+        STATE_LISTENERS.add(listener);
+    }
+
+    /**
+     * Removes a previously registered state listener.
+     */
+    static void removeStateListener(XrayAppProxyManager.StateListener listener) {
+        if (listener == null) {
+            return;
+        }
+        STATE_LISTENERS.remove(listener);
     }
 
     /**
@@ -197,6 +236,7 @@ final class XrayCoreEngine {
                 running = true;
                 currentConfigJson = activeConfig;
                 addLog("start success");
+                notifyStateChanged(true, "engine_start");
                 notifyStart(callback, true, "Started");
 
                 // Persist new port in active profile if it changed
@@ -213,6 +253,7 @@ final class XrayCoreEngine {
                 String error = extractErrorMessage(t, "Start failed");
                 addLog("start failed: " + error);
                 FileLog.e(TAG + ": start failed", t);
+                notifyStateChanged(false, "engine_start_failed");
                 notifyStart(callback, false, error);
             } finally {
                 STARTING_OR_STOPPING.set(false);
@@ -246,6 +287,7 @@ final class XrayCoreEngine {
                 running = false;
                 currentConfigJson = null;
                 addLog("stop success");
+                notifyStateChanged(false, "engine_stop");
                 notifyStop(callback, true, "Stopped");
             } catch (Throwable t) {
                 String error = extractErrorMessage(t, "Stop failed");
@@ -275,6 +317,9 @@ final class XrayCoreEngine {
 
     /**
      * Measures delay for provided outbound config using Libv2ray stateless API.
+     * If the primary URL fails (returns &lt; 0 or throws), retries against {@link #FALLBACK_DELAY_TEST_URLS}
+     * — mirroring v2rayNG's {@code measureV2rayDelay} which retries against an alternate endpoint
+     * before reporting failure.
      */
     static void measureDelay(String configJson, String testUrl, XrayAppProxyManager.DelayCallback callback) {
         addLog("delay check requested");
@@ -289,29 +334,46 @@ final class XrayCoreEngine {
             return;
         }
 
-        final String safeTestUrl;
-        {
-            String trimmed = TextUtils.isEmpty(testUrl) ? DEFAULT_DELAY_TEST_URL : testUrl.trim();
-            safeTestUrl = TextUtils.isEmpty(trimmed) ? DEFAULT_DELAY_TEST_URL : trimmed;
-        }
+        final ArrayList<String> urlChain = buildDelayUrlChain(testUrl);
 
         EXECUTOR.execute(() -> {
             try {
                 ensureCoreEnvInitialized();
-                long delay;
                 CoreController controller = coreController;
-                if (controller != null && isControllerRunning(controller) && TextUtils.equals(configJson, currentConfigJson)) {
-                    delay = controller.measureDelay(safeTestUrl);
-                } else {
-                    delay = Libv2ray.measureOutboundDelay(buildDelayCheckConfig(configJson), safeTestUrl);
+                boolean reuseRunningController = controller != null
+                        && isControllerRunning(controller)
+                        && TextUtils.equals(configJson, currentConfigJson);
+                String delayConfig = reuseRunningController ? null : buildDelayCheckConfig(configJson);
+
+                long delay = -1L;
+                String lastError = "";
+                String lastUrl = urlChain.get(0);
+                for (String url : urlChain) {
+                    lastUrl = url;
+                    try {
+                        delay = reuseRunningController
+                                ? controller.measureDelay(url)
+                                : Libv2ray.measureOutboundDelay(delayConfig, url);
+                    } catch (Throwable t) {
+                        lastError = extractErrorMessage(t, "Delay check failed");
+                        FileLog.e(TAG + ": delay check failed against " + url, t);
+                        delay = -1L;
+                    }
+                    if (delay >= 0) {
+                        break;
+                    }
                 }
+
                 if (delay < 0) {
-                    addLog("delay check failed");
-                    notifyDelay(callback, false, -1, "Delay check failed");
+                    String reason = TextUtils.isEmpty(lastError)
+                            ? "Delay check failed"
+                            : lastError;
+                    addLog("delay check failed: " + reason);
+                    notifyDelay(callback, false, -1, reason);
                     return;
                 }
 
-                addLog("delay check success: " + delay + "ms");
+                addLog("delay check success: " + delay + "ms via " + lastUrl);
                 notifyDelay(callback, true, delay, "OK");
             } catch (Throwable t) {
                 String error = extractErrorMessage(t, "Delay check failed");
@@ -320,6 +382,77 @@ final class XrayCoreEngine {
                 notifyDelay(callback, false, -1, error);
             }
         });
+    }
+
+    /**
+     * Queries traffic statistics for the given outbound tag. Returns 0 when the core is not running
+     * or libv2ray is unavailable. Mirrors v2rayNG's {@code V2RayServiceManager.queryStats}.
+     *
+     * @param tag  outbound tag (e.g. {@code "proxy"})
+     * @param link stat name (e.g. {@code "uplink"} or {@code "downlink"})
+     * @return cumulative byte counter or 0 when unavailable
+     */
+    static long queryStats(String tag, String link) {
+        if (!isLibraryAvailable()) {
+            return 0L;
+        }
+        CoreController controller = coreController;
+        if (controller == null || !isControllerRunning(controller)) {
+            return 0L;
+        }
+        try {
+            return controller.queryStats(safe(tag), safe(link));
+        } catch (Throwable t) {
+            FileLog.e(TAG + ": queryStats failed for tag=" + tag + " link=" + link, t);
+            return 0L;
+        }
+    }
+
+    /**
+     * Stops then starts the core with a fresh config. Mirrors v2rayNG's {@code MSG_STATE_RESTART}
+     * which performs stop + 500 ms gap + start. The internal stop+start are serialized through
+     * the same single-threaded executor as {@link #start} and {@link #stop}.
+     */
+    static void restart(String configJson, XrayAppProxyManager.StartCallback callback) {
+        addLog("restart requested");
+        stop((stopOk, stopMsg) -> {
+            // brief gap allows the OS to release listening sockets before re-bind, matching v2rayNG behaviour
+            try {
+                Thread.sleep(500L);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+            }
+            start(configJson, (startOk, startMsg) -> {
+                if (callback == null) {
+                    return;
+                }
+                if (startOk) {
+                    callback.onComplete(true, startMsg);
+                } else {
+                    String combined = TextUtils.isEmpty(stopMsg) || stopOk
+                            ? startMsg
+                            : (stopMsg + "; " + startMsg);
+                    callback.onComplete(false, combined);
+                }
+            });
+        });
+    }
+
+    private static ArrayList<String> buildDelayUrlChain(String requestedUrl) {
+        ArrayList<String> chain = new ArrayList<>();
+        String trimmed = requestedUrl == null ? "" : requestedUrl.trim();
+        String primary = TextUtils.isEmpty(trimmed) ? DEFAULT_DELAY_TEST_URL : trimmed;
+        chain.add(primary);
+        for (String fallback : FALLBACK_DELAY_TEST_URLS) {
+            if (!TextUtils.isEmpty(fallback) && !chain.contains(fallback)) {
+                chain.add(fallback);
+            }
+        }
+        return chain;
+    }
+
+    private static String safe(String value) {
+        return value == null ? "" : value;
     }
 
     static ArrayList<String> getRecentLogs() {
@@ -346,7 +479,40 @@ final class XrayCoreEngine {
             }
             ensureCoreEnvInitialized();
             coreController = Libv2ray.newCoreController(CORE_CALLBACK);
+            registerProcessFinderIfNeeded(coreController);
             addLog("core controller created");
+        }
+    }
+
+    /**
+     * Registers an Xray {@link ProcessFinder} on Android Q+ so that the core can resolve UID
+     * ownership of outbound connections. Mirrors v2rayNG's {@code V2RayServiceManager.serviceControl}
+     * setter which performs the same registration. No-op below Q (kernel API unavailable) and on
+     * already-registered controllers.
+     */
+    private static void registerProcessFinderIfNeeded(CoreController controller) {
+        if (controller == null) {
+            return;
+        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            return;
+        }
+        if (processFinder != null) {
+            return;
+        }
+
+        Context context = ApplicationLoader.applicationContext;
+        if (context == null) {
+            return;
+        }
+
+        try {
+            processFinder = new XenonProcessFinder(context.getApplicationContext());
+            controller.registerProcessFinder(processFinder);
+            addLog("process finder registered");
+        } catch (Throwable t) {
+            FileLog.e(TAG + ": failed to register process finder", t);
+            processFinder = null;
         }
     }
 
@@ -828,14 +994,34 @@ final class XrayCoreEngine {
         public long startup() {
             running = true;
             addLog("callback: startup");
+            notifyStateChanged(true, "callback_startup");
             return 0L;
         }
 
         @Override
         public long shutdown() {
+            boolean wasRunning = running;
             running = false;
             currentConfigJson = null;
             addLog("callback: shutdown");
+            // Mirrors v2rayNG's CoreCallback.shutdown() which calls serviceControl.stopService().
+            // Xenon has no foreground service; the equivalent teardown is releasing the Telegram
+            // proxy bridge so the UI does not stay pointed at a dead loopback port. Always run on
+            // the UI thread because the bridge touches NotificationCenter / ConnectionsManager.
+            try {
+                AndroidUtilities.runOnUIThread(() -> {
+                    try {
+                        XrayTelegramProxyBridge.disableLocalProxyIfOwned();
+                    } catch (Throwable t) {
+                        FileLog.e(TAG + ": failed to release Telegram bridge after callback shutdown", t);
+                    }
+                });
+            } catch (Throwable t) {
+                FileLog.e(TAG + ": failed to dispatch bridge release", t);
+            }
+            if (wasRunning) {
+                notifyStateChanged(false, "callback_shutdown");
+            }
             return 0L;
         }
 
@@ -843,9 +1029,38 @@ final class XrayCoreEngine {
         public long onEmitStatus(long code, String status) {
             if (!TextUtils.isEmpty(status)) {
                 addLog("status[" + code + "]: " + status);
+                boolean wasRunning = running;
                 updateRunningStateFromStatus(status);
+                if (wasRunning != running) {
+                    notifyStateChanged(running, "status_emit:" + code);
+                }
             }
             return 0L;
+        }
+    }
+
+    /**
+     * Dispatches a state change to listeners on the UI thread. Listener exceptions are isolated so
+     * one bad listener cannot suppress notifications for the rest.
+     */
+    private static void notifyStateChanged(boolean newRunning, String reason) {
+        if (STATE_LISTENERS.isEmpty()) {
+            return;
+        }
+        Runnable dispatch = () -> {
+            for (XrayAppProxyManager.StateListener listener : STATE_LISTENERS) {
+                try {
+                    listener.onStateChanged(newRunning, reason);
+                } catch (Throwable t) {
+                    FileLog.e(TAG + ": state listener threw for reason=" + reason, t);
+                }
+            }
+        };
+        try {
+            AndroidUtilities.runOnUIThread(dispatch);
+        } catch (Throwable t) {
+            // AndroidUtilities may not be ready in unit tests / very early app boot — fall back to inline dispatch.
+            dispatch.run();
         }
     }
 
@@ -858,6 +1073,54 @@ final class XrayCoreEngine {
             this.port = port;
             this.username = username;
             this.password = password;
+        }
+    }
+
+    /**
+     * Resolves the owning UID of an outbound TCP/UDP connection on Android Q+ via
+     * {@link ConnectivityManager#getConnectionOwnerUid}. Mirrors v2rayNG's
+     * {@code XrayProcessFinder} so the bundled libv2ray can perform UID-based routing.
+     * Returns {@code -1} on any error or when the API is unavailable.
+     */
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private static final class XenonProcessFinder implements ProcessFinder {
+        private final ConnectivityManager connectivityManager;
+
+        XenonProcessFinder(Context context) {
+            this.connectivityManager = context == null
+                    ? null
+                    : (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        }
+
+        @Override
+        public long findProcessByConnection(String network, String srcIP, long srcPort, String destIP, long destPort) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                return -1L;
+            }
+            if (connectivityManager == null) {
+                return -1L;
+            }
+            int proto;
+            if ("tcp".equalsIgnoreCase(network)) {
+                proto = OsConstants.IPPROTO_TCP;
+            } else if ("udp".equalsIgnoreCase(network)) {
+                proto = OsConstants.IPPROTO_UDP;
+            } else {
+                return -1L;
+            }
+            if (TextUtils.isEmpty(destIP) || destPort == 0L) {
+                return -1L;
+            }
+            try {
+                int uid = connectivityManager.getConnectionOwnerUid(
+                        proto,
+                        new InetSocketAddress(srcIP, (int) srcPort),
+                        new InetSocketAddress(destIP, (int) destPort)
+                );
+                return (long) uid;
+            } catch (Throwable t) {
+                return -1L;
+            }
         }
     }
 }

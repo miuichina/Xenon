@@ -34,6 +34,18 @@ public final class XrayAppProxyManager {
     }
 
     /**
+     * Listener for asynchronous state transitions (callback shutdowns, status emissions,
+     * explicit start/stop completions). Mirrors v2rayNG's {@code MSG_STATE_*} broadcasts.
+     */
+    public interface StateListener {
+        /**
+         * @param running whether the core is currently running
+         * @param reason  short tag identifying the source of the transition
+         */
+        void onStateChanged(boolean running, String reason);
+    }
+
+    /**
      * Returns whether bundled Xray Java/native bindings can be used on this CPU ABI.
      */
     public static boolean isLibraryAvailable() {
@@ -64,6 +76,54 @@ public final class XrayAppProxyManager {
             return;
         }
         XrayCoreEngine.stop(callback);
+    }
+
+    /**
+     * Stops then starts the core with the supplied runtime config. Mirrors v2rayNG's
+     * {@code MSG_STATE_RESTART} which performs stop + small delay + start. The callback fires
+     * once the second start completes (success message reflects the start outcome).
+     */
+    public static void restart(String configJson, StartCallback callback) {
+        if (!isLibraryAvailable()) {
+            notifyStart(callback, false, UNSUPPORTED_ABI_MESSAGE);
+            return;
+        }
+        XrayCoreEngine.restart(configJson, callback);
+    }
+
+    /**
+     * Queries cumulative traffic statistics for the given outbound tag. Returns 0 when the core is
+     * not running or libv2ray is unavailable. Mirrors v2rayNG's {@code V2RayServiceManager.queryStats}.
+     *
+     * @param tag  outbound tag, typically {@code "proxy"} or {@code "direct"}
+     * @param link stat name, typically {@code "uplink"} or {@code "downlink"}
+     */
+    public static long queryStats(String tag, String link) {
+        if (!isCpuAbiSupported()) {
+            return 0L;
+        }
+        return XrayCoreEngine.queryStats(tag, link);
+    }
+
+    /**
+     * Registers a state listener for async lifecycle transitions. Listeners are dispatched on the
+     * UI thread. Idempotent — registering the same listener twice has no effect.
+     */
+    public static void addStateListener(StateListener listener) {
+        if (listener == null || !isCpuAbiSupported()) {
+            return;
+        }
+        XrayCoreEngine.addStateListener(listener);
+    }
+
+    /**
+     * Removes a previously registered state listener.
+     */
+    public static void removeStateListener(StateListener listener) {
+        if (listener == null || !isCpuAbiSupported()) {
+            return;
+        }
+        XrayCoreEngine.removeStateListener(listener);
     }
 
     /**
