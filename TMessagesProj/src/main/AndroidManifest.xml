@@ -657,15 +657,15 @@
             android:enabled="true"
             android:foregroundServiceType="mediaPlayback"
         />
-        <service
-            android:name=".MusicBrowserService"
-            android:exported="true"
-            android:foregroundServiceType="mediaPlayback"
-        >
-            <intent-filter>
-                <action android:name="android.media.browse.MediaBrowserService"/>
-            </intent-filter>
-        </service>
+<!--        <service-->
+<!--            android:name=".MusicBrowserService"-->
+<!--            android:exported="true"-->
+<!--            android:foregroundServiceType="mediaPlayback"-->
+<!--        >-->
+<!--            <intent-filter>-->
+<!--                <action android:name="android.media.browse.MediaBrowserService"/>-->
+<!--            </intent-filter>-->
+<!--        </service>-->
         <service
             android:name=".voip.TelegramConnectionService"
             android:permission="android.permission.BIND_TELECOM_CONNECTION_SERVICE"
@@ -818,7 +818,7 @@
             android:exported="false"
             android:grantUriPermissions="true"/>
 
-        <meta-data android:name="com.google.android.maps.v2.API_KEY" android:value="AIzaSyCGMAA5lSWvRAgaVtF1-Bh3Di07zePnUbA" />
+        <meta-data android:name="com.google.android.geo.API_KEY" android:value="${MAPS_API_KEY}" />
 
         <uses-library android:name="com.sec.android.app.multiwindow" android:required="false" />
         <meta-data android:name="com.sec.android.support.multiwindow" android:value="true" />
@@ -829,8 +829,8 @@
 
         <meta-data android:name="com.google.android.gms.wallet.api.enabled" android:value="true" />
 
-        <meta-data android:name="com.google.android.gms.car.notification.SmallIcon" android:resource="@drawable/ic_player" />
-        <meta-data android:name="com.google.android.gms.car.application" android:resource="@xml/automotive_app_desc" />
+<!--        <meta-data android:name="com.google.android.gms.car.notification.SmallIcon" android:resource="@drawable/ic_player" />-->
+<!--        <meta-data android:name="com.google.android.gms.car.application" android:resource="@xml/automotive_app_desc" />-->
 
         <meta-data android:name="com.google.android.gms.vision.DEPENDENCIES" android:value="face,barcode" />
 

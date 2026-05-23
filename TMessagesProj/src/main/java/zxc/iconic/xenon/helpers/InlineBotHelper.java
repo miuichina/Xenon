@@ -80,4 +80,13 @@ public class InlineBotHelper extends BaseController {
             getConnectionsManager().sendRequest(req, requestDelegate, ConnectionsManager.RequestFlagFailOnServerErrors);
         }
     }
+
+    public static String findBotForText(String s) {
+        var text = s.trim();
+        if (text.contains(" ")) return null;
+        if (text.startsWith("https://x.com/") || text.startsWith("https://twitter.com/")) {
+            return "TwPicBot";
+        }
+        return null;
+    }
 }
