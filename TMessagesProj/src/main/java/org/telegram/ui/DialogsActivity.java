@@ -14180,6 +14180,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
         accountNumbers.clear();
         for (int a = 0; a < UserConfig.MAX_ACCOUNT_COUNT; a++) {
+            if (PasscodeHelper.isAccountHidden(a)) continue;
             if (UserConfig.getInstance(a).isClientActivated()) {
                 accountNumbers.add(a);
             }
