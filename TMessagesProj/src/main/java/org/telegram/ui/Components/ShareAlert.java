@@ -139,7 +139,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import zxc.iconic.xenon.forward.ForwardContext;
 import zxc.iconic.xenon.forward.SendItemOptions;
-import zxc.iconic.xenon.forward.SendOptionsMenuLayout;
 
 public class ShareAlert extends BottomSheet implements NotificationCenter.NotificationCenterDelegate {
 

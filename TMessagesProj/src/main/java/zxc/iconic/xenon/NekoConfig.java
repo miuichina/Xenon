@@ -153,7 +153,7 @@ public class NekoConfig {
     public static boolean telegaDetectorEnabled = true;
     public static boolean disableTypingIndicator = false;
     public static boolean hidePhoneNumber = false;
-
+    public static boolean autoInlineBot = false;
     private static final String XRAY_DEFAULT_CHECK_URL = "https://www.gstatic.com/generate_204";
 
     public static boolean xrayAppProxyEnabled = false;
@@ -282,6 +282,7 @@ public class NekoConfig {
             telegaDetectorEnabled = preferences.getBoolean("telegaDetectorEnabled", true);
             disableTypingIndicator = preferences.getBoolean("disableTypingIndicator", false);
             hidePhoneNumber = preferences.getBoolean("hidePhoneNumber", false);
+            autoInlineBot = preferences.getBoolean("autoInlineBot", false);
             xrayAppProxyEnabled = preferences.getBoolean("xrayAppProxyEnabled", false);
             xrayAppProxyLocalPort = preferences.getInt("xrayAppProxyLocalPort", 10808);
             xrayAppProxyConfigJson = preferences.getString("xrayAppProxyConfigJson", "");
@@ -513,6 +514,14 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("telegaDetectorEnabled", telegaDetectorEnabled);
+        editor.apply();
+    }
+
+    public static void setAutoInlineBot(boolean enabled) {
+        autoInlineBot = enabled;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("autoInlineBot", autoInlineBot);
         editor.apply();
     }
 

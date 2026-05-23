@@ -276,7 +276,6 @@ import zxc.iconic.xenon.BackButtonMenuRecent;
 import zxc.iconic.xenon.forward.ForwardContext;
 import zxc.iconic.xenon.NekoConfig;
 import zxc.iconic.xenon.forward.SendItemOptions;
-import zxc.iconic.xenon.forward.SendOptionsMenuLayout;
 import zxc.iconic.xenon.helpers.PasscodeHelper;
 import me.vkryl.android.animator.BoolAnimator;
 import me.vkryl.android.animator.FactorAnimator;

@@ -38,7 +38,7 @@ Gradle injects these into `BuildConfig`. The small class `zxc.iconic.xenon.Extra
 
 If you use Firebase Cloud Messaging:
 
-1. In [Firebase Console](https://console.firebase.google.com/), create Android app(s) with application ID **`zxc.iconic.xenon`** (and **`zxc.iconic.xenon.beta`** for the debug suffix build, if you use FCM there).  
+1. In [Firebase Console](https://console.firebase.google.com/), create an Android app with application ID **`zxc.iconic.xenon`** (Xenon ships a single rolling stable build — no separate `.beta` suffix).  
 2. Enable Cloud Messaging and download `google-services.json` into the **`TMessagesProj`** module directory.
 
 ### 6. Compile
@@ -49,7 +49,7 @@ From the project root:
 ./gradlew :TMessagesProj_App:assembleRelease
 ```
 
-For a debug APK (package id will be `zxc.iconic.xenon.beta`):
+For a debug APK (same package id `zxc.iconic.xenon`):
 
 ```bash
 ./gradlew :TMessagesProj_App:assembleDebug

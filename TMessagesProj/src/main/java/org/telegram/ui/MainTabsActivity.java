@@ -712,6 +712,8 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             checkContactsTabBadge();
         } else if (id == NotificationCenter.mainTabsConfigUpdated) {
             onTabsConfigurationChanged();
+        } else if (id == NotificationCenter.callTabsVisibleToggled) {
+            onTabsConfigurationChanged();
         }
     }
 
@@ -724,6 +726,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         NotificationCenter.getInstance(currentAccount).addObserver(this, NotificationCenter.updateInterfaces);
         NotificationCenter.getInstance(currentAccount).addObserver(this, NotificationCenter.mainUserInfoChanged);
         NotificationCenter.getInstance(currentAccount).addObserver(this, NotificationCenter.contactsPermissionBadgeCheck);
+        NotificationCenter.getInstance(currentAccount).addObserver(this, NotificationCenter.callTabsVisibleToggled);
         NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.mainTabsConfigUpdated);
         NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.appUpdateAvailable);
         NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.appUpdateLoading);
@@ -741,6 +744,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.updateInterfaces);
         NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.mainUserInfoChanged);
         NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.contactsPermissionBadgeCheck);
+        NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.callTabsVisibleToggled);
         NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.mainTabsConfigUpdated);
         NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.appUpdateAvailable);
         NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.appUpdateLoading);

@@ -10,6 +10,8 @@ import org.telegram.tgnet.TLRPC;
 
 import java.util.ArrayList;
 
+import zxc.iconic.xenon.NekoConfig;
+
 public class InlineBotHelper extends BaseController {
 
     private static final InlineBotHelper[] Instance = new InlineBotHelper[UserConfig.MAX_ACCOUNT_COUNT];
@@ -82,6 +84,7 @@ public class InlineBotHelper extends BaseController {
     }
 
     public static String findBotForText(String s) {
+        if (!NekoConfig.autoInlineBot) return null;
         var text = s.trim();
         if (text.contains(" ")) return null;
         if (text.startsWith("https://x.com/") || text.startsWith("https://twitter.com/")) {
