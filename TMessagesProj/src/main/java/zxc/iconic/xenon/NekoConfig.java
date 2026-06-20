@@ -82,7 +82,6 @@ public class NekoConfig {
     public static float stickerSize = 14.0f;
     public static String translationProvider = Translator.PROVIDER_GOOGLE;
     public static String translationTarget = "app";
-    public static int deepLFormality = DeepLTranslator.FORMALITY_DEFAULT;
     public static int tabsTitleType = TITLE_TYPE_MIX;
     public static int idType = ID_TYPE_API;
     public static int maxRecentStickers = 20;
@@ -794,14 +793,6 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putString("translationTarget", translationTarget);
-        editor.apply();
-    }
-
-    public static void setDeepLFormality(int formality) {
-        deepLFormality = formality;
-        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
-        SharedPreferences.Editor editor = preferences.edit();
-        editor.putInt("deepLFormality", deepLFormality);
         editor.apply();
     }
 
