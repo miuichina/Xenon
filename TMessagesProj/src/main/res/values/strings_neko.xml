@@ -347,6 +347,7 @@
     <string name="TranslationKeepFormatting">Preserve text formatting in translation</string>
     <string name="PredictiveBackAnimation">Predictive back animation</string>
     <string name="HideBottomNavigationBar">Hide bottom navigation bar</string>
+    <string name="DynamicTabSize">Dynamic tab size</string>
     <string name="TabsPosition">Tabs position</string>
     <string name="TabsPositionTop">Top</string>
     <string name="TabsPositionBottom">Bottom</string>

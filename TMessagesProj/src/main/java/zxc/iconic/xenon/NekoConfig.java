@@ -149,6 +149,7 @@ public class NekoConfig {
     public static boolean showMainTabs = true;
     public static boolean openSettingsBySwipe = false;
     public static boolean showMainTabsTitle = true;
+    public static boolean dynamicTabSize = false;
     public static boolean telegaDetectorEnabled = true;
     public static boolean disableTypingIndicator = false;
     public static boolean hidePhoneNumber = false;
@@ -278,6 +279,7 @@ public class NekoConfig {
             showMainTabs = preferences.getBoolean("showMainTabs", true);
             openSettingsBySwipe = preferences.getBoolean("openSettingsBySwipe", false);
             showMainTabsTitle = preferences.getBoolean("showMainTabsTitle", true);
+            dynamicTabSize = preferences.getBoolean("dynamicTabSize", false);
             telegaDetectorEnabled = preferences.getBoolean("telegaDetectorEnabled", true);
             disableTypingIndicator = preferences.getBoolean("disableTypingIndicator", false);
             hidePhoneNumber = preferences.getBoolean("hidePhoneNumber", false);
@@ -505,6 +507,14 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("showMainTabsTitle", showMainTabsTitle);
+        editor.apply();
+    }
+
+    public static void toggleDynamicTabSize() {
+        dynamicTabSize = !dynamicTabSize;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("dynamicTabSize", dynamicTabSize);
         editor.apply();
     }
 
