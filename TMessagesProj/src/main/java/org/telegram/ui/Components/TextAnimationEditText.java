@@ -67,10 +67,17 @@ public class TextAnimationEditText extends EditTextCaption {
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
                 if (!NekoConfig.textAnimationEnabled) return;
                 if (count > 0) {
+                    if (start == 0 && count == s.length()) {
+                        charAnims.clear();
+                        deletedCharAnims.clear();
+                        return;
+                    }
+
                     Layout layout = getLayout();
                     if (layout == null) return;
                     long now = System.currentTimeMillis();
-                    for (int i = start; i < start + count; i++) {
+                    int maxCount = Math.min(count, 50);
+                    for (int i = start; i < start + maxCount; i++) {
                         if (i >= s.length()) break;
                         DeletedCharAnim anim = new DeletedCharAnim();
                         anim.ch = String.valueOf(s.charAt(i));
@@ -88,6 +95,11 @@ public class TextAnimationEditText extends EditTextCaption {
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 if (!NekoConfig.textAnimationEnabled) return;
+                if (s.length() == 0) {
+                    charAnims.clear();
+                    deletedCharAnims.clear();
+                    return;
+                }
                 Iterator<CharAnim> it = charAnims.iterator();
                 while (it.hasNext()) {
                     CharAnim anim = it.next();
