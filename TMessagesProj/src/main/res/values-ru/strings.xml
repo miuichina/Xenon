@@ -381,4 +381,6 @@
     <string name="XrayProxyProfilesEmpty">Нет сохранённых профилей. Вставьте share-URI из буфера, чтобы добавить первый.</string>
     <string name="XrayProxyLoginActiveNoneTitle">Нет сохранённого профиля</string>
     <string name="XrayProxyLoginActiveNoneHint">Вставьте share-URI ниже и нажмите «Connect».</string>
+
+    <string name="RemoveChatDelay">Убрать задержку 200ms при открытии чата</string>
 </resources>
