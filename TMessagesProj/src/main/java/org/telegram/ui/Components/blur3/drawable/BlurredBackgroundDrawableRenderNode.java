@@ -168,9 +168,11 @@ public class BlurredBackgroundDrawableRenderNode extends BlurredBackgroundDrawab
                     c.drawColor(backgroundColor);
                 }
             } else if (zxc.iconic.xenon.NekoConfig.useAdvancedLiquidGlass) {
+                // tintPercent = tint/transparency control. advancedGlassAlpha controls
+                // overall glass node opacity via renderNode.setAlpha() in setAlpha().
                 final int percent = zxc.iconic.xenon.NekoConfig.advancedGlassTintPercent;
                 if (percent > 0 && Color.alpha(backgroundColor) != 0) {
-                    final float strength = Math.min(100, Math.max(0, percent)) / 100f * 0.5f;
+                    final float strength = Math.min(100, Math.max(0, percent)) / 100f * 0.60f;
                     c.drawColor(Theme.multAlpha(backgroundColor, strength));
                 }
             }
@@ -188,6 +190,14 @@ public class BlurredBackgroundDrawableRenderNode extends BlurredBackgroundDrawab
                     boundProps.strokeWidthBottom, false, paintStrokeBottom);
         }
         renderNode.endRecording();
+
+        // Sync renderNode alpha every time the display list is rebuilt.
+        // This covers the case where advancedGlassAlpha or useAdvancedLiquidGlass
+        // changed without a subsequent setAlpha() call (parent alpha stayed at 255).
+        final float _glassAlphaFactor = zxc.iconic.xenon.NekoConfig.useAdvancedLiquidGlass
+                ? Math.max(0f, Math.min(1f, zxc.iconic.xenon.NekoConfig.advancedGlassAlpha / 100f))
+                : 1f;
+        renderNode.setAlpha(getAlpha() / 255f * _glassAlphaFactor);
     }
 
     @Override
@@ -244,7 +254,12 @@ public class BlurredBackgroundDrawableRenderNode extends BlurredBackgroundDrawab
         final int oldAlpha = getAlpha();
 
         super.setAlpha(alpha);
-        renderNode.setAlpha(alpha / 255f);
+        // In advanced glass mode, advancedGlassAlpha scales the drawable alpha
+        // so the entire glass surface (refraction + tint) can be made translucent.
+        final float glassAlphaFactor = zxc.iconic.xenon.NekoConfig.useAdvancedLiquidGlass
+                ? Math.max(0f, Math.min(1f, zxc.iconic.xenon.NekoConfig.advancedGlassAlpha / 100f))
+                : 1f;
+        renderNode.setAlpha(alpha / 255f * glassAlphaFactor);
         renderNodeInvalidated = true;
 
         if (oldAlpha == 0 && alpha > 0) {

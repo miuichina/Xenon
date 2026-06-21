@@ -907,6 +907,9 @@ public class LocationController extends BaseController implements NotificationCe
         if (DialogObject.isEncryptedDialog(dialogId)) {
             return;
         }
+        if (NekoConfig.ghostModeEnabled) {
+            return;
+        }
         ArrayList<TLRPC.Message> messages = locationsCache.get(dialogId);
         if (messages == null || messages.isEmpty()) {
             return;

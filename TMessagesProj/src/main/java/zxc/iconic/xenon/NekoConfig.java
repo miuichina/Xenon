@@ -150,8 +150,9 @@ public class NekoConfig {
     public static boolean openSettingsBySwipe = false;
     public static boolean showMainTabsTitle = true;
     public static boolean dynamicTabSize = false;
-    public static boolean telegaDetectorEnabled = true;
+    public static boolean telegaDetectorEnabled = false;
     public static boolean disableTypingIndicator = false;
+    public static boolean ghostModeEnabled = false;
     public static boolean hidePhoneNumber = false;
     public static boolean autoInlineBot = false;
     public static boolean removeAds = false;
@@ -167,15 +168,24 @@ public class NekoConfig {
     public static String xrayAppProxyConfigJson = "";
     public static String xrayAppProxyCheckUrl = XRAY_DEFAULT_CHECK_URL;
 
+    public static final int DEFAULT_ADVANCED_GLASS_ALPHA = 100;
+    public static final int DEFAULT_ADVANCED_GLASS_BLUR = 3;
+    public static final float DEFAULT_ADVANCED_GLASS_DISPERSION = 1.0f;
+    public static final float DEFAULT_ADVANCED_GLASS_FRESNEL = 1.0f;
+    public static final float DEFAULT_ADVANCED_GLASS_GLARE = 1.0f;
+    public static final int DEFAULT_ADVANCED_GLASS_TINT_PERCENT = 20;
+
     public static float liquidGlassIntensity = 0.75f;
     public static int liquidGlassThickness = 11;
     public static boolean useAdvancedLiquidGlass = false;
     
     // Advanced liquid glass parameters (separate from standard)
-    public static float advancedGlassDispersion = 1.0f;
-    public static float advancedGlassFresnel = 1.0f;
-    public static float advancedGlassGlare = 1.0f;
-    public static int advancedGlassTintPercent = 0;
+    public static int advancedGlassAlpha = DEFAULT_ADVANCED_GLASS_ALPHA;
+    public static int advancedGlassBlur = DEFAULT_ADVANCED_GLASS_BLUR;
+    public static float advancedGlassDispersion = DEFAULT_ADVANCED_GLASS_DISPERSION;
+    public static float advancedGlassFresnel = DEFAULT_ADVANCED_GLASS_FRESNEL;
+    public static float advancedGlassGlare = DEFAULT_ADVANCED_GLASS_GLARE;
+    public static int advancedGlassTintPercent = DEFAULT_ADVANCED_GLASS_TINT_PERCENT;
 
     public static boolean shouldNOTTrustMe = false;
 
@@ -286,8 +296,9 @@ public class NekoConfig {
             openSettingsBySwipe = preferences.getBoolean("openSettingsBySwipe", false);
             showMainTabsTitle = preferences.getBoolean("showMainTabsTitle", true);
             dynamicTabSize = preferences.getBoolean("dynamicTabSize", false);
-            telegaDetectorEnabled = preferences.getBoolean("telegaDetectorEnabled", true);
+            telegaDetectorEnabled = preferences.getBoolean("telegaDetectorEnabled", false);
             disableTypingIndicator = preferences.getBoolean("disableTypingIndicator", false);
+            ghostModeEnabled = preferences.getBoolean("ghostModeEnabled", false);
             hidePhoneNumber = preferences.getBoolean("hidePhoneNumber", false);
             autoInlineBot = preferences.getBoolean("autoInlineBot", false);
             xrayAppProxyEnabled = preferences.getBoolean("xrayAppProxyEnabled", false);
@@ -297,10 +308,12 @@ public class NekoConfig {
             liquidGlassIntensity = preferences.getFloat("liquidGlassIntensity", 0.75f);
             liquidGlassThickness = preferences.getInt("liquidGlassThickness", 11);
             useAdvancedLiquidGlass = preferences.getBoolean("useAdvancedLiquidGlass", false);
-            advancedGlassDispersion = preferences.getFloat("advancedGlassDispersion", 1.0f);
-            advancedGlassFresnel = preferences.getFloat("advancedGlassFresnel", 1.0f);
-            advancedGlassGlare = preferences.getFloat("advancedGlassGlare", 1.0f);
-            advancedGlassTintPercent = preferences.getInt("advancedGlassTintPercent", 0);
+            advancedGlassAlpha = preferences.getInt("advancedGlassAlpha", DEFAULT_ADVANCED_GLASS_ALPHA);
+            advancedGlassBlur = preferences.getInt("advancedGlassBlur", DEFAULT_ADVANCED_GLASS_BLUR);
+            advancedGlassDispersion = preferences.getFloat("advancedGlassDispersion", DEFAULT_ADVANCED_GLASS_DISPERSION);
+            advancedGlassFresnel = preferences.getFloat("advancedGlassFresnel", DEFAULT_ADVANCED_GLASS_FRESNEL);
+            advancedGlassGlare = preferences.getFloat("advancedGlassGlare", DEFAULT_ADVANCED_GLASS_GLARE);
+            advancedGlassTintPercent = preferences.getInt("advancedGlassTintPercent", DEFAULT_ADVANCED_GLASS_TINT_PERCENT);
             cameraInVideoMessages = preferences.getInt("cameraInVideoMessages", CAMERA_FRONT);
             removeAds = preferences.getBoolean("removeAds", false);
             textAnimationEnabled = preferences.getBoolean("textAnimationEnabled", false);
@@ -551,6 +564,14 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("disableTypingIndicator", disableTypingIndicator);
+        editor.apply();
+    }
+
+    public static void toggleGhostMode() {
+        ghostModeEnabled = !ghostModeEnabled;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("ghostModeEnabled", ghostModeEnabled);
         editor.apply();
     }
 
@@ -1114,6 +1135,22 @@ public class NekoConfig {
         editor.apply();
     }
 
+    public static void setAdvancedGlassAlpha(int value) {
+        advancedGlassAlpha = Math.max(0, Math.min(100, value));
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("advancedGlassAlpha", advancedGlassAlpha);
+        editor.apply();
+    }
+
+    public static void setAdvancedGlassBlur(int value) {
+        advancedGlassBlur = Math.max(0, Math.min(200, value));
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("advancedGlassBlur", advancedGlassBlur);
+        editor.apply();
+    }
+
     public static void setAdvancedGlassDispersion(float value) {
         advancedGlassDispersion = value;
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
@@ -1142,6 +1179,24 @@ public class NekoConfig {
         advancedGlassTintPercent = Math.max(0, Math.min(100, value));
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("advancedGlassTintPercent", advancedGlassTintPercent);
+        editor.apply();
+    }
+
+    public static void resetAdvancedGlassToDefaults() {
+        advancedGlassAlpha = DEFAULT_ADVANCED_GLASS_ALPHA;
+        advancedGlassBlur = DEFAULT_ADVANCED_GLASS_BLUR;
+        advancedGlassDispersion = DEFAULT_ADVANCED_GLASS_DISPERSION;
+        advancedGlassFresnel = DEFAULT_ADVANCED_GLASS_FRESNEL;
+        advancedGlassGlare = DEFAULT_ADVANCED_GLASS_GLARE;
+        advancedGlassTintPercent = DEFAULT_ADVANCED_GLASS_TINT_PERCENT;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("advancedGlassAlpha", advancedGlassAlpha);
+        editor.putInt("advancedGlassBlur", advancedGlassBlur);
+        editor.putFloat("advancedGlassDispersion", advancedGlassDispersion);
+        editor.putFloat("advancedGlassFresnel", advancedGlassFresnel);
+        editor.putFloat("advancedGlassGlare", advancedGlassGlare);
         editor.putInt("advancedGlassTintPercent", advancedGlassTintPercent);
         editor.apply();
     }

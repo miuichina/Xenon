@@ -60,6 +60,8 @@
     <string name="ConfirmAVMessage">Подтверждение аудио/видео сообщений</string>
     <string name="DisableTypingIndicator">Не отправлять статус \"Печатает...\"</string>
     <string name="DisableTypingIndicatorDesc">Другие не увидят, когда вы печатаете</string>
+    <string name="GhostMode">Режим призрака</string>
+    <string name="GhostModeDesc">Не отправлять отчёты о прочтении при открытии чатов и каналов. Сообщения отмечаются прочитанными только локально.</string>
     <string name="AskBeforeCalling">Подтверждать звонки</string>
     <string name="DisableNumberRounding">Не округлять числа</string>
     <string name="Categories">Настройки</string>
@@ -94,6 +96,18 @@
     <string name="LiquidGlassIntensity">Интенсивность преломления</string>
     <string name="LiquidGlassThickness">Толщина стекла</string>
     <string name="AdvancedGlassTintPercent">Сила затемнения стекла</string>
+    <string name="LiquidGlassTitle">Жидкое стекло</string>
+    <string name="LiquidGlassSettingsDesc">Расширенные настройки стекла</string>
+    <string name="LiquidGlassPreview">Предпросмотр</string>
+    <string name="AdvancedGlassSection">Параметры стекла</string>
+    <string name="AdvancedGlassAlpha">Прозрачность стекла</string>
+    <string name="AdvancedGlassBlur">Сила блюра</string>
+    <string name="AdvancedGlassRefraction">Сила рефракции</string>
+    <string name="AdvancedGlassDispersion">Хроматическая дисперсия</string>
+    <string name="AdvancedGlassGlare">Сила блика</string>
+    <string name="AdvancedGlassReset">Сбросить настройки стекла</string>
+    <string name="AdvancedGlassResetConfirm">Сбросить параметры жидкого стекла на значения по умолчанию?</string>
+    <string name="AdvancedGlassResetDone">Настройки стекла сброшены</string>
     <string name="MainTabsHide">Скрыть табы</string>
     <string name="MainTabsHideHint">Когда скрыты, вы всё ещё можете переключаться между экранами свайпами. Жесты продолжат работать.</string>
     <string name="MainTabsShow">Показывать табы навигации</string>

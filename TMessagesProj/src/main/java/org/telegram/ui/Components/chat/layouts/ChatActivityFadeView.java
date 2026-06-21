@@ -4,17 +4,20 @@ import static org.telegram.messenger.AndroidUtilities.dp;
 
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
 import android.view.View;
 
 import androidx.annotation.NonNull;
 
 import org.telegram.ui.Components.blur3.BlurredBackgroundDrawableViewFactory;
 import org.telegram.ui.Components.blur3.BlurredBackgroundWithFadeDrawable;
+import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
 import org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundColorProvider;
 
+
 public class ChatActivityFadeView extends View {
-    private BlurredBackgroundWithFadeDrawable fadeDrawableTop;
-    private BlurredBackgroundWithFadeDrawable fadeDrawableBottom;
+    private Drawable fadeDrawableTop;
+    private Drawable fadeDrawableBottom;
     private int fadeZoneTop, fadeZoneBottom;
 
     public ChatActivityFadeView(Context context) {
@@ -26,19 +29,27 @@ public class ChatActivityFadeView extends View {
     }
 
     public void setup(BlurredBackgroundDrawableViewFactory factory, BlurredBackgroundColorProvider colorProvider) {
-        fadeDrawableTop = new BlurredBackgroundWithFadeDrawable(factory.create(this).setColorProvider(colorProvider));
-        fadeDrawableTop.setFadeHeight(-dp(30), true);
+        fadeDrawableTop = createEdgeDrawable(factory, colorProvider, true);
+        fadeDrawableBottom = createEdgeDrawable(factory, colorProvider, false);
+    }
 
-        fadeDrawableBottom = new BlurredBackgroundWithFadeDrawable(factory.create(this).setColorProvider(colorProvider));
-        fadeDrawableBottom.setFadeHeight(dp(30), true);
+    private Drawable createEdgeDrawable(BlurredBackgroundDrawableViewFactory factory, BlurredBackgroundColorProvider colorProvider, boolean top) {
+        BlurredBackgroundDrawable source = factory.create(this).setColorProvider(colorProvider);
+        BlurredBackgroundWithFadeDrawable drawable = new BlurredBackgroundWithFadeDrawable(source);
+        drawable.setFadeHeight(top ? -dp(30) : dp(30), true);
+        return drawable;
     }
 
     public void setFadeHeightTop(int height) {
-        fadeDrawableTop.setFadeHeight(-height, true);
+        if (fadeDrawableTop instanceof BlurredBackgroundWithFadeDrawable) {
+            ((BlurredBackgroundWithFadeDrawable) fadeDrawableTop).setFadeHeight(-height, true);
+        }
     }
 
     public void setFadeHeightBottom(int height) {
-        fadeDrawableBottom.setFadeHeight(height, true);
+        if (fadeDrawableBottom instanceof BlurredBackgroundWithFadeDrawable) {
+            ((BlurredBackgroundWithFadeDrawable) fadeDrawableBottom).setFadeHeight(height, true);
+        }
     }
 
     @Override
@@ -76,8 +87,12 @@ public class ChatActivityFadeView extends View {
     }
 
     public void setIgnoreFastWay(boolean ignoreFastWay) {
-        fadeDrawableTop.setIgnoreFastWay(ignoreFastWay);
-        fadeDrawableBottom.setIgnoreFastWay(ignoreFastWay);
+        if (fadeDrawableTop instanceof BlurredBackgroundWithFadeDrawable) {
+            ((BlurredBackgroundWithFadeDrawable) fadeDrawableTop).setIgnoreFastWay(ignoreFastWay);
+        }
+        if (fadeDrawableBottom instanceof BlurredBackgroundWithFadeDrawable) {
+            ((BlurredBackgroundWithFadeDrawable) fadeDrawableBottom).setIgnoreFastWay(ignoreFastWay);
+        }
     }
 
     @Override

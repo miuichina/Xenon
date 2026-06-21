@@ -31,6 +31,7 @@ public class TextAnimationEditText extends EditTextCaption {
 
     private static class CharAnim {
         int index;
+        int endIndex;   // exclusive end — covers full grapheme (surrogate pair, ZWJ seq)
         long startTime;
         long duration;
         long blurDuration;
@@ -77,16 +78,17 @@ public class TextAnimationEditText extends EditTextCaption {
                     if (layout == null) return;
                     long now = System.currentTimeMillis();
                     int maxCount = Math.min(count, 50);
-                    for (int i = start; i < start + maxCount; i++) {
-                        if (i >= s.length()) break;
+                    for (int i = start; i < start + maxCount && i < s.length(); ) {
+                        int cLen = graphemeClusterLength(s, i, start + maxCount);
                         DeletedCharAnim anim = new DeletedCharAnim();
-                        anim.ch = String.valueOf(s.charAt(i));
+                        anim.ch = s.subSequence(i, Math.min(i + cLen, s.length())).toString();
                         anim.x = layout.getPrimaryHorizontal(i);
                         int line = layout.getLineForOffset(i);
                         anim.y = layout.getLineBaseline(line);
                         anim.startTime = now;
                         anim.duration = Math.max(50, NekoConfig.textAnimFadeDuration);
                         deletedCharAnims.add(anim);
+                        i += cLen;
                     }
                     invalidate();
                 }
@@ -105,8 +107,11 @@ public class TextAnimationEditText extends EditTextCaption {
                     CharAnim anim = it.next();
                     if (anim.index >= start && anim.index < start + before) {
                         it.remove();
+                        continue; // already removed — don't call it.remove() again below
                     } else if (anim.index >= start) {
-                        anim.index += count - before;
+                        int shift = count - before;
+                        anim.index += shift;
+                        anim.endIndex += shift;
                     }
                     if (anim.index >= s.length()) {
                         it.remove();
@@ -115,15 +120,21 @@ public class TextAnimationEditText extends EditTextCaption {
                 if (count > 0 && s instanceof Editable) {
                     Editable editable = (Editable) s;
                     long now = System.currentTimeMillis();
-                    for (int i = start; i < start + count; i++) {
+                    for (int i = start; i < start + count; ) {
                         if (i >= s.length()) break;
+                        // Determine grapheme cluster length: handle surrogate pairs and
+                        // ZWJ sequences so emoji don't split into two \uFFFD replacement chars.
+                        int clusterLen = graphemeClusterLength(s, i, start + count);
+                        int spanEnd = Math.min(i + clusterLen, s.length());
                         CharAnim anim = new CharAnim();
                         anim.index = i;
+                        anim.endIndex = spanEnd;
                         anim.startTime = now;
                         anim.duration = Math.max(50, NekoConfig.textAnimFadeDuration);
                         anim.blurDuration = Math.max(50, NekoConfig.textAnimBlurDuration);
                         charAnims.add(anim);
-                        editable.setSpan(new ForegroundColorSpan(Color.TRANSPARENT), i, i + 1, Editable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                        editable.setSpan(new ForegroundColorSpan(Color.TRANSPARENT), i, spanEnd, Editable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                        i += clusterLen;
                     }
                     invalidate();
                 }
@@ -131,7 +142,7 @@ public class TextAnimationEditText extends EditTextCaption {
 
             @Override
             public void afterTextChanged(Editable s) {
-                charAnims.removeIf(a -> a.index >= s.length());
+                charAnims.removeIf(a -> a.index >= s.length() || a.endIndex > s.length());
             }
         });
     }
@@ -236,9 +247,10 @@ public class TextAnimationEditText extends EditTextCaption {
         canvas.translate(getPaddingLeft() - getScrollX(), getExtendedPaddingTop() + voffsetCursor - getScrollY());
         cursorPaint.setColor(cursorColor);
         float x = animCursorX;
-        float cursorSize = AndroidUtilities.dp(24);
         float lineTop = layout.getLineTop(line);
         float lineBottom = layout.getLineBottom(line);
+        // Use actual line height so cursor matches text size (not a hardcoded dp(24)).
+        float cursorSize = lineBottom - lineTop;
         float centerY = (lineTop + lineBottom) / 2;
         canvas.drawRect(x, centerY - cursorSize / 2, x + AndroidUtilities.dp(2), centerY + cursorSize / 2, cursorPaint);
         canvas.restore();
@@ -287,16 +299,19 @@ public class TextAnimationEditText extends EditTextCaption {
                     float x = layout.getPrimaryHorizontal(anim.index);
                     int line = layout.getLineForOffset(anim.index);
                     float y = layout.getLineBaseline(line);
-                    String ch = String.valueOf(text.charAt(anim.index));
+                    int safeEnd = Math.min(anim.endIndex, text.length());
+                    String ch = text.subSequence(anim.index, safeEnd).toString();
                     animPaint.setAlpha(255);
                     animPaint.setMaskFilter(null);
                     canvas.drawText(ch, x, y, animPaint);
 
-                    final int doneIndex = anim.index;
+                    final int doneStart = anim.index;
+                    final int doneEnd = safeEnd;
                     post(() -> {
                         Editable editable = getText();
-                        if (editable != null && doneIndex < editable.length()) {
-                            ForegroundColorSpan[] spans = editable.getSpans(doneIndex, doneIndex + 1, ForegroundColorSpan.class);
+                        if (editable != null && doneStart < editable.length()) {
+                            int end = Math.min(doneEnd, editable.length());
+                            ForegroundColorSpan[] spans = editable.getSpans(doneStart, end, ForegroundColorSpan.class);
                             for (ForegroundColorSpan span : spans) {
                                 if (span.getForegroundColor() == Color.TRANSPARENT) {
                                     editable.removeSpan(span);
@@ -312,13 +327,16 @@ public class TextAnimationEditText extends EditTextCaption {
                 float x = layout.getPrimaryHorizontal(anim.index);
                 int line = layout.getLineForOffset(anim.index);
                 float y = layout.getLineBaseline(line);
-                String ch = String.valueOf(text.charAt(anim.index));
+                String ch = text.subSequence(anim.index, Math.min(anim.endIndex, text.length())).toString();
 
                 int alpha = (int) (progress * 255);
                 animPaint.setAlpha(alpha);
                 animPaint.setMaskFilter(null);
 
-                if (blur > 0 && Build.VERSION.SDK_INT >= 26) {
+                // Skip blur for multi-char clusters (emoji surrogate pairs, ZWJ seqs).
+                // BlurMaskFilter has no effect on bitmap glyphs and just wastes time.
+                final boolean isSingleScalarChar = (anim.endIndex - anim.index) == 1;
+                if (blur > 0 && isSingleScalarChar && Build.VERSION.SDK_INT >= 26) {
                     float blurLinear = Math.min(1f, elapsed / (float) Math.max(1, anim.blurDuration));
                     float blurProgress = bezier.getInterpolation(blurLinear);
                     float blurRadius = blur * (1 - blurProgress);
@@ -367,5 +385,39 @@ public class TextAnimationEditText extends EditTextCaption {
         if (!charAnims.isEmpty() || !deletedCharAnims.isEmpty()) {
             invalidate();
         }
+    }
+
+    /**
+     * Returns the number of {@code char} values that form one grapheme cluster
+     * starting at {@code pos} in {@code s}. Covers:
+     * <ul>
+     *   <li>Surrogate pairs (basic emoji, e.g. \uD83D\uDE00 = \uD83D + \uDE00)
+     *   <li>Variation selectors (\uFE0F / \uFE0E after an emoji code point)
+     *   <li>Combining Enclosing Keycap (\u20E3)
+     *   <li>ZWJ sequences (e.g. family emoji: base + \u200D + another emoji ...)
+     * </ul>
+     * All other characters return 1.
+     *
+     * @param limit upper bound (exclusive) on how many chars we may consume
+     */
+    private static int graphemeClusterLength(CharSequence s, int pos, int limit) {
+        if (pos >= s.length()) return 1;
+        int len = Character.charCount(Character.codePointAt(s, pos));
+        // ZWJ-sequence: keep consuming ZWJ + next code point pairs
+        while (pos + len < limit && pos + len < s.length()) {
+            char next = s.charAt(pos + len);
+            if (next == '\u200D') {
+                // Zero-Width Joiner: absorb ZWJ + following code point
+                if (pos + len + 1 >= s.length()) break;
+                int followLen = Character.charCount(Character.codePointAt(s, pos + len + 1));
+                len += 1 + followLen;
+            } else if (next == '\uFE0F' || next == '\uFE0E' || next == '\u20E3') {
+                // Variation selector or combining enclosing keycap
+                len += 1;
+            } else {
+                break;
+            }
+        }
+        return len;
     }
 }

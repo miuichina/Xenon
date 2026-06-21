@@ -409,7 +409,14 @@ public class DownscaleScrollableNoiseSuppressor {
             if (isLiquidGlassEnabled) {
                 renderNodesForGlass = new DownscaledRenderNode("glass", 0, true);
                 renderNodesForGlass.setScale(2, 2);
-                renderNodesForGlass.setPrimaryEffectBlur(dpf2(4f), RenderNodeEffects.getSaturationX1_25RenderEffect());
+                if (zxc.iconic.xenon.NekoConfig.useAdvancedLiquidGlass) {
+                    // Advanced glass: only our slider-controlled blur, no saturation boost.
+                    // The saturation boost is skipped so the AGSL shader's chromatic
+                    // dispersion output isn't colour-shifted by an extra pass.
+                    renderNodesForGlass.setPrimaryEffectBlur(dpf2(Math.max(0, zxc.iconic.xenon.NekoConfig.advancedGlassBlur)));
+                } else {
+                    renderNodesForGlass.setPrimaryEffectBlur(dpf2(4f), RenderNodeEffects.getSaturationX1_25RenderEffect());
+                }
                 renderNodesForBlur = new DownscaledRenderNode("blur", 0);
                 renderNodesForBlur.setScale(8, 8);
                 renderNodesForBlur.setPrimaryEffectBlur(dpf2(40 - 1.66f));

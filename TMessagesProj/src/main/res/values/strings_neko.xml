@@ -63,6 +63,8 @@
     <string name="ConfirmAVMessage">Confirm sending video/voice message</string>
     <string name="DisableTypingIndicator">Don\'t send typing status</string>
     <string name="DisableTypingIndicatorDesc">Others won\'t see when you\'re typing</string>
+    <string name="GhostMode">Ghost Mode</string>
+    <string name="GhostModeDesc">Do not send read receipts when you open chats or channels. Messages are marked as read only locally.</string>
     <string name="AskBeforeCalling">Ask before calling</string>
     <string name="DisableNumberRounding">Disable number rounding</string>
     <string name="Categories">Categories</string>
@@ -97,6 +99,18 @@
     <string name="LiquidGlassIntensity">Refraction intensity</string>
     <string name="LiquidGlassThickness">Glass thickness</string>
     <string name="AdvancedGlassTintPercent">Glass tint strength</string>
+    <string name="LiquidGlassTitle">Liquid Glass</string>
+    <string name="LiquidGlassSettingsDesc">Advanced glass settings</string>
+    <string name="LiquidGlassPreview">Preview</string>
+    <string name="AdvancedGlassSection">Glass parameters</string>
+    <string name="AdvancedGlassAlpha">Glass transparency</string>
+    <string name="AdvancedGlassBlur">Blur strength</string>
+    <string name="AdvancedGlassRefraction">Refraction strength</string>
+    <string name="AdvancedGlassDispersion">Chromatic dispersion</string>
+    <string name="AdvancedGlassGlare">Glare strength</string>
+    <string name="AdvancedGlassReset">Reset glass settings</string>
+    <string name="AdvancedGlassResetConfirm">Reset liquid glass parameters to defaults?</string>
+    <string name="AdvancedGlassResetDone">Glass settings reset</string>
     <string name="MainTabsHide">Hide tabs</string>
     <string name="MainTabsHideHint">When hidden, you can still swipe between screens. Swipe gestures will continue to work.</string>
     <string name="MainTabsShow">Show navigation tabs</string>
