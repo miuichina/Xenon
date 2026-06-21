@@ -53,7 +53,7 @@ import org.telegram.ui.PremiumPreviewFragment;
 
 public class EditTextEmoji extends FrameLayout implements NotificationCenter.NotificationCenterDelegate, SizeNotifierFrameLayout.SizeNotifierFrameLayoutDelegate {
 
-    private EditTextCaption editText;
+    private TextAnimationEditText editText;
     private ImageView emojiButton;
     private ReplaceableIconDrawable emojiIconDrawable;
     private EmojiView emojiView;
@@ -147,7 +147,7 @@ public class EditTextEmoji extends FrameLayout implements NotificationCenter.Not
         sizeNotifierLayout = parent;
         sizeNotifierLayout.addDelegate(this);
 
-        editText = new EditTextCaption(context, resourcesProvider) {
+        editText = new TextAnimationEditText(context, resourcesProvider) {
             @Override
             public boolean onTouchEvent(MotionEvent event) {
                 if (isPopupShowing() && event.getAction() == MotionEvent.ACTION_DOWN) {
