@@ -39,6 +39,7 @@ import org.telegram.ui.Components.AnimatedTextView;
 import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.EditTextCaption;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.TextAnimationEditText;
 import org.telegram.ui.Components.TextStyleSpan;
 import org.telegram.ui.Components.TypefaceSpan;
 
@@ -47,7 +48,7 @@ import java.util.ArrayList;
 public class EditTextCell extends FrameLayout {
 
     private boolean ignoreEditText;
-    public final EditTextCaption editText;
+    public final TextAnimationEditText editText;
     private int maxLength;
 
     private boolean showLimitWhenEmpty;
@@ -120,7 +121,7 @@ public class EditTextCell extends FrameLayout {
         super(context);
         this.maxLength = maxLength;
 
-        editText = new EditTextCaption(context, resourceProvider) {
+        editText = new TextAnimationEditText(context, resourceProvider) {
             @Override
             protected boolean verifyDrawable(@NonNull Drawable who) {
                 return who == limit || super.verifyDrawable(who);
