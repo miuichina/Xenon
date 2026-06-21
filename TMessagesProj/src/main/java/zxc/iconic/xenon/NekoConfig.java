@@ -155,6 +155,11 @@ public class NekoConfig {
     public static boolean hidePhoneNumber = false;
     public static boolean autoInlineBot = false;
     public static boolean removeAds = false;
+    public static boolean textAnimationEnabled = false;
+    public static int textAnimCursorSpeed = 80;
+    public static int textAnimFadeDuration = 300;
+    public static int textAnimBlurStrength = 20;
+    public static int textAnimBlurDuration = 350;
     private static final String XRAY_DEFAULT_CHECK_URL = "https://www.gstatic.com/generate_204";
 
     public static boolean xrayAppProxyEnabled = false;
@@ -298,6 +303,11 @@ public class NekoConfig {
             advancedGlassTintPercent = preferences.getInt("advancedGlassTintPercent", 0);
             cameraInVideoMessages = preferences.getInt("cameraInVideoMessages", CAMERA_FRONT);
             removeAds = preferences.getBoolean("removeAds", false);
+            textAnimationEnabled = preferences.getBoolean("textAnimationEnabled", false);
+            textAnimCursorSpeed = preferences.getInt("textAnimCursorSpeed", 80);
+            textAnimFadeDuration = preferences.getInt("textAnimFadeDuration", 300);
+            textAnimBlurStrength = preferences.getInt("textAnimBlurStrength", 20);
+            textAnimBlurDuration = preferences.getInt("textAnimBlurDuration", 350);
 
             LensHelper.checkLensSupportAsync();
             preferences.registerOnSharedPreferenceChangeListener(listener);
@@ -1141,6 +1151,46 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("removeAds", removeAds);
+        editor.apply();
+    }
+
+    public static void toggleTextAnimation() {
+        textAnimationEnabled = !textAnimationEnabled;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("textAnimationEnabled", textAnimationEnabled);
+        editor.apply();
+    }
+
+    public static void setTextAnimCursorSpeed(int value) {
+        textAnimCursorSpeed = value;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("textAnimCursorSpeed", textAnimCursorSpeed);
+        editor.apply();
+    }
+
+    public static void setTextAnimFadeDuration(int value) {
+        textAnimFadeDuration = value;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("textAnimFadeDuration", textAnimFadeDuration);
+        editor.apply();
+    }
+
+    public static void setTextAnimBlurStrength(int value) {
+        textAnimBlurStrength = value;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("textAnimBlurStrength", textAnimBlurStrength);
+        editor.apply();
+    }
+
+    public static void setTextAnimBlurDuration(int value) {
+        textAnimBlurDuration = value;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("textAnimBlurDuration", textAnimBlurDuration);
         editor.apply();
     }
 

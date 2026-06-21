@@ -5251,7 +5251,7 @@ public class ChatActivityEnterView extends FrameLayout implements
     private ArrayList<TextWatcher> messageEditTextWatchers;
     private boolean messageEditTextEnabled = true;
 
-    private class ChatActivityEditTextCaption extends EditTextCaption {
+    private class ChatActivityEditTextCaption extends TextAnimationEditText {
         public ChatActivityEditTextCaption(Context context, Theme.ResourcesProvider resourcesProvider) {
             super(context, resourcesProvider);
         }

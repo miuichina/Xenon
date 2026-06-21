@@ -370,4 +370,11 @@
 
     <!-- Accessibility -->
     <string name="AccessibilitySettings">Accessibility settings</string>
+    <string name="TextAnimation">Text Animation</string>
+    <string name="TextAnimationToggle">Text Animation</string>
+    <string name="TextAnimationApiWarning">Requires Android 8.0+</string>
+    <string name="TextAnimCursor">Cursor speed</string>
+    <string name="TextAnimFadeDuration">Fade duration</string>
+    <string name="TextAnimBlurStrength">Blur strength</string>
+    <string name="TextAnimBlurDuration">Blur duration</string>
 </resources>
