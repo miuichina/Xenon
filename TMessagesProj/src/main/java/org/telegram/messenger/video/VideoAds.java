@@ -181,7 +181,7 @@ public class VideoAds {
     private void load() {
         if (loading || loaded) return;
 
-        if (UserConfig.getInstance(currentAccount).isPremium() && MessagesController.getInstance(currentAccount).isSponsoredDisabled()) {
+        if (UserConfig.getInstance(currentAccount).isPremium() && MessagesController.getInstance(currentAccount).isSponsoredDisabled() || zxc.iconic.xenon.NekoConfig.removeAds) {
             return;
         }
 

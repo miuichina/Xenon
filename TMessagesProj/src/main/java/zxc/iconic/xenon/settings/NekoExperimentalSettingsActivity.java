@@ -51,6 +51,7 @@ public class NekoExperimentalSettingsActivity extends BaseNekoSettingsActivity {
     private final int forceFontWeightFallbackRow = rowId++;
     private final int contentRestrictionRow = rowId++;
     private final int showRPCErrorRow = rowId++;
+    private final int removeAdsRow = rowId++;
     private final int xrayProxySettingsRow = rowId++;
 
     private final int sendBugReportRow = rowId++;
@@ -108,6 +109,7 @@ public class NekoExperimentalSettingsActivity extends BaseNekoSettingsActivity {
             items.add(UItem.asCheck(contentRestrictionRow, LocaleController.getString(R.string.IgnoreContentRestriction)).slug("contentRestriction").setChecked(NekoConfig.ignoreContentRestriction));
         }
         items.add(UItem.asCheck(showRPCErrorRow, LocaleController.getString(R.string.ShowRPCError), LocaleController.formatString(R.string.ShowRPCErrorException, "FILE_REFERENCE_EXPIRED")).slug("showRPCError").setChecked(NekoConfig.showRPCError));
+        items.add(UItem.asCheck(removeAdsRow, LocaleController.getString(R.string.RemoveAds)).slug("removeAds").setChecked(NekoConfig.removeAds));
         XrayProxyProfileStore.Profile activeProfile = XrayProxyProfileStore.getActiveProfile();
         String xrayStatus = NekoConfig.xrayAppProxyEnabled ? LocaleController.getString(R.string.XrayProxyStatusRunning) : LocaleController.getString(R.string.XrayProxyStatusStopped);
         if (activeProfile != null && !TextUtils.isEmpty(activeProfile.name)) {
@@ -242,6 +244,11 @@ public class NekoExperimentalSettingsActivity extends BaseNekoSettingsActivity {
             NekoConfig.toggleShowRPCError();
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.showRPCError);
+            }
+        } else if (id == removeAdsRow) {
+            NekoConfig.toggleRemoveAds();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.removeAds);
             }
         } else if (id == downloadSpeedBoostRow) {
             ArrayList<String> arrayList = new ArrayList<>();
