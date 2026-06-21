@@ -153,6 +153,7 @@ public class NekoConfig {
     public static boolean disableTypingIndicator = false;
     public static boolean hidePhoneNumber = false;
     public static boolean autoInlineBot = false;
+    public static boolean removeAds = false;
     private static final String XRAY_DEFAULT_CHECK_URL = "https://www.gstatic.com/generate_204";
 
     public static boolean xrayAppProxyEnabled = false;
@@ -294,6 +295,7 @@ public class NekoConfig {
             advancedGlassGlare = preferences.getFloat("advancedGlassGlare", 1.0f);
             advancedGlassTintPercent = preferences.getInt("advancedGlassTintPercent", 0);
             cameraInVideoMessages = preferences.getInt("cameraInVideoMessages", CAMERA_FRONT);
+            removeAds = preferences.getBoolean("removeAds", false);
 
             LensHelper.checkLensSupportAsync();
             preferences.registerOnSharedPreferenceChangeListener(listener);
@@ -1121,6 +1123,14 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putInt("advancedGlassTintPercent", advancedGlassTintPercent);
+        editor.apply();
+    }
+
+    public static void toggleRemoveAds() {
+        removeAds = !removeAds;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("removeAds", removeAds);
         editor.apply();
     }
 
