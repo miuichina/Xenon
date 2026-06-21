@@ -41,6 +41,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int tabsPositionRow = rowId++;
 
     private final int strokeOnViewsRow = rowId++;
+    private final int hideRecordButtonRow = rowId++;
     private final int alternativeTransitionRow = rowId++;
     private final int alternativeTransitionSpeedRow = rowId++;
 
@@ -68,6 +69,15 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         items.add(UItem.asHeader(LocaleController.getString(R.string.ChangeChannelNameColor2)));
         items.add(EmojiSetCellFactory.of(emojiSetsRow, LocaleController.getString(R.string.EmojiSets)).slug("emojiSets"));
         items.add(UItem.asCheck(predictiveBackAnimationRow, LocaleController.getString(R.string.PredictiveBackAnimation)).slug("predictiveBackAnimation").setChecked(NekoConfig.predictiveBackAnimation));
+        items.add(UItem.asCheck(hideRecordButtonRow, LocaleController.getString(R.string.HideRecordButton)).setChecked(NekoConfig.hideRecordButton).slug("hideRecordButton"));
+        items.add(UItem.asCheck(alternativeTransitionRow, LocaleController.getString(R.string.AlternativeTransition)).setChecked(NekoConfig.alternativeTransition).slug("alternativeTransition"));
+        if (NekoConfig.alternativeTransition) {
+            SeekbarConfig speedConfig = new SeekbarConfig(
+                    LocaleController.getString(R.string.TransitionSpeed),
+                    "100", "1000", 100, 1000,
+                    progress -> NekoConfig.setAlternativeTransitionSpeed(Math.round(progress / 5f) * 5));
+            items.add(SeekbarCellFactory.of(alternativeTransitionSpeedRow, speedConfig, NekoConfig.alternativeTransitionSpeed).slug("alternativeTransitionSpeed"));
+        }
         items.add(UItem.asCheck(appBarShadowRow, LocaleController.getString(R.string.DisableAppBarShadow)).slug("appBarShadow").setChecked(NekoConfig.disableAppBarShadow));
         items.add(UItem.asCheck(formatTimeWithSecondsRow, LocaleController.getString(R.string.FormatWithSeconds)).slug("formatTimeWithSeconds").setChecked(NekoConfig.formatTimeWithSeconds));
         items.add(UItem.asCheck(disableNumberRoundingRow, LocaleController.getString(R.string.DisableNumberRounding), "4.8K -> 4777").slug("disableNumberRounding").setChecked(NekoConfig.disableNumberRounding));
@@ -100,14 +110,6 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
 
         items.add(UItem.asHeader(LocaleController.getString(R.string.LiteOptionsBlur2)));
         items.add(UItem.asCheck(strokeOnViewsRow, LocaleController.getString(R.string.StrokeOnViews)).setChecked(NekoConfig.strokeOnViews).slug("strokeOnViews"));
-        items.add(UItem.asCheck(alternativeTransitionRow, LocaleController.getString(R.string.AlternativeTransition)).setChecked(NekoConfig.alternativeTransition).slug("alternativeTransition"));
-        if (NekoConfig.alternativeTransition) {
-            SeekbarConfig speedConfig = new SeekbarConfig(
-                    LocaleController.getString(R.string.TransitionSpeed),
-                    "100", "1000", 100, 1000,
-                    progress -> NekoConfig.setAlternativeTransitionSpeed(Math.round(progress / 5f) * 5));
-            items.add(SeekbarCellFactory.of(alternativeTransitionSpeedRow, speedConfig, NekoConfig.alternativeTransitionSpeed).slug("alternativeTransitionSpeed"));
-        }
         items.add(UItem.asShadow(null));
 
     }
@@ -220,6 +222,11 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             NekoConfig.toggleStrokeOnViews();
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.strokeOnViews);
+            }
+        } else if (id == hideRecordButtonRow) {
+            NekoConfig.toggleHideRecordButton();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.hideRecordButton);
             }
         } else if (id == alternativeTransitionRow) {
             NekoConfig.toggleAlternativeTransition();

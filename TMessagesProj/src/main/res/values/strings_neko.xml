@@ -352,6 +352,7 @@
     <string name="TabsPositionTop">Top</string>
     <string name="TabsPositionBottom">Bottom</string>
     <string name="StrokeOnViews">Glare effects</string>
+    <string name="HideRecordButton">Hide record button</string>
     <string name="TelegaDetectorEnabled">Telega detector</string>
     <string name="TelegaDetectorHint">Checks if a profile uses or used Telega.</string>
     <string name="TelegaDetectorStatusTitle">Telega status</string>
