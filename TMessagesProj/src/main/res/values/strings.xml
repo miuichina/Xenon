@@ -11025,4 +11025,6 @@
     <string name="WearAuthText">Connect your account to WatchOS device\nto use it separately from your watch.</string>
     <string name="WearAuthEmojis">Compare emojis on your watch</string>
     <string name="WearAuthEmojisLogIn">Log In</string>
+
+    <string name="RemoveChatDelay">Remove 200ms delay when opening chat</string>
 </resources>
