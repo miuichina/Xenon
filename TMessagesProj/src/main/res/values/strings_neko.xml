@@ -377,4 +377,6 @@
     <string name="TextAnimFadeDuration">Fade duration</string>
     <string name="TextAnimBlurStrength">Blur strength</string>
     <string name="TextAnimBlurDuration">Blur duration</string>
+    <string name="AlternativeTransition">Alternative transition</string>
+    <string name="TransitionSpeed">Transition speed (ms)</string>
 </resources>

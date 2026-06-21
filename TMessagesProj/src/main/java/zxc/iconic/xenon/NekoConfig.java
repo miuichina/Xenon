@@ -160,6 +160,9 @@ public class NekoConfig {
     public static int textAnimFadeDuration = 300;
     public static int textAnimBlurStrength = 20;
     public static int textAnimBlurDuration = 350;
+    public static boolean alternativeTransition = false;
+    public static int alternativeTransitionSpeed = 300;
+    public static boolean removeChatDelay = false;
     private static final String XRAY_DEFAULT_CHECK_URL = "https://www.gstatic.com/generate_204";
 
     public static boolean xrayAppProxyEnabled = false;
@@ -308,6 +311,9 @@ public class NekoConfig {
             textAnimFadeDuration = preferences.getInt("textAnimFadeDuration", 300);
             textAnimBlurStrength = preferences.getInt("textAnimBlurStrength", 20);
             textAnimBlurDuration = preferences.getInt("textAnimBlurDuration", 350);
+            alternativeTransition = preferences.getBoolean("alternativeTransition", false);
+            alternativeTransitionSpeed = preferences.getInt("alternativeTransitionSpeed", 300);
+            removeChatDelay = preferences.getBoolean("removeChatDelay", false);
 
             LensHelper.checkLensSupportAsync();
             preferences.registerOnSharedPreferenceChangeListener(listener);
@@ -487,6 +493,22 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("predictiveBackAnimation", predictiveBackAnimation);
+        editor.apply();
+    }
+
+    public static void toggleAlternativeTransition() {
+        alternativeTransition = !alternativeTransition;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("alternativeTransition", alternativeTransition);
+        editor.apply();
+    }
+
+    public static void setAlternativeTransitionSpeed(int value) {
+        alternativeTransitionSpeed = value;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("alternativeTransitionSpeed", alternativeTransitionSpeed);
         editor.apply();
     }
 
@@ -1159,6 +1181,14 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("textAnimationEnabled", textAnimationEnabled);
+        editor.apply();
+    }
+
+    public static void toggleRemoveChatDelay() {
+        removeChatDelay = !removeChatDelay;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("removeChatDelay", removeChatDelay);
         editor.apply();
     }
 

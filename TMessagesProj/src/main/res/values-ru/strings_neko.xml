@@ -369,4 +369,6 @@
     <string name="TelegaDetectorStatusRisk">Пользователь использует или использовал в прошлом клиент Telega.</string>
     <!-- Accessibility -->
     <string name="AccessibilitySettings">Настройки доступности</string>
+    <string name="AlternativeTransition">Альтернативный переход</string>
+    <string name="TransitionSpeed">Скорость перехода (мс)</string>
 </resources>

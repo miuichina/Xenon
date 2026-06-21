@@ -41,6 +41,8 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int tabsPositionRow = rowId++;
 
     private final int strokeOnViewsRow = rowId++;
+    private final int alternativeTransitionRow = rowId++;
+    private final int alternativeTransitionSpeedRow = rowId++;
 
     @Override
     public boolean onFragmentCreate() {
@@ -98,6 +100,14 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
 
         items.add(UItem.asHeader(LocaleController.getString(R.string.LiteOptionsBlur2)));
         items.add(UItem.asCheck(strokeOnViewsRow, LocaleController.getString(R.string.StrokeOnViews)).setChecked(NekoConfig.strokeOnViews).slug("strokeOnViews"));
+        items.add(UItem.asCheck(alternativeTransitionRow, LocaleController.getString(R.string.AlternativeTransition)).setChecked(NekoConfig.alternativeTransition).slug("alternativeTransition"));
+        if (NekoConfig.alternativeTransition) {
+            SeekbarConfig speedConfig = new SeekbarConfig(
+                    LocaleController.getString(R.string.TransitionSpeed),
+                    "100", "1000", 100, 1000,
+                    progress -> NekoConfig.setAlternativeTransitionSpeed(Math.round(progress / 5f) * 5));
+            items.add(SeekbarCellFactory.of(alternativeTransitionSpeedRow, speedConfig, NekoConfig.alternativeTransitionSpeed).slug("alternativeTransitionSpeed"));
+        }
         items.add(UItem.asShadow(null));
 
     }
@@ -211,6 +221,12 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.strokeOnViews);
             }
+        } else if (id == alternativeTransitionRow) {
+            NekoConfig.toggleAlternativeTransition();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.alternativeTransition);
+            }
+            listView.adapter.update(true);
         }
     }
 
