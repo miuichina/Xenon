@@ -517,6 +517,10 @@ public class EditTextBoldCursor extends EditTextEffects {
         cursorWidth = width;
     }
 
+    public float getCursorWidth() {
+        return cursorWidth;
+    }
+
     public void setCursorColor(int color) {
         if (cursorDrawable != null) {
             cursorDrawable.getPaint().setColor(color);

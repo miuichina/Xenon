@@ -353,6 +353,13 @@
     <string name="TabsPositionBottom">Снизу</string>
     <string name="StrokeOnViews">Эффекты бликов</string>
     <string name="TelegaDetectorEnabled">Telega детектор</string>
+    <string name="TextAnimation">Анимация текста</string>
+    <string name="TextAnimationToggle">Анимация текста</string>
+    <string name="TextAnimationApiWarning">Требуется Android 8.0+</string>
+    <string name="TextAnimCursor">Скорость курсора</string>
+    <string name="TextAnimFadeDuration">Длительность появления</string>
+    <string name="TextAnimBlurStrength">Сила размытия</string>
+    <string name="TextAnimBlurDuration">Длительность размытия</string>
     <string name="TelegaDetectorHint">Проверяет, использовал ли пользователь или использует клиент Telega.</string>
     <string name="TelegaDetectorStatusTitle">Статус Telega</string>
     <string name="TelegaDetectorStatusUnknown">Проверяем…</string>
