@@ -29,6 +29,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int formatTimeWithSecondsRow = rowId++;
     private final int disableNumberRoundingRow = rowId++;
     private final int hideBottomNavigationBarRow = rowId++;
+    private final int dynamicTabSizeRow = rowId++;
     private final int mainTabsCustomizeRow = rowId++;
     private final int tabletModeRow = rowId++;
 
@@ -69,6 +70,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         items.add(UItem.asCheck(formatTimeWithSecondsRow, LocaleController.getString(R.string.FormatWithSeconds)).slug("formatTimeWithSeconds").setChecked(NekoConfig.formatTimeWithSeconds));
         items.add(UItem.asCheck(disableNumberRoundingRow, LocaleController.getString(R.string.DisableNumberRounding), "4.8K -> 4777").slug("disableNumberRounding").setChecked(NekoConfig.disableNumberRounding));
         items.add(UItem.asCheck(hideBottomNavigationBarRow, LocaleController.getString(R.string.HideBottomNavigationBar)).setChecked(NekoConfig.hideBottomNavigationBar).slug("hideBottomNavigationBar"));
+        items.add(UItem.asCheck(dynamicTabSizeRow, LocaleController.getString(R.string.DynamicTabSize)).slug("dynamicTabSize").setChecked(NekoConfig.dynamicTabSize));
         items.add(TextSettingsCellFactory.of(mainTabsCustomizeRow, LocaleController.getString(R.string.MainTabsCustomizeTitle), LocaleController.getString(R.string.MainTabsCustomizeHint)).slug("mainTabsCustomize"));
         items.add(TextSettingsCellFactory.of(tabletModeRow, LocaleController.getString(R.string.TabletMode), switch (NekoConfig.tabletMode) {
             case NekoConfig.TABLET_AUTO -> LocaleController.getString(R.string.TabletModeAuto);
@@ -184,6 +186,12 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             NekoConfig.toggleHideBottomNavigationBar();
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.hideBottomNavigationBar);
+            }
+            parentLayout.rebuildAllFragmentViews(false, false);
+        } else if (id == dynamicTabSizeRow) {
+            NekoConfig.toggleDynamicTabSize();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.dynamicTabSize);
             }
             parentLayout.rebuildAllFragmentViews(false, false);
         } else if (id == mainTabsCustomizeRow) {
