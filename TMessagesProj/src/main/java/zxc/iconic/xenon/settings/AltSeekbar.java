@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
+import android.text.InputType;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.widget.FrameLayout;
@@ -14,9 +15,12 @@ import androidx.core.graphics.ColorUtils;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
+import org.telegram.messenger.R;
+import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.AnimatedTextView;
 import org.telegram.ui.Components.CubicBezierInterpolator;
+import org.telegram.ui.Components.EditTextBoldCursor;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.SeekBarView;
 
@@ -41,17 +45,21 @@ public class AltSeekbar extends FrameLayout {
     private final TextView rightTextView;
     private final SeekBarView seekBarView;
     private final Theme.ResourcesProvider resourcesProvider;
+    private final OnDrag onDrag;
 
     private final int min, max;
     private float currentValue;
     private int roundedValue;
+    private int defaultValue;
 
     public AltSeekbar(Context context, OnDrag onDrag, int min, int max, String title, String left, String right, Theme.ResourcesProvider resourcesProvider) {
         super(context);
         this.resourcesProvider = resourcesProvider;
+        this.onDrag = onDrag;
 
         this.max = max;
         this.min = min;
+        defaultValue = min;
 
         LinearLayout headerLayout = new LinearLayout(context);
         headerLayout.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
@@ -80,6 +88,8 @@ public class AltSeekbar extends FrameLayout {
         headerValue.setPadding(AndroidUtilities.dp(5.33f), AndroidUtilities.dp(2), AndroidUtilities.dp(5.33f), AndroidUtilities.dp(2));
         headerValue.setTextSize(AndroidUtilities.dp(12));
         headerValue.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueHeader, resourcesProvider));
+        headerValue.setClickable(true);
+        headerValue.setOnClickListener(v -> showInputDialog(context, title));
         headerLayout.addView(headerValue, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, 17, Gravity.CENTER_VERTICAL, 6, 1, 0, 0));
 
         addView(headerLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP | Gravity.FILL_HORIZONTAL, 21, 17, 21, 0));
@@ -113,6 +123,52 @@ public class AltSeekbar extends FrameLayout {
         valuesView.addView(rightTextView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.RIGHT | Gravity.CENTER_VERTICAL));
 
         addView(valuesView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP | Gravity.FILL_HORIZONTAL, 21, 52, 21, 0));
+    }
+
+    public void setDefaultValue(int value) {
+        defaultValue = value;
+    }
+
+    private void showInputDialog(Context context, String title) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(context, resourcesProvider);
+        builder.setTitle(title);
+
+        LinearLayout container = new LinearLayout(context);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(16), AndroidUtilities.dp(24), 0);
+
+        EditTextBoldCursor editText = new EditTextBoldCursor(context);
+        editText.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
+        editText.setTextColor(Theme.getColor(Theme.key_dialogTextBlack, resourcesProvider));
+        editText.setInputType(InputType.TYPE_CLASS_NUMBER);
+        editText.setText(String.valueOf(roundedValue));
+        editText.setSelection(editText.getText().length());
+
+        container.addView(editText, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        builder.setView(container);
+
+        builder.setPositiveButton(LocaleController.getString("OK", R.string.OK), (dialog, which) -> {
+            try {
+                int parsed = Integer.parseInt(editText.getText().toString());
+                parsed = Math.max(min, Math.min(max, parsed));
+                setValue(parsed);
+                if (onDrag != null) {
+                    onDrag.run(parsed);
+                }
+            } catch (Exception ignore) { }
+        });
+
+        builder.setNegativeButton(LocaleController.getString("Cancel", R.string.Cancel), null);
+        builder.setNeutralButton(LocaleController.getString("Reset", R.string.Reset), (dialog, which) -> {
+            setValue(defaultValue);
+            if (onDrag != null) {
+                onDrag.run(defaultValue);
+            }
+        });
+        builder.show();
+
+        editText.requestFocus();
+        AndroidUtilities.showKeyboard(editText);
     }
 
     private void updateValues() {
