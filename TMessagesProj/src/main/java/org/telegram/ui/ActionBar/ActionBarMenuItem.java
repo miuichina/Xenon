@@ -80,6 +80,7 @@ import org.telegram.ui.Components.LinkSpanDrawable;
 import org.telegram.ui.Components.RLottieDrawable;
 import org.telegram.ui.Components.RLottieImageView;
 import org.telegram.ui.Components.Reactions.ReactionsLayoutInBubble;
+import org.telegram.ui.Components.TextAnimationEditText;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -172,7 +173,7 @@ public class ActionBarMenuItem extends FrameLayout {
     private ActionBarPopupWindow.ActionBarPopupWindowLayout popupLayout;
     private ActionBarMenu parentMenu;
     private ActionBarPopupWindow popupWindow;
-    private EditTextBoldCursor searchField;
+    private TextAnimationEditText searchField;
     private LinearLayout searchFilterLayout;
     private ArrayList<SearchFilterView> searchFilterViews = new ArrayList<>();
     private TextView searchFieldCaption;
@@ -1443,7 +1444,7 @@ public class ActionBarMenuItem extends FrameLayout {
             searchFieldCaption.setVisibility(GONE);
             searchFieldCaption.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
 
-            searchField = new EditTextBoldCursor(getContext()) {
+            searchField = new TextAnimationEditText(getContext(), resourcesProvider) {
 
                 @Override
                 protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
