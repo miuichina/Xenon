@@ -2,7 +2,6 @@ package zxc.iconic.xenon.settings;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
 import android.text.InputType;
@@ -20,8 +19,6 @@ import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.AnimatedTextView;
-import org.telegram.ui.Components.Bulletin;
-import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.EditTextBoldCursor;
 import org.telegram.ui.Components.LayoutHelper;
@@ -171,22 +168,7 @@ public class AltSeekbar extends FrameLayout {
         });
 
         builder.setNegativeButton(LocaleController.getString("Cancel", R.string.Cancel), null);
-        builder.setNeutralButton(LocaleController.getString("Reset", R.string.Reset), (dialog, which) -> {
-            if (defaultValue == min) {
-                BulletinFactory.of(Bulletin.BulletinWindow.make(getContext()), resourcesProvider)
-                        .createSimpleBulletin(R.raw.chats_infotip, LocaleController.getString(R.string.CouldNotResetNoDefault))
-                        .show();
-            } else {
-                setValue(defaultValue);
-                if (onDrag != null) {
-                    onDrag.run(defaultValue);
-                }
-            }
-        });
         AlertDialog dialog = builder.show();
-        if (defaultValue == min) {
-            dialog.getButton(DialogInterface.BUTTON_NEUTRAL).setAlpha(0.5f);
-        }
 
         editText.requestFocus();
         AndroidUtilities.showKeyboard(editText);

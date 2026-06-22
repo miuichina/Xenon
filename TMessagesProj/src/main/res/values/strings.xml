@@ -2756,7 +2756,7 @@
     <string name="SetProfilePhoto">Set Profile Photo</string>
     <string name="AppUpdate">Update Telegram</string>
     <string name="AppUpdateBeta">Update Telegram Beta</string>
-    <string name="AppUpdateVersionAndSize">Version %1$s • %2$s</string>
+    <string name="AppUpdateVersionAndSize">%1$s • %2$s</string>
     <string name="AppBetaUpdateVersion">Version %1$s (%2$s)</string>
     <string name="AppUpdateDownloading">Downloading %1$d%%...</string>
     <string name="AppUpdateNow">Update Now</string>
