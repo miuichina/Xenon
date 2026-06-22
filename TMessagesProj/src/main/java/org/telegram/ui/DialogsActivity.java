@@ -13534,6 +13534,17 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 args.putLong("user_id", UserConfig.getInstance(currentAccount).getClientUserId());
                 presentFragment(new ChatActivity(args));
             });
+            Drawable ghostDrawable = activity.getResources().getDrawable(R.drawable.ghost).mutate();
+            ghostDrawable.setBounds(0, 0, AndroidUtilities.dp(24), AndroidUtilities.dp(24));
+            Bitmap ghostBitmap = Bitmap.createBitmap(AndroidUtilities.dp(24), AndroidUtilities.dp(24), Bitmap.Config.ARGB_8888);
+            Canvas ghostCanvas = new Canvas(ghostBitmap);
+            ghostDrawable.draw(ghostCanvas);
+            io.add(new BitmapDrawable(activity.getResources(), ghostBitmap), NekoConfig.ghostModeEnabled
+                    ? LocaleController.getString(R.string.DisableGhostMode)
+                    : LocaleController.getString(R.string.GhostMode), () -> {
+                NekoConfig.toggleGhostMode();
+                showItemOptions();
+            });
             if (ApplicationLoader.applicationLoaderInstance != null) {
                 ApplicationLoader.applicationLoaderInstance.addItemOptions(io);
             }

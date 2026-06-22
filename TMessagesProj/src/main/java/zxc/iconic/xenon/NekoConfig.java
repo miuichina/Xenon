@@ -114,6 +114,7 @@ public class NekoConfig {
     public static boolean openArchiveOnPull = false;
     public static int nameOrder = 1;
     public static boolean disableAppBarShadow = false;
+    public static boolean hideRecordButton = false;
     public static boolean mediaPreview = true;
     public static boolean autoPauseVideo = true;
     public static boolean disableProximityEvents = false;
@@ -242,6 +243,7 @@ public class NekoConfig {
             shouldNOTTrustMe = preferences.getBoolean("shouldNOTTrustMe", false);
             disableNumberRounding = preferences.getBoolean("disableNumberRounding", false);
             disableAppBarShadow = preferences.getBoolean("disableAppBarShadow", false);
+            hideRecordButton = preferences.getBoolean("hideRecordButton", false);
             mediaPreview = preferences.getBoolean("mediaPreview", true);
             idType = preferences.getInt("idType", ID_TYPE_API);
             autoPauseVideo = preferences.getBoolean("autoPauseVideo", true);
@@ -941,6 +943,14 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("disableAppBarShadow", disableAppBarShadow);
+        editor.apply();
+    }
+
+    public static void toggleHideRecordButton() {
+        hideRecordButton = !hideRecordButton;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("hideRecordButton", hideRecordButton);
         editor.apply();
     }
 

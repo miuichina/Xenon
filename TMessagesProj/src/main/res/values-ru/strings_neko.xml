@@ -61,7 +61,9 @@
     <string name="DisableTypingIndicator">Не отправлять статус \"Печатает...\"</string>
     <string name="DisableTypingIndicatorDesc">Другие не увидят, когда вы печатаете</string>
     <string name="GhostMode">Режим призрака</string>
+    <string name="DisableGhostMode">Выключить режим призрака</string>
     <string name="GhostModeDesc">Не отправлять отчёты о прочтении при открытии чатов и каналов. Сообщения отмечаются прочитанными только локально.</string>
+    <string name="CouldNotResetNoDefault">Не удалось сбросить: нет значения по умолчанию</string>
     <string name="AskBeforeCalling">Подтверждать звонки</string>
     <string name="DisableNumberRounding">Не округлять числа</string>
     <string name="Categories">Настройки</string>
@@ -368,6 +370,7 @@
     <string name="TabsPositionTop">Сверху</string>
     <string name="TabsPositionBottom">Снизу</string>
     <string name="StrokeOnViews">Эффекты бликов</string>
+    <string name="HideRecordButton">Скрыть кнопку записи</string>
     <string name="TelegaDetectorEnabled">Telega детектор</string>
     <string name="TextAnimation">Анимация текста</string>
     <string name="TextAnimationToggle">Анимация текста</string>

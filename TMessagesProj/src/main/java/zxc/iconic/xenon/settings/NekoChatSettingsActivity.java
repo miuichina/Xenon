@@ -579,6 +579,7 @@ public class NekoChatSettingsActivity extends BaseNekoSettingsActivity implement
                 if (onDrag != null) onDrag.run(progress);
             }, 2, 20, LocaleController.getString(R.string.StickerSize), LocaleController.getString(R.string.StickerSizeLeft), LocaleController.getString(R.string.StickerSizeRight), resourcesProvider);
             sizeBar.setValue(NekoConfig.stickerSize);
+            sizeBar.setDefaultValue(Math.round(NekoConfig.stickerSize));
             addView(sizeBar, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
             messagesCell = new StickerSizePreviewMessagesCell(context, resourcesProvider);

@@ -626,6 +626,7 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
             if (seekbar == null) {
                 seekbar = new AltSeekbar(getContext(), config.onDrag, config.min, config.max,
                         config.title, config.left, config.right, resourcesProvider);
+                seekbar.setDefaultValue(currentValue);
                 addView(seekbar, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
             }
             seekbar.setValue(currentValue);

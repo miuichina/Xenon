@@ -64,14 +64,14 @@ public class FragmentSearchField extends FrameLayout implements FactorAnimator.T
     private final ImageView closeIcon;
     private final LinearLayout additionalIconsLayout;
     private boolean closeButtonForcedVisible;
-    public final EditTextBoldCursor editText;
+    public final TextAnimationEditText editText;
     private BlurredBackgroundDrawable blurredBackgroundDrawable;
 
     public FragmentSearchField(Context context, Theme.ResourcesProvider resourcesProvider) {
         super(context);
         this.resourcesProvider = resourcesProvider;
 
-        editText = new EditTextBoldCursor(context) {
+        editText = new TextAnimationEditText(context, resourcesProvider) {
             @Override
             protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
                 super.onMeasure(widthMeasureSpec, heightMeasureSpec);

@@ -1018,7 +1018,7 @@ public class AlertsCreator {
         builder.setTitle(getString(R.string.PollV2AddLinkTitle));
         builder.setMessage(getString(R.string.PollV2AddLinkMessage));
 
-        EditTextBoldCursor editText = new EditTextBoldCursor(context) {
+        TextAnimationEditText editText = new TextAnimationEditText(context, resourcesProvider) {
             @Override
             public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
                 InputConnection conn = super.onCreateInputConnection(outAttrs);
@@ -1131,7 +1131,7 @@ public class AlertsCreator {
                 ? R.string.BrowserSettingsAddText
                 : R.string.BrowserSettingsAddTextExternal));
 
-        EditTextBoldCursor editText = new EditTextBoldCursor(context);
+        TextAnimationEditText editText = new TextAnimationEditText(context, resourcesProvider);
         editText.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
         editText.setTextColor(Theme.getColor(Theme.key_dialogTextBlack, resourcesProvider));
         editText.setHintTextColor(Theme.getColor(Theme.key_groupcreate_hintText, resourcesProvider));
@@ -8234,7 +8234,7 @@ public class AlertsCreator {
             return;
         }
         Context context = fragment.getParentActivity();
-        final EditTextBoldCursor editText = new EditTextBoldCursor(context);
+        final TextAnimationEditText editText = new TextAnimationEditText(context, fragment != null ? fragment.getResourceProvider() : null);
         editText.setBackground(null);
         editText.setLineColors(Theme.getColor(Theme.key_dialogInputField), Theme.getColor(Theme.key_dialogInputFieldActivated), Theme.getColor(Theme.key_text_RedBold));
 
@@ -8733,7 +8733,7 @@ public class AlertsCreator {
         FrameLayout dialogView = new FrameLayout(context);
         dialogView.setClipChildren(false);
 
-        EditText editTextView = new EditTextBoldCursor(context);
+        EditText editTextView = new TextAnimationEditText(context, fragment.getResourceProvider());
         editTextView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
         editTextView.setHint(LocaleController.getString(R.string.SuggestedMessageDeclineReasonHint));
         editTextView.setHintTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteHintText));
