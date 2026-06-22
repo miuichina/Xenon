@@ -64,7 +64,9 @@
     <string name="DisableTypingIndicator">Don\'t send typing status</string>
     <string name="DisableTypingIndicatorDesc">Others won\'t see when you\'re typing</string>
     <string name="GhostMode">Ghost Mode</string>
+    <string name="DisableGhostMode">Disable Ghost Mode</string>
     <string name="GhostModeDesc">Do not send read receipts when you open chats or channels. Messages are marked as read only locally.</string>
+    <string name="CouldNotResetNoDefault">Couldn\'t reset value: no default</string>
     <string name="AskBeforeCalling">Ask before calling</string>
     <string name="DisableNumberRounding">Disable number rounding</string>
     <string name="Categories">Categories</string>
