@@ -28,7 +28,7 @@ public class SearchField extends FrameLayout {
     private ImageView searchIconImageView;
     private ImageView clearSearchImageView;
     private CloseProgressDrawable2 progressDrawable;
-    private EditTextBoldCursor searchEditText;
+    private TextAnimationEditText searchEditText;
     private final Theme.ResourcesProvider resourcesProvider;
 
     public SearchField(Context context, boolean supportRtl, Theme.ResourcesProvider resourcesProvider) {
@@ -83,7 +83,7 @@ public class SearchField extends FrameLayout {
             AndroidUtilities.showKeyboard(searchEditText);
         });
 
-        searchEditText = new EditTextBoldCursor(context) {
+        searchEditText = new TextAnimationEditText(context, resourcesProvider) {
             @Override
             public boolean dispatchTouchEvent(MotionEvent event) {
                 processTouchEvent(event);
