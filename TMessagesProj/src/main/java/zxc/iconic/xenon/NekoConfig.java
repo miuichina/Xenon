@@ -126,6 +126,7 @@ public class NekoConfig {
     public static boolean accentAsNotificationColor = false;
     public static boolean silenceNonContacts = false;
     public static boolean disableJumpToNextChannel = false;
+    public static boolean autoDownloadUpdate = false;
     public static boolean disableVoiceMessageAutoPlay = false;
     public static boolean unmuteVideosWithVolumeButtons = true;
     public static boolean disableMarkdownByDefault = false;
@@ -260,6 +261,7 @@ public class NekoConfig {
             translationTarget = preferences.getString("translationTarget", "app");
             maxRecentStickers = preferences.getInt("maxRecentStickers", 20);
             disableJumpToNextChannel = preferences.getBoolean("disableJumpToNextChannel", false);
+            autoDownloadUpdate = preferences.getBoolean("autoDownloadUpdate", false);
             disableGreetingSticker = preferences.getBoolean("disableGreetingSticker", false);
             autoTranslate = preferences.getBoolean("autoTranslate", true);
             disableVoiceMessageAutoPlay = preferences.getBoolean("disableVoiceMessageAutoPlay", false);
@@ -1057,6 +1059,14 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("disableJumpToNextChannel", disableJumpToNextChannel);
+        editor.apply();
+    }
+
+    public static void toggleAutoDownloadUpdate() {
+        autoDownloadUpdate = !autoDownloadUpdate;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("autoDownloadUpdate", autoDownloadUpdate);
         editor.apply();
     }
 

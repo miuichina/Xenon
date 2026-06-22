@@ -42,6 +42,7 @@ public class UpdateAppAlertDialog extends BottomSheet {
 
     private TLRPC.TL_help_appUpdate appUpdate;
     private int accountNum;
+    private Runnable onDownloadClickListener;
     private RadialProgress radialProgress;
     private FrameLayout radialProgressView;
     private AnimatorSet progressAnimation;
@@ -295,7 +296,9 @@ public class UpdateAppAlertDialog extends BottomSheet {
         ButtonWithCounterView doneButton = new ButtonWithCounterView(context, null).setRound();
         doneButton.setText(LocaleController.formatString(R.string.AppUpdateDownloadNow), false);
         doneButton.setOnClickListener(v -> {
-            if (update.document instanceof TLRPC.TL_document) {
+            if (onDownloadClickListener != null) {
+                onDownloadClickListener.run();
+            } else if (update.document instanceof TLRPC.TL_document) {
                 FileLoader.getInstance(accountNum).loadFile(appUpdate.document, "update", FileLoader.PRIORITY_NORMAL, 1);
             } else {
                 Browser.openUrl(context, appUpdate.url);
@@ -308,6 +311,10 @@ public class UpdateAppAlertDialog extends BottomSheet {
         scheduleButton.setText(LocaleController.getString(R.string.AppUpdateRemindMeLater), false);
         scheduleButton.setOnClickListener(v -> dismiss());
         container.addView(scheduleButton, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 48, Gravity.FILL_HORIZONTAL | Gravity.BOTTOM, 20, 4, 20, 8));
+    }
+
+    public void setOnDownloadClickListener(Runnable listener) {
+        onDownloadClickListener = listener;
     }
 
     private void runShadowAnimation(final int num, final boolean show) {
