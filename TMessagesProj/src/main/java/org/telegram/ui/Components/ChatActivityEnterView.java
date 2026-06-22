@@ -8516,18 +8516,23 @@ public class ChatActivityEnterView extends FrameLayout implements
                 }
             }
         }
-        if (NekoConfig.hideRecordButton && message.length() == 0 && audioVideoButtonContainer.getVisibility() == VISIBLE) {
+        if (NekoConfig.hideRecordButton && message.length() == 0 && delegate != null && audioVideoButtonContainer != null && audioVideoButtonContainer.getVisibility() == VISIBLE) {
             if (runningAnimation != null) {
                 runningAnimation.cancel();
                 runningAnimation = null;
                 runningAnimationType = 0;
             }
             audioVideoButtonContainer.setVisibility(GONE);
-            getSendButtonInternal().setVisibility(VISIBLE);
-            getSendButtonInternal().setAlpha(1.0f);
-            getSendButtonInternal().setScaleX(1.0f);
-            getSendButtonInternal().setScaleY(1.0f);
-            slowModeButton.setVisibility(GONE);
+            View sendBtn = getSendButtonInternal();
+            if (sendBtn != null) {
+                sendBtn.setVisibility(VISIBLE);
+                sendBtn.setAlpha(1.0f);
+                sendBtn.setScaleX(1.0f);
+                sendBtn.setScaleY(1.0f);
+            }
+            if (slowModeButton != null) {
+                slowModeButton.setVisibility(GONE);
+            }
         }
         if (isStories && suggestButton != null) {
             if (animated) {
@@ -9967,9 +9972,9 @@ public class ChatActivityEnterView extends FrameLayout implements
             }
             draftMessage = null;
             messageWebPageSearch = draftSearchWebpage;
-            if (getVisibility() == VISIBLE) {
-                delegate.onAttachButtonShow();
-            }
+                if (getVisibility() == VISIBLE && delegate != null) {
+                    delegate.onAttachButtonShow();
+                }
             updateFieldRight(1);
         }
         updateFieldHint(true);
