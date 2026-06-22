@@ -401,4 +401,9 @@
     <string name="UpdateDownloaded">Update downloaded!</string>
     <string name="ForceUpdate">Force update</string>
     <string name="AutoDownloadUpdate">Automatically download update</string>
+    <string name="HowToOpenConfigFile">How do you want to open this file?</string>
+    <string name="OpenAsXenonConfig">As Xenon config</string>
+    <string name="OpenAsFile">As file</string>
+    <string name="ImportSettingsSuccess">Settings imported!</string>
+    <string name="ImportSettingsFailed">Failed to import settings</string>
 </resources>

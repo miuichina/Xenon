@@ -390,4 +390,12 @@
     <string name="AccessibilitySettings">Настройки доступности</string>
     <string name="AlternativeTransition">Альтернативный переход</string>
     <string name="TransitionSpeed">Скорость перехода (мс)</string>
+    <string name="UpdateDownloaded">Обновление загружено!</string>
+    <string name="ForceUpdate">Принудительное обновление</string>
+    <string name="AutoDownloadUpdate">Автоматически загружать обновление</string>
+    <string name="HowToOpenConfigFile">Как вы хотите открыть этот файл?</string>
+    <string name="OpenAsXenonConfig">Как конфиг Xenon</string>
+    <string name="OpenAsFile">Как файл</string>
+    <string name="ImportSettingsSuccess">Настройки импортированы!</string>
+    <string name="ImportSettingsFailed">Не удалось импортировать настройки</string>
 </resources>

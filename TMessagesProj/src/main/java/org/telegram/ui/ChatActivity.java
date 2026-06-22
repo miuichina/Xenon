@@ -42056,6 +42056,53 @@ public class ChatActivity extends BaseFragment implements
                         scrollToPositionOnRecreate = -1;
                     }
                 }
+                String docNameLower = message.getDocumentName().toLowerCase();
+                if (docNameLower.endsWith("xenon_settings_backup.json")) {
+                    File cfgFile = null;
+                    if (message.messageOwner.attachPath != null && message.messageOwner.attachPath.length() != 0) {
+                        File f = new File(message.messageOwner.attachPath);
+                        if (f.exists()) {
+                            cfgFile = f;
+                        }
+                    }
+                    if (cfgFile == null) {
+                        File f = getFileLoader().getPathToMessage(message.messageOwner);
+                        if (f.exists()) {
+                            cfgFile = f;
+                        }
+                    }
+                    if (cfgFile != null) {
+                        try {
+                            String content = new String(java.nio.file.Files.readAllBytes(cfgFile.toPath()), "UTF-8");
+                            new org.json.JSONObject(content);
+                            Activity activity = getParentActivity();
+                            if (activity != null) {
+                                AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+                                builder.setTitle(LocaleController.getString(R.string.Nekogram));
+                                builder.setMessage(LocaleController.getString(R.string.HowToOpenConfigFile));
+                                builder.setPositiveButton(LocaleController.getString(R.string.OpenAsXenonConfig), (dialog, which) -> {
+                                    try {
+                                        NekoConfig.importConfigs(content);
+                                        BulletinFactory.global().createSimpleBulletin(R.raw.chats_infotip, LocaleController.getString(R.string.ImportSettingsSuccess)).show();
+                                    } catch (Exception e) {
+                                        FileLog.e(e);
+                                        BulletinFactory.global().createSimpleBulletin(R.raw.chats_infotip, LocaleController.getString(R.string.ImportSettingsFailed)).show();
+                                    }
+                                });
+                                builder.setNegativeButton(LocaleController.getString(R.string.OpenAsFile), (dialog, which) -> {
+                                    try {
+                                        AndroidUtilities.openForView(message, activity, themeDelegate, false);
+                                    } catch (Exception e) {
+                                        FileLog.e(e);
+                                        alertUserOpenError(message);
+                                    }
+                                });
+                                builder.show();
+                                return;
+                            }
+                        } catch (Exception ignored) {}
+                    }
+                }
                 boolean handled = false;
                 if (message.canPreviewDocument()) {
                     PhotoViewer.getInstance().setParentActivity(ChatActivity.this, themeDelegate);
