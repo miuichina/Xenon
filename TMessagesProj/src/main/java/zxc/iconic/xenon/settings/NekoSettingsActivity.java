@@ -14,11 +14,15 @@ import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
+import android.content.Intent;
+import android.net.Uri;
+
 import androidx.appcompat.content.res.AppCompatResources;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.BuildConfig;
+import org.telegram.messenger.FileLog;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.messenger.UserConfig;
@@ -554,5 +558,30 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity implements Fa
                 listView.adapter.update(true);
             });
         }, 300);
+    }
+
+    private static final int REQUEST_CODE_LOAD_SETTINGS = 2001;
+
+    @Override
+    public void onActivityResultFragment(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQUEST_CODE_LOAD_SETTINGS && resultCode == android.app.Activity.RESULT_OK && data != null) {
+            Uri uri = data.getData();
+            if (uri != null) {
+                try {
+                    StringBuilder sb = new StringBuilder();
+                    try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(getParentActivity().getContentResolver().openInputStream(uri), "UTF-8"))) {
+                        String line;
+                        while ((line = br.readLine()) != null) {
+                            sb.append(line);
+                        }
+                    }
+                    NekoConfig.importConfigs(sb.toString());
+                    BulletinFactory.global().createSimpleBulletin(R.raw.chats_infotip, "Settings restored!").show();
+                } catch (Exception e) {
+                    FileLog.e(e);
+                    BulletinFactory.global().createSimpleBulletin(R.raw.chats_infotip, "Failed to restore settings").show();
+                }
+            }
+        }
     }
 }
