@@ -622,20 +622,14 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
         }
 
         public void bind(SeekbarConfig config, int currentValue) {
-            // Build the seekbar lazily on first bind. Subsequent rebinds (e.g.
-            // adapter.update from fillItems) intentionally do NOT rebuild it —
-            // each fillItems pass produces a fresh SeekbarConfig with a fresh
-            // OnDrag lambda, but those lambdas typically just close over the
-            // same NekoConfig static field, so reusing the original one keeps
-            // the in-progress drag state alive and avoids tearing down the
-            // underlying SeekBarView.
-            if (seekbar == null) {
-                seekbar = new AltSeekbar(getContext(), config.onDrag, config.min, config.max,
-                        config.title, config.left, config.right, resourcesProvider);
-                seekbar.setDefaultValue(currentValue);
-                seekbar.setStep(config.step);
-                addView(seekbar, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+            if (seekbar != null) {
+                removeView(seekbar);
             }
+            seekbar = new AltSeekbar(getContext(), config.onDrag, config.min, config.max,
+                    config.title, config.left, config.right, resourcesProvider);
+            seekbar.setDefaultValue(currentValue);
+            seekbar.setStep(config.step);
+            addView(seekbar, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
             seekbar.setValue(currentValue);
         }
     }

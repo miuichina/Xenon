@@ -53,6 +53,12 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int alternativeTransitionSpeedRow = rowId++;
     private final int alternativeTransitionEaseRow = rowId++;
 
+    private final int textAnimationRow = rowId++;
+    private final int textAnimCursorRow = rowId++;
+    private final int textAnimFadeRow = rowId++;
+    private final int textAnimBlurRow = rowId++;
+    private final int textAnimBlurDurationRow = rowId++;
+
     @Override
     public boolean onFragmentCreate() {
         NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.emojiLoaded);
@@ -87,6 +93,36 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             items.add(SeekbarCellFactory.of(alternativeTransitionSpeedRow, speedConfig, NekoConfig.alternativeTransitionSpeed).slug("alternativeTransitionSpeed"));
             items.add(TextSettingsCellFactory.of(alternativeTransitionEaseRow, "Change ease", NekoConfig.alternativeTransitionEase).slug("alternativeTransitionEase"));
         }
+        items.add(UItem.asHeader(LocaleController.getString(R.string.TextAnimation)));
+        boolean animSupported = android.os.Build.VERSION.SDK_INT >= 26;
+        items.add(UItem.asCheck(textAnimationRow, LocaleController.getString(R.string.TextAnimationToggle), animSupported ? null : LocaleController.getString(R.string.TextAnimationApiWarning)).slug("textAnimation").setChecked(NekoConfig.textAnimationEnabled).setEnabled(animSupported));
+        if (NekoConfig.textAnimationEnabled && animSupported) {
+            SeekbarConfig cursorConfig = new SeekbarConfig(
+                    LocaleController.getString(R.string.TextAnimCursor),
+                    "0", "100", 0, 100,
+                    progress -> NekoConfig.setTextAnimCursorSpeed(Math.round(progress)));
+            items.add(SeekbarCellFactory.of(textAnimCursorRow, cursorConfig, NekoConfig.textAnimCursorSpeed).slug("textAnimCursor"));
+
+            SeekbarConfig fadeConfig = new SeekbarConfig(
+                    LocaleController.getString(R.string.TextAnimFadeDuration),
+                    "50", "800", 50, 800,
+                    progress -> NekoConfig.setTextAnimFadeDuration(Math.round(progress)));
+            items.add(SeekbarCellFactory.of(textAnimFadeRow, fadeConfig, NekoConfig.textAnimFadeDuration).slug("textAnimFadeDuration"));
+
+            SeekbarConfig blurConfig = new SeekbarConfig(
+                    LocaleController.getString(R.string.TextAnimBlurStrength),
+                    "0", "30", 0, 30,
+                    progress -> NekoConfig.setTextAnimBlurStrength(Math.round(progress)));
+            items.add(SeekbarCellFactory.of(textAnimBlurRow, blurConfig, NekoConfig.textAnimBlurStrength).slug("textAnimBlurStrength"));
+
+            SeekbarConfig blurDurationConfig = new SeekbarConfig(
+                    LocaleController.getString(R.string.TextAnimBlurDuration),
+                    "50", "1000", 50, 1000,
+                    progress -> NekoConfig.setTextAnimBlurDuration(Math.round(progress)));
+            items.add(SeekbarCellFactory.of(textAnimBlurDurationRow, blurDurationConfig, NekoConfig.textAnimBlurDuration).slug("textAnimBlurDuration"));
+        }
+        items.add(UItem.asShadow(null));
+
         items.add(UItem.asCheck(appBarShadowRow, LocaleController.getString(R.string.DisableAppBarShadow)).slug("appBarShadow").setChecked(NekoConfig.disableAppBarShadow));
         items.add(UItem.asCheck(formatTimeWithSecondsRow, LocaleController.getString(R.string.FormatWithSeconds)).slug("formatTimeWithSeconds").setChecked(NekoConfig.formatTimeWithSeconds));
         items.add(UItem.asCheck(disableNumberRoundingRow, LocaleController.getString(R.string.DisableNumberRounding), "4.8K -> 4777").slug("disableNumberRounding").setChecked(NekoConfig.disableNumberRounding));
@@ -126,7 +162,15 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     @Override
     protected void onItemClick(UItem item, View view, int position, float x, float y) {
         var id = item.id;
-        if (id == tabletModeRow) {
+        if (id == textAnimationRow) {
+            if (android.os.Build.VERSION.SDK_INT >= 26) {
+                NekoConfig.toggleTextAnimation();
+                if (view instanceof TextCheckCell) {
+                    ((TextCheckCell) view).setChecked(NekoConfig.textAnimationEnabled);
+                }
+                listView.adapter.update(true);
+            }
+        } else if (id == tabletModeRow) {
             ArrayList<String> arrayList = new ArrayList<>();
             ArrayList<Integer> types = new ArrayList<>();
             arrayList.add(LocaleController.getString(R.string.TabletModeAuto));

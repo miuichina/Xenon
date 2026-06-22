@@ -53,12 +53,6 @@ public class NekoExperimentalSettingsActivity extends BaseNekoSettingsActivity {
     private final int removeChatDelayRow = rowId++;
     private final int xrayProxySettingsRow = rowId++;
 
-    private final int textAnimationRow = rowId++;
-    private final int textAnimCursorRow = rowId++;
-    private final int textAnimFadeRow = rowId++;
-    private final int textAnimBlurRow = rowId++;
-    private final int textAnimBlurDurationRow = rowId++;
-
     private final int sendBugReportRow = rowId++;
     private final int deleteDataRow = rowId++;
     private final int copyReportIdRow = rowId++;
@@ -71,36 +65,6 @@ public class NekoExperimentalSettingsActivity extends BaseNekoSettingsActivity {
         items.add(UItem.asCheck(disableTypingRow, LocaleController.getString(R.string.DisableTypingIndicator), LocaleController.getString(R.string.DisableTypingIndicatorDesc)).slug("disableTyping").setChecked(NekoConfig.disableTypingIndicator));
         items.add(UItem.asCheck(ghostModeRow, LocaleController.getString(R.string.GhostMode), LocaleController.getString(R.string.GhostModeDesc)).slug("ghostMode").setChecked(NekoConfig.ghostModeEnabled));
         items.add(UItem.asCheck(telegaDetectorRow, LocaleController.getString(R.string.TelegaDetectorEnabled), LocaleController.getString(R.string.TelegaDetectorHint)).slug("telegaDetector").setChecked(NekoConfig.telegaDetectorEnabled));
-        items.add(UItem.asShadow(null));
-
-        items.add(UItem.asHeader(LocaleController.getString(R.string.TextAnimation)));
-        boolean animSupported = android.os.Build.VERSION.SDK_INT >= 26;
-        items.add(UItem.asCheck(textAnimationRow, LocaleController.getString(R.string.TextAnimationToggle), animSupported ? null : LocaleController.getString(R.string.TextAnimationApiWarning)).slug("textAnimation").setChecked(NekoConfig.textAnimationEnabled).setEnabled(animSupported));
-        if (NekoConfig.textAnimationEnabled && animSupported) {
-            SeekbarConfig cursorConfig = new SeekbarConfig(
-                    LocaleController.getString(R.string.TextAnimCursor),
-                    "0", "100", 0, 100,
-                    progress -> NekoConfig.setTextAnimCursorSpeed(Math.round(progress)));
-            items.add(SeekbarCellFactory.of(textAnimCursorRow, cursorConfig, NekoConfig.textAnimCursorSpeed).slug("textAnimCursor"));
-
-            SeekbarConfig fadeConfig = new SeekbarConfig(
-                    LocaleController.getString(R.string.TextAnimFadeDuration),
-                    "50", "800", 50, 800,
-                    progress -> NekoConfig.setTextAnimFadeDuration(Math.round(progress)));
-            items.add(SeekbarCellFactory.of(textAnimFadeRow, fadeConfig, NekoConfig.textAnimFadeDuration).slug("textAnimFadeDuration"));
-
-            SeekbarConfig blurConfig = new SeekbarConfig(
-                    LocaleController.getString(R.string.TextAnimBlurStrength),
-                    "0", "30", 0, 30,
-                    progress -> NekoConfig.setTextAnimBlurStrength(Math.round(progress)));
-            items.add(SeekbarCellFactory.of(textAnimBlurRow, blurConfig, NekoConfig.textAnimBlurStrength).slug("textAnimBlurStrength"));
-
-            SeekbarConfig blurDurationConfig = new SeekbarConfig(
-                    LocaleController.getString(R.string.TextAnimBlurDuration),
-                    "50", "1000", 50, 1000,
-                    progress -> NekoConfig.setTextAnimBlurDuration(Math.round(progress)));
-            items.add(SeekbarCellFactory.of(textAnimBlurDurationRow, blurDurationConfig, NekoConfig.textAnimBlurDuration).slug("textAnimBlurDuration"));
-        }
         items.add(UItem.asShadow(null));
 
         if (android.os.Build.VERSION.SDK_INT >= 33) {
@@ -154,15 +118,7 @@ public class NekoExperimentalSettingsActivity extends BaseNekoSettingsActivity {
             return;
         }
         int id = item.id;
-        if (id == textAnimationRow) {
-            if (android.os.Build.VERSION.SDK_INT >= 26) {
-                NekoConfig.toggleTextAnimation();
-                if (view instanceof TextCheckCell) {
-                    ((TextCheckCell) view).setChecked(NekoConfig.textAnimationEnabled);
-                }
-                listView.adapter.update(true);
-            }
-        } else if (id == disableTypingRow) {
+        if (id == disableTypingRow) {
             NekoConfig.toggleDisableTypingIndicator();
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.disableTypingIndicator);
