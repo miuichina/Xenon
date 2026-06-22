@@ -52,6 +52,7 @@ public class AltSeekbar extends FrameLayout {
     private final OnDrag onDrag;
 
     private final int min, max;
+    private int step = 1;
     private float currentValue;
     private int roundedValue;
     private int defaultValue;
@@ -103,8 +104,9 @@ public class AltSeekbar extends FrameLayout {
         seekBarView.setDelegate((stop, progress) -> {
             currentValue = min + (max - min) * progress;
             onDrag.run(currentValue);
-            if (Math.round(currentValue) != roundedValue) {
-                roundedValue = Math.round(currentValue);
+            int newRounded = step > 1 ? Math.round(currentValue / step) * step : Math.round(currentValue);
+            if (newRounded != roundedValue) {
+                roundedValue = newRounded;
                 updateText();
             }
         });
@@ -131,6 +133,10 @@ public class AltSeekbar extends FrameLayout {
 
     public void setDefaultValue(int value) {
         defaultValue = value;
+    }
+
+    public void setStep(int step) {
+        this.step = step;
     }
 
     private void showInputDialog(Context context, String title) {
@@ -210,8 +216,9 @@ public class AltSeekbar extends FrameLayout {
     public void setValue(float value) {
         currentValue = value;
         seekBarView.setProgress((value - min) / (float) (max - min));
-        if (Math.round(currentValue) != roundedValue) {
-            roundedValue = Math.round(currentValue);
+        int newRounded = step > 1 ? Math.round(currentValue / step) * step : Math.round(currentValue);
+        if (newRounded != roundedValue) {
+            roundedValue = newRounded;
             updateText();
         }
     }

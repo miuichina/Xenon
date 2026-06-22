@@ -164,6 +164,7 @@ public class NekoConfig {
     public static int textAnimBlurDuration = 350;
     public static boolean alternativeTransition = false;
     public static int alternativeTransitionSpeed = 300;
+    public static String alternativeTransitionEase = "0.37,0.01,0.1,1";
     public static boolean removeChatDelay = false;
     private static final String XRAY_DEFAULT_CHECK_URL = "https://www.gstatic.com/generate_204";
 
@@ -331,6 +332,7 @@ public class NekoConfig {
             textAnimBlurDuration = preferences.getInt("textAnimBlurDuration", 350);
             alternativeTransition = preferences.getBoolean("alternativeTransition", false);
             alternativeTransitionSpeed = preferences.getInt("alternativeTransitionSpeed", 300);
+            alternativeTransitionEase = preferences.getString("alternativeTransitionEase", "0.37,0.01,0.1,1");
             removeChatDelay = preferences.getBoolean("removeChatDelay", false);
 
             LensHelper.checkLensSupportAsync();
@@ -527,6 +529,14 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putInt("alternativeTransitionSpeed", alternativeTransitionSpeed);
+        editor.apply();
+    }
+
+    public static void setAlternativeTransitionEase(String value) {
+        alternativeTransitionEase = value;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putString("alternativeTransitionEase", alternativeTransitionEase);
         editor.apply();
     }
 
