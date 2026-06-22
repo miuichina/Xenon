@@ -35,10 +35,10 @@ import zxc.iconic.xenon.NekoConfig;
 /**
  * Live preview of a glass surface on top of the current chat wallpaper.
  * The wallpaper is drawn full-bleed (center-cropped) and recorded into the
- * backing {@link BlurredBackgroundSourceRenderNode} with a blur RenderEffect,
- * so the glass drawable can sample it the same way it samples the real chat
- * background. Sliders (blur, tint, etc.) call {@link #invalidateGlass()} which
- * updates the blur radius and forces a redraw.
+ * backing {@link BlurredBackgroundSourceRenderNode}. In advanced glass mode the
+ * source stays raw, matching the runtime chat path where Telegram's stock
+ * frosted pre-blur is disabled before our AGSL shader samples the scene.
+ * Sliders call {@link #invalidateGlass()} and force a redraw.
  */
 @SuppressLint("ViewConstructor")
 public class GlassPreviewCell extends View {
@@ -103,15 +103,17 @@ public class GlassPreviewCell extends View {
     }
 
     /**
-     * Re-apply the blur RenderEffect to the backing RenderNode so the
-     * preview reflects the current {@code advancedGlassBlur} slider value.
+     * Match the source preparation used by the real chat pipeline.
+     * Advanced glass samples the raw scene; standard liquid glass keeps the
+     * legacy frosted backing blur.
      */
     private void refreshRenderNodeBlur() {
         if (renderNodeSource == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return;
-        float radius = dpf2(NekoConfig.useAdvancedLiquidGlass
-                ? Math.max(2f, NekoConfig.advancedGlassBlur * 0.4f)
-                : 8f);
-        renderNodeSource.setBlur(radius);
+        // Advanced glass: apply the blur-slider value so the preview matches the chat.
+        // Standard liquid glass: frosted backing blur (8 dp).
+        renderNodeSource.setBlur(NekoConfig.useAdvancedLiquidGlass
+                ? dpf2(Math.max(1f, NekoConfig.advancedGlassBlur))
+                : dpf2(8f));
         if (glassDrawable instanceof BlurredBackgroundDrawableRenderNode) {
             ((BlurredBackgroundDrawableRenderNode) glassDrawable).invalidateDisplayList();
         }
@@ -144,9 +146,9 @@ public class GlassPreviewCell extends View {
 
     /**
      * Rasterises the current wallpaper into a bitmap, then records that bitmap
-     * into the backing RenderNode with a blur RenderEffect applied. This gives
-     * the glass drawable a blurred source to sample from, matching how the
-     * real chat background works.
+     * into the backing RenderNode. Advanced glass intentionally keeps this
+     * backing source unblurred so the shader samples the real scene instead of
+     * Telegram's matte frosted texture.
      */
     private void captureWallpaper() {
         if (getMeasuredWidth() <= 0 || getMeasuredHeight() <= 0 || renderNodeSource == null) return;

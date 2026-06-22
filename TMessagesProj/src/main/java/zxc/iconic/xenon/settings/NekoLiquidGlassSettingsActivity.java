@@ -28,6 +28,7 @@ public class NekoLiquidGlassSettingsActivity extends BaseNekoSettingsActivity {
     private final int useAdvancedLiquidGlassRow  = rowId++;
     private final int previewRow                 = rowId++;
     private final int advancedGlassAlphaRow      = rowId++;
+    private final int advancedGlassWallpaperBlurRow = rowId++;
     private final int advancedGlassBlurRow       = rowId++;
     private final int advancedGlassFresnelRow    = rowId++;
     private final int advancedGlassDispersionRow = rowId++;
@@ -62,6 +63,13 @@ public class NekoLiquidGlassSettingsActivity extends BaseNekoSettingsActivity {
                 LocaleController.getString(R.string.UseAdvancedLiquidGlass),
                 LocaleController.getString(R.string.UseAdvancedLiquidGlassDesc))
                 .slug("useAdvancedLiquidGlass").setChecked(NekoConfig.useAdvancedLiquidGlass));
+        if (NekoConfig.useAdvancedLiquidGlass) {
+            items.add(UItem.asCheck(advancedGlassWallpaperBlurRow,
+                    LocaleController.getString(R.string.AdvancedGlassWallpaperBlur),
+                    LocaleController.getString(R.string.AdvancedGlassWallpaperBlurDesc))
+                    .slug("advancedGlassWallpaperBlur")
+                    .setChecked(NekoConfig.advancedGlassWallpaperBlur));
+        }
         items.add(UItem.asShadow(null));
 
         // --- Live preview
@@ -182,6 +190,14 @@ public class NekoLiquidGlassSettingsActivity extends BaseNekoSettingsActivity {
                 ((TextCheckCell) view).setChecked(NekoConfig.useAdvancedLiquidGlass);
             }
             listView.adapter.update(true);
+            listView.post(this::invalidatePreview);
+            showRestartBulletin();
+
+        } else if (id == advancedGlassWallpaperBlurRow) {
+            NekoConfig.toggleAdvancedGlassWallpaperBlur();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.advancedGlassWallpaperBlur);
+            }
             listView.post(this::invalidatePreview);
             showRestartBulletin();
 

@@ -113,6 +113,12 @@ public class BlurredBackgroundSourceRenderNode implements BlurredBackgroundSourc
             throw new IllegalStateException();
         }
 
+        // Draw underSource (the chat wallpaper) directly. In advanced/unified
+        // wallpaper-blur mode the wallpaper is already stack-blurred in
+        // WallpaperBitmapProvider, so no GPU blur RenderNode is needed here.
+        // The previous per-frame GPU blur node raced the render thread
+        // (flickering) and never re-recorded when the underlying bitmap changed
+        // (blur disappeared until the chat was reopened).
         if (underSource != null) {
             underSource.draw(canvas, left, top, right, bottom);
         }
@@ -123,7 +129,6 @@ public class BlurredBackgroundSourceRenderNode implements BlurredBackgroundSourc
         } else {
             canvas.drawRenderNode(renderNode);
         }
-
         canvas.restore();
     }
 

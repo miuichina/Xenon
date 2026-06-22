@@ -105,6 +105,8 @@
     <string name="AdvancedGlassSection">Glass parameters</string>
     <string name="AdvancedGlassAlpha">Glass transparency</string>
     <string name="AdvancedGlassBlur">Blur strength</string>
+    <string name="AdvancedGlassWallpaperBlur">Unified wallpaper blur</string>
+    <string name="AdvancedGlassWallpaperBlurDesc">When enabled, glass uses the raw chat wallpaper and blurs it with the same advanced glass blur. When disabled, Telegram stock frosted wallpaper blur is used.</string>
     <string name="AdvancedGlassRefraction">Refraction strength</string>
     <string name="AdvancedGlassDispersion">Chromatic dispersion</string>
     <string name="AdvancedGlassGlare">Glare strength</string>

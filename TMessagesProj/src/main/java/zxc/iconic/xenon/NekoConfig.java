@@ -173,6 +173,7 @@ public class NekoConfig {
 
     public static final int DEFAULT_ADVANCED_GLASS_ALPHA = 100;
     public static final int DEFAULT_ADVANCED_GLASS_BLUR = 3;
+    public static final boolean DEFAULT_ADVANCED_GLASS_WALLPAPER_BLUR = true;
     public static final float DEFAULT_ADVANCED_GLASS_DISPERSION = 1.0f;
     public static final float DEFAULT_ADVANCED_GLASS_FRESNEL = 1.0f;
     public static final float DEFAULT_ADVANCED_GLASS_GLARE = 1.0f;
@@ -185,6 +186,7 @@ public class NekoConfig {
     // Advanced liquid glass parameters (separate from standard)
     public static int advancedGlassAlpha = DEFAULT_ADVANCED_GLASS_ALPHA;
     public static int advancedGlassBlur = DEFAULT_ADVANCED_GLASS_BLUR;
+    public static boolean advancedGlassWallpaperBlur = DEFAULT_ADVANCED_GLASS_WALLPAPER_BLUR;
     public static float advancedGlassDispersion = DEFAULT_ADVANCED_GLASS_DISPERSION;
     public static float advancedGlassFresnel = DEFAULT_ADVANCED_GLASS_FRESNEL;
     public static float advancedGlassGlare = DEFAULT_ADVANCED_GLASS_GLARE;
@@ -313,6 +315,7 @@ public class NekoConfig {
             useAdvancedLiquidGlass = preferences.getBoolean("useAdvancedLiquidGlass", false);
             advancedGlassAlpha = preferences.getInt("advancedGlassAlpha", DEFAULT_ADVANCED_GLASS_ALPHA);
             advancedGlassBlur = preferences.getInt("advancedGlassBlur", DEFAULT_ADVANCED_GLASS_BLUR);
+            advancedGlassWallpaperBlur = preferences.getBoolean("advancedGlassWallpaperBlur", DEFAULT_ADVANCED_GLASS_WALLPAPER_BLUR);
             advancedGlassDispersion = preferences.getFloat("advancedGlassDispersion", DEFAULT_ADVANCED_GLASS_DISPERSION);
             advancedGlassFresnel = preferences.getFloat("advancedGlassFresnel", DEFAULT_ADVANCED_GLASS_FRESNEL);
             advancedGlassGlare = preferences.getFloat("advancedGlassGlare", DEFAULT_ADVANCED_GLASS_GLARE);
@@ -1173,6 +1176,14 @@ public class NekoConfig {
         editor.apply();
     }
 
+    public static void toggleAdvancedGlassWallpaperBlur() {
+        advancedGlassWallpaperBlur = !advancedGlassWallpaperBlur;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("advancedGlassWallpaperBlur", advancedGlassWallpaperBlur);
+        editor.apply();
+    }
+
     public static void setAdvancedGlassDispersion(float value) {
         advancedGlassDispersion = value;
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
@@ -1208,6 +1219,7 @@ public class NekoConfig {
     public static void resetAdvancedGlassToDefaults() {
         advancedGlassAlpha = DEFAULT_ADVANCED_GLASS_ALPHA;
         advancedGlassBlur = DEFAULT_ADVANCED_GLASS_BLUR;
+        advancedGlassWallpaperBlur = DEFAULT_ADVANCED_GLASS_WALLPAPER_BLUR;
         advancedGlassDispersion = DEFAULT_ADVANCED_GLASS_DISPERSION;
         advancedGlassFresnel = DEFAULT_ADVANCED_GLASS_FRESNEL;
         advancedGlassGlare = DEFAULT_ADVANCED_GLASS_GLARE;
@@ -1216,6 +1228,7 @@ public class NekoConfig {
         SharedPreferences.Editor editor = preferences.edit();
         editor.putInt("advancedGlassAlpha", advancedGlassAlpha);
         editor.putInt("advancedGlassBlur", advancedGlassBlur);
+        editor.putBoolean("advancedGlassWallpaperBlur", advancedGlassWallpaperBlur);
         editor.putFloat("advancedGlassDispersion", advancedGlassDispersion);
         editor.putFloat("advancedGlassFresnel", advancedGlassFresnel);
         editor.putFloat("advancedGlassGlare", advancedGlassGlare);

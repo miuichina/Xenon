@@ -107,8 +107,10 @@ public class LiquidGlassEffect {
                 shader.setFloatUniform("refractionAmount", refractionAmount);
                 shader.setFloatUniform("depthEffect", 0f);
                 shader.setFloatUniform("chromaticAberration", dispersion);
-
-                node.setRenderEffect(RenderEffect.createRuntimeShaderEffect(shader, "img"));
+                // Blur is done inside our shader on the raw scene. Do not rely on
+                // Telegram's stock frosted pre-blur, because it feeds the shader a
+                // matte texture instead of the actual content under the glass.
+node.setRenderEffect(RenderEffect.createRuntimeShaderEffect(shader, "img"));
 
                 // Update highlight shader uniforms
                 if (highlightShader != null) {

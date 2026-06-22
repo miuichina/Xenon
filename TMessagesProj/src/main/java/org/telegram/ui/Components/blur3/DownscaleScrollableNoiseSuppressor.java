@@ -408,13 +408,15 @@ public class DownscaleScrollableNoiseSuppressor {
         private SourcePart() {
             if (isLiquidGlassEnabled) {
                 renderNodesForGlass = new DownscaledRenderNode("glass", 0, true);
-                renderNodesForGlass.setScale(2, 2);
                 if (zxc.iconic.xenon.NekoConfig.useAdvancedLiquidGlass) {
-                    // Advanced glass: only our slider-controlled blur, no saturation boost.
-                    // The saturation boost is skipped so the AGSL shader's chromatic
-                    // dispersion output isn't colour-shifted by an extra pass.
-                    renderNodesForGlass.setPrimaryEffectBlur(dpf2(Math.max(0, zxc.iconic.xenon.NekoConfig.advancedGlassBlur)));
+                    // Advanced glass: GPU hardware Gaussian blur on the downscaled source.
+                    // Blur lives here, not in the AGSL shader. This eliminates the broken-glass
+                    // artifact and the per-pixel texture-read explosion from multi-tap shader sampling.
+                    // No saturation boost: the shader receives the real scene, not a frosted matte.
+                    renderNodesForGlass.setScale(2, 2);
+                    renderNodesForGlass.setPrimaryEffectBlur(dpf2(Math.max(1f, zxc.iconic.xenon.NekoConfig.advancedGlassBlur)));
                 } else {
+                    renderNodesForGlass.setScale(2, 2);
                     renderNodesForGlass.setPrimaryEffectBlur(dpf2(4f), RenderNodeEffects.getSaturationX1_25RenderEffect());
                 }
                 renderNodesForBlur = new DownscaledRenderNode("blur", 0);
@@ -444,6 +446,10 @@ public class DownscaleScrollableNoiseSuppressor {
 
         public void invalidate() {
             if (renderNodesForGlass != null) {
+                // Sync blur with the slider on every redraw.
+                if (zxc.iconic.xenon.NekoConfig.useAdvancedLiquidGlass) {
+                    renderNodesForGlass.setPrimaryEffectBlur(dpf2(Math.max(1f, zxc.iconic.xenon.NekoConfig.advancedGlassBlur)));
+                }
                 renderNodesForGlass.invalidateRenderNodes(renderNode);
                 renderNodesForBlur.invalidateRenderNodes(renderNodesForGlass.renderNodeRestored[0]);
             } else {

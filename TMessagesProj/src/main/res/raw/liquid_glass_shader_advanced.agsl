@@ -8,6 +8,13 @@ uniform float refractionAmount;
 uniform float depthEffect;
 uniform float chromaticAberration;
 
+// NOTE: blur is no longer done inside the shader.
+// RenderEffect.createBlurEffect() on the source RenderNode provides a proper
+// hardware-accelerated separable Gaussian before the shader ever sees the
+// pixels. This removes the broken-glass artifact that multi-tap in-shader
+// sampling produced and eliminates the per-pixel texture-read explosion that
+// was caused by calling the blur helper inside the chromatic-dispersion loop.
+
 float radiusAt(float2 coord, float4 radii) {
     if (coord.x >= 0.0) {
         if (coord.y <= 0.0) return radii.y;
@@ -46,7 +53,7 @@ half4 main(float2 coord) {
 
     float sd = sdRoundedRect(centeredCoord, halfSize, r);
 
-    // Deep inside: no refraction (same as reference lens)
+    // Deep inside: no refraction
     if (-sd >= refractionHeight) {
         return img.eval(coord);
     }
