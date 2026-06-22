@@ -8516,6 +8516,19 @@ public class ChatActivityEnterView extends FrameLayout implements
                 }
             }
         }
+        if (NekoConfig.hideRecordButton && message.length() == 0 && audioVideoButtonContainer.getVisibility() == VISIBLE) {
+            if (runningAnimation != null) {
+                runningAnimation.cancel();
+                runningAnimation = null;
+                runningAnimationType = 0;
+            }
+            audioVideoButtonContainer.setVisibility(GONE);
+            getSendButtonInternal().setVisibility(VISIBLE);
+            getSendButtonInternal().setAlpha(1.0f);
+            getSendButtonInternal().setScaleX(1.0f);
+            getSendButtonInternal().setScaleY(1.0f);
+            slowModeButton.setVisibility(GONE);
+        }
         if (isStories && suggestButton != null) {
             if (animated) {
                 suggestButton.animate().translationX(shownSendButton ? -Math.max(0, sendButton.width() - dp(64)) : dp(42)).setDuration(320).setInterpolator(CubicBezierInterpolator.EASE_OUT_QUINT).start();

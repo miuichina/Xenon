@@ -368,6 +368,7 @@
     <string name="TabsPositionTop">Сверху</string>
     <string name="TabsPositionBottom">Снизу</string>
     <string name="StrokeOnViews">Эффекты бликов</string>
+    <string name="HideRecordButton">Скрыть кнопку записи</string>
     <string name="TelegaDetectorEnabled">Telega детектор</string>
     <string name="TextAnimation">Анимация текста</string>
     <string name="TextAnimationToggle">Анимация текста</string>
