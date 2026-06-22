@@ -580,7 +580,26 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
     private DecelerateInterpolator decelerateInterpolator = new DecelerateInterpolator(1.5f);
     private OvershootInterpolator overshootInterpolator = new OvershootInterpolator(1.02f);
     private AccelerateDecelerateInterpolator accelerateDecelerateInterpolator = new AccelerateDecelerateInterpolator();
-    private static final PathInterpolator altTransitionInterpolatorOpen = new PathInterpolator(0.37f, 0.01f, 0.1f, 1f);
+    private static PathInterpolator altTransitionInterpolatorOpen;
+    private static String altTransitionInterpolatorOpenLastEase;
+
+    private static PathInterpolator getAltTransitionInterpolator() {
+        String ease = NekoConfig.alternativeTransitionEase;
+        if (altTransitionInterpolatorOpen == null || !ease.equals(altTransitionInterpolatorOpenLastEase)) {
+            try {
+                String[] parts = ease.split(",");
+                float x1 = Float.parseFloat(parts[0].trim());
+                float y1 = Float.parseFloat(parts[1].trim());
+                float x2 = Float.parseFloat(parts[2].trim());
+                float y2 = Float.parseFloat(parts[3].trim());
+                altTransitionInterpolatorOpen = new PathInterpolator(x1, y1, x2, y2);
+                altTransitionInterpolatorOpenLastEase = ease;
+            } catch (Exception e) {
+                altTransitionInterpolatorOpen = new PathInterpolator(0.37f, 0.01f, 0.1f, 1f);
+            }
+        }
+        return altTransitionInterpolatorOpen;
+    }
 
     public float innerTranslationX;
 
@@ -1905,7 +1924,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                         interpolated = CubicBezierInterpolator.EASE_OUT_QUINT.getInterpolation(animationProgress);
                     }
                 } else if (NekoConfig.alternativeTransition) {
-                    interpolated = open ? altTransitionInterpolatorOpen.getInterpolation(animationProgress) : CubicBezierInterpolator.EASE_OUT_QUINT.getInterpolation(animationProgress);
+                    interpolated = open ? getAltTransitionInterpolator().getInterpolation(animationProgress) : CubicBezierInterpolator.EASE_OUT_QUINT.getInterpolation(animationProgress);
                 } else {
                     interpolated = decelerateInterpolator.getInterpolation(animationProgress);
                 }
@@ -1930,7 +1949,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                     } else {
                         if (NekoConfig.alternativeTransition) {
                             containerView.setTranslationX(getWidth() * (1.0f - interpolated));
-                            containerViewBack.setTranslationX(-dp(48) * interpolated);
+                            containerViewBack.setTranslationX(-dp(96) * interpolated);
                         } else {
                             containerView.setTranslationX(dp(48) * (1.0f - interpolated));
                         }

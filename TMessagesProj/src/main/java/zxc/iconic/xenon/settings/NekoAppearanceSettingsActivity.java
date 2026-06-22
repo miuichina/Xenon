@@ -1,14 +1,21 @@
 package zxc.iconic.xenon.settings;
 
 import android.content.Context;
+import android.content.DialogInterface;
+import android.text.InputType;
+import android.util.TypedValue;
 import android.view.View;
+import android.widget.LinearLayout;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
+import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.TextCheckCell;
+import org.telegram.ui.Components.EditTextBoldCursor;
+import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.UniversalAdapter;
@@ -44,6 +51,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int hideRecordButtonRow = rowId++;
     private final int alternativeTransitionRow = rowId++;
     private final int alternativeTransitionSpeedRow = rowId++;
+    private final int alternativeTransitionEaseRow = rowId++;
 
     @Override
     public boolean onFragmentCreate() {
@@ -74,9 +82,10 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         if (NekoConfig.alternativeTransition) {
             SeekbarConfig speedConfig = new SeekbarConfig(
                     LocaleController.getString(R.string.TransitionSpeed),
-                    "100", "1000", 100, 1000,
+                    "100", "1000", 100, 1000, 5,
                     progress -> NekoConfig.setAlternativeTransitionSpeed(Math.round(progress / 5f) * 5));
             items.add(SeekbarCellFactory.of(alternativeTransitionSpeedRow, speedConfig, NekoConfig.alternativeTransitionSpeed).slug("alternativeTransitionSpeed"));
+            items.add(TextSettingsCellFactory.of(alternativeTransitionEaseRow, "Change ease", NekoConfig.alternativeTransitionEase).slug("alternativeTransitionEase"));
         }
         items.add(UItem.asCheck(appBarShadowRow, LocaleController.getString(R.string.DisableAppBarShadow)).slug("appBarShadow").setChecked(NekoConfig.disableAppBarShadow));
         items.add(UItem.asCheck(formatTimeWithSecondsRow, LocaleController.getString(R.string.FormatWithSeconds)).slug("formatTimeWithSeconds").setChecked(NekoConfig.formatTimeWithSeconds));
@@ -234,7 +243,55 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
                 ((TextCheckCell) view).setChecked(NekoConfig.alternativeTransition);
             }
             listView.adapter.update(true);
+        } else if (id == alternativeTransitionEaseRow) {
+            showEaseDialog();
         }
+    }
+
+    private void showEaseDialog() {
+        Context context = getParentActivity();
+        if (context == null) return;
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(context, resourcesProvider);
+        builder.setTitle("Change ease");
+
+        LinearLayout container = new LinearLayout(context);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(16), AndroidUtilities.dp(24), 0);
+
+        EditTextBoldCursor editText = new EditTextBoldCursor(context);
+        editText.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
+        editText.setTextColor(Theme.getColor(Theme.key_dialogTextBlack, resourcesProvider));
+        editText.setInputType(InputType.TYPE_CLASS_TEXT);
+        editText.setText(NekoConfig.alternativeTransitionEase);
+        editText.setSelection(editText.getText().length());
+
+        container.addView(editText, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        builder.setView(container);
+
+        builder.setPositiveButton(LocaleController.getString("OK", R.string.OK), (dialog, which) -> {
+            String text = editText.getText().toString().trim();
+            if (!text.isEmpty()) {
+                NekoConfig.setAlternativeTransitionEase(text);
+                listView.adapter.update(true);
+            }
+        });
+
+        builder.setNegativeButton(LocaleController.getString("Cancel", R.string.Cancel), null);
+
+        String defaultEase = "0.37,0.01,0.1,1";
+        builder.setNeutralButton(LocaleController.getString("Reset", R.string.Reset), (dialog, which) -> {
+            NekoConfig.setAlternativeTransitionEase(defaultEase);
+            listView.adapter.update(true);
+        });
+
+        AlertDialog dialog = builder.show();
+        if (NekoConfig.alternativeTransitionEase.equals(defaultEase)) {
+            dialog.getButton(DialogInterface.BUTTON_NEUTRAL).setAlpha(0.5f);
+        }
+
+        editText.requestFocus();
+        AndroidUtilities.showKeyboard(editText);
     }
 
     @Override
