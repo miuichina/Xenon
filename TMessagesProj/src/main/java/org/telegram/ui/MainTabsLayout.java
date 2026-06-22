@@ -482,7 +482,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
 
         @Override
         public long getLongPressDuration() {
-            return ClickHelper.Delegate.super.getLongPressDuration() * 750 / 1000;
+            return 0;
         }
 
         @Override
