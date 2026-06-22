@@ -5987,8 +5987,6 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
     }
 
     private boolean firstAppUpdateCheck = true;
-    private String updateShownTag;
-    private long lastAutoCheckTimeMs;
     private android.os.Handler autoUpdateHandler;
 
     private void startUpdateDownload(BetaUpdate update) {
@@ -6092,13 +6090,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
 
         ApplicationLoader.applicationLoaderInstance.checkUpdate(false, () -> {
             BetaUpdate update = ApplicationLoader.applicationLoaderInstance.getUpdate();
-            String tag = ApplicationLoader.applicationLoaderInstance.getPendingReleaseTag();
             if (update != null && !ApplicationLoader.applicationLoaderInstance.isDownloadingUpdate()) {
-                if (tag != null && tag.equals(updateShownTag)) {
-                    scheduleNextAutoCheck();
-                    return;
-                }
-                updateShownTag = tag;
                 if (NekoConfig.autoDownloadUpdate) {
                     startUpdateDownload(update);
                 } else {
@@ -7212,13 +7204,9 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         } else if (SharedConfig.pendingAppUpdate != null && SharedConfig.pendingAppUpdate.can_not_skip) {
             showUpdateActivity(UserConfig.selectedAccount, SharedConfig.pendingAppUpdate, true);
         }
+        checkAppUpdate(false, null);
         if (ApplicationLoader.applicationLoaderInstance.isCustomUpdate()) {
-            if (!autoUpdateCheckPerformed) {
-                autoUpdateCheckPerformed = true;
-                startAutoUpdateCheck();
-            }
-        } else {
-            checkAppUpdate(false, null);
+            startAutoUpdateCheck();
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {

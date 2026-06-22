@@ -69,11 +69,18 @@ public class ApplicationLoaderImpl extends ApplicationLoader {
         final int thisCheck = ++checkCounter;
         final String installedSha256 = sha256(
                 new File(applicationContext.getPackageCodePath()));
-        FileLog.d(TAG + ": checkUpdate #" + thisCheck + " force=" + force
-                + " sha256=" + (installedSha256 != null ? installedSha256.substring(0, 16) + "..." : "null"));
         GitHubUpdateHelper.UpdateCallback cb = new GitHubUpdateHelper.UpdateCallback() {
             @Override
             public void onUpdateAvailable(GitHubUpdateHelper.GitHubRelease release) {
+                if (!force && installedSha256 != null && release.apkSha256 != null
+                        && installedSha256.equalsIgnoreCase(release.apkSha256)) {
+                    FileLog.d(TAG + ": installed SHA256 matches release, no update");
+                    pendingUpdate = null;
+                    pendingRelease = null;
+                    pendingApkUrl = null;
+                    if (whenDone != null) whenDone.run();
+                    return;
+                }
                 String title = !TextUtils.isEmpty(release.name) ? release.name : release.tagName;
                 String changelog = release.body;
                 String apkUrl = GitHubUpdateHelper.findApkDownloadUrl(release);
@@ -354,11 +361,6 @@ public class ApplicationLoaderImpl extends ApplicationLoader {
 
     public long getDownloadBytesDownloaded() {
         return downloadBytesDownloaded;
-    }
-
-    @Override
-    public String getPendingReleaseTag() {
-        return pendingRelease != null ? pendingRelease.tagName : null;
     }
 
     @Override
