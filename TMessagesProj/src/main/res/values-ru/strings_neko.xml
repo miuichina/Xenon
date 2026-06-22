@@ -398,4 +398,5 @@
     <string name="OpenAsFile">Как файл</string>
     <string name="ImportSettingsSuccess">Настройки импортированы!</string>
     <string name="ImportSettingsFailed">Не удалось импортировать настройки</string>
+    <string name="TextAnimationTestHint">Напишите здесь для теста...</string>
 </resources>

@@ -406,4 +406,5 @@
     <string name="OpenAsFile">As file</string>
     <string name="ImportSettingsSuccess">Settings imported!</string>
     <string name="ImportSettingsFailed">Failed to import settings</string>
+    <string name="TextAnimationTestHint">Type here to test...</string>
 </resources>
