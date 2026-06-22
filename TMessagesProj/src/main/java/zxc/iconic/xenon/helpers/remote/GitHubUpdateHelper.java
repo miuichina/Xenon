@@ -72,14 +72,10 @@ public class GitHubUpdateHelper {
      * @param callback result callback (never null)
      */
     public static void checkForUpdates(UpdateCallback callback) {
-        checkForUpdates(callback, false, null);
+        checkForUpdates(callback, false);
     }
 
     public static void checkForUpdates(UpdateCallback callback, boolean force) {
-        checkForUpdates(callback, force, null);
-    }
-
-    public static void checkForUpdates(UpdateCallback callback, boolean force, String installedSha256) {
         new Thread(() -> {
             try {
                 FileLog.d(TAG + ": checking for updates...");
@@ -90,28 +86,9 @@ public class GitHubUpdateHelper {
                     return;
                 }
 
-                release.parseSha256FromBody();
-
                 if (force) {
                     // Force mode: skip hash comparison, always report as available
                     if (findApkDownloadUrl(release) == null) {
-                        AndroidUtilities.runOnUIThread(() ->
-                                callback.onError("No arm64 build for this release"));
-                    } else {
-                        AndroidUtilities.runOnUIThread(() -> callback.onUpdateAvailable(release));
-                    }
-                    return;
-                }
-
-                if (installedSha256 != null && release.apkSha256 != null) {
-                    if (installedSha256.equalsIgnoreCase(release.apkSha256)) {
-                        FileLog.d(TAG + ": SHA256 matches, no update");
-                        AndroidUtilities.runOnUIThread(callback::onNoUpdate);
-                        return;
-                    }
-                    FileLog.d(TAG + ": SHA256 differs, update available");
-                    String apkUrl = findApkDownloadUrl(release);
-                    if (apkUrl == null) {
                         AndroidUtilities.runOnUIThread(() ->
                                 callback.onError("No arm64 build for this release"));
                     } else {
@@ -319,33 +296,6 @@ public class GitHubUpdateHelper {
 
         @SerializedName("assets")
         public List<GitHubAsset> assets;
-
-        public String apkSha256;
-
-        void parseSha256FromBody() {
-            if (body == null) return;
-            for (String line : body.split("\n")) {
-                String trimmed = line.trim();
-                int colon = trimmed.indexOf(':');
-                if (colon < 0) continue;
-                String key = trimmed.substring(0, colon).trim().toLowerCase();
-                String value = trimmed.substring(colon + 1).trim();
-                if (!key.contains("sha256") && !key.contains("sha-256") && !key.contains("checksum")) continue;
-                StringBuilder hex = new StringBuilder();
-                for (int i = 0; i < value.length(); i++) {
-                    char c = value.charAt(i);
-                    if ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
-                        hex.append(c);
-                    } else if (hex.length() > 0) {
-                        break;
-                    }
-                }
-                if (hex.length() == 64) {
-                    apkSha256 = hex.toString().toLowerCase();
-                    return;
-                }
-            }
-        }
     }
 
     /**

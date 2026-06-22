@@ -5988,22 +5988,9 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
 
     private boolean firstAppUpdateCheck = true;
     private android.os.Handler autoUpdateHandler;
+    private boolean autoUpdateCheckScheduledFromResume;
 
     private void startUpdateDownload(BetaUpdate update) {
-        File cachedApk = ApplicationLoader.applicationLoaderInstance.getDownloadedUpdateFile();
-        if (cachedApk != null && cachedApk.exists()) {
-            Bulletin b = BulletinFactory.global()
-                    .createSimpleBulletin(R.raw.ic_download,
-                            LocaleController.getString(R.string.UpdateDownloaded),
-                            "Update",
-                            Integer.MAX_VALUE,
-                            () -> zxc.iconic.xenon.helpers.ApkInstaller.installUpdate(LaunchActivity.this, cachedApk));
-            if (b.getLayout() instanceof Bulletin.LottieLayout) {
-                ((Bulletin.LottieLayout) b.getLayout()).setIconPaddingBottom(2);
-            }
-            b.show();
-            return;
-        }
         final Bulletin[] progBulletin = new Bulletin[1];
         AndroidUtilities.runOnUIThread(() -> {
             try {
@@ -6068,40 +6055,28 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         if (autoUpdateHandler != null) {
             autoUpdateHandler.removeCallbacksAndMessages(null);
         }
-        performAutoUpdateCheck();
+        if (autoUpdateCheckScheduledFromResume) {
+            autoUpdateCheckScheduledFromResume = false;
+            scheduleNextAutoCheck();
+        } else {
+            performAutoUpdateCheck();
+        }
     }
 
     private void performAutoUpdateCheck() {
-        File cachedApk = ApplicationLoader.applicationLoaderInstance.getDownloadedUpdateFile();
-        if (cachedApk != null && cachedApk.exists()) {
-            Bulletin b = BulletinFactory.global()
-                    .createSimpleBulletin(R.raw.ic_download,
-                            LocaleController.getString(R.string.UpdateDownloaded),
-                            "Update",
-                            Integer.MAX_VALUE,
-                            () -> zxc.iconic.xenon.helpers.ApkInstaller.installUpdate(LaunchActivity.this, cachedApk));
-            if (b.getLayout() instanceof Bulletin.LottieLayout) {
-                ((Bulletin.LottieLayout) b.getLayout()).setIconPaddingBottom(2);
-            }
-            b.show();
-            scheduleNextAutoCheck();
-            return;
-        }
+        if (!NekoConfig.autoDownloadUpdate) return;
 
         ApplicationLoader.applicationLoaderInstance.checkUpdate(false, () -> {
             BetaUpdate update = ApplicationLoader.applicationLoaderInstance.getUpdate();
             if (update != null && !ApplicationLoader.applicationLoaderInstance.isDownloadingUpdate()) {
-                if (NekoConfig.autoDownloadUpdate) {
-                    startUpdateDownload(update);
-                } else {
-                    ApplicationLoader.applicationLoaderInstance.showCustomUpdateAppPopup(LaunchActivity.this, update, currentAccount);
-                }
+                startUpdateDownload(update);
             }
             scheduleNextAutoCheck();
         });
     }
 
     private void scheduleNextAutoCheck() {
+        if (!NekoConfig.autoDownloadUpdate) return;
         if (autoUpdateHandler == null) {
             autoUpdateHandler = new android.os.Handler(android.os.Looper.getMainLooper());
         }
@@ -7205,7 +7180,8 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
             showUpdateActivity(UserConfig.selectedAccount, SharedConfig.pendingAppUpdate, true);
         }
         checkAppUpdate(false, null);
-        if (ApplicationLoader.applicationLoaderInstance.isCustomUpdate()) {
+        if (NekoConfig.autoDownloadUpdate && ApplicationLoader.applicationLoaderInstance.isCustomUpdate()) {
+            autoUpdateCheckScheduledFromResume = true;
             startAutoUpdateCheck();
         }
 
