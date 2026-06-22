@@ -340,6 +340,7 @@ public final class ApkInstaller {
                                 .setSmallIcon(R.drawable.notification)
                                 .setColor(NekoConfig.getNotificationColor())
                                 .setShowWhen(false)
+                                .setAutoCancel(true)
                                 .setContentText(LocaleController.getString(R.string.UpdateInstalledNotification))
                                 .setCategory(NotificationCompat.CATEGORY_STATUS)
                                 .setContentIntent(pendingIntent)
