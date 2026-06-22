@@ -8,7 +8,6 @@ import android.graphics.drawable.Drawable;
 import android.text.InputType;
 import android.util.TypedValue;
 import android.view.Gravity;
-import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -129,6 +128,9 @@ public class AltSeekbar extends FrameLayout {
         valuesView.addView(rightTextView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.RIGHT | Gravity.CENTER_VERTICAL));
 
         addView(valuesView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP | Gravity.FILL_HORIZONTAL, 21, 52, 21, 0));
+
+        roundedValue = min;
+        updateText();
     }
 
     public void setDefaultValue(int value) {
@@ -183,8 +185,7 @@ public class AltSeekbar extends FrameLayout {
         });
         AlertDialog dialog = builder.show();
         if (defaultValue == min) {
-            Button resetBtn = (Button) dialog.getButton(DialogInterface.BUTTON_NEUTRAL);
-            resetBtn.setAlpha(0.5f);
+            dialog.getButton(DialogInterface.BUTTON_NEUTRAL).setAlpha(0.5f);
         }
 
         editText.requestFocus();
