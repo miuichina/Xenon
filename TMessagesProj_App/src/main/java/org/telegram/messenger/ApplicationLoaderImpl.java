@@ -15,6 +15,7 @@ import org.telegram.ui.Components.UpdateLayout;
 import org.telegram.ui.IUpdateLayout;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -35,6 +36,7 @@ public class ApplicationLoaderImpl extends ApplicationLoader {
 
     private static final String TAG = "ApplicationLoaderImpl";
     private static final String APK_DIR = "updates";
+    private static final String APK_FILENAME = "xenon_update.apk";
 
     private volatile BetaUpdate pendingUpdate;
     private volatile GitHubUpdateHelper.GitHubRelease pendingRelease;
@@ -64,16 +66,21 @@ public class ApplicationLoaderImpl extends ApplicationLoader {
 
     @Override
     public void checkUpdate(boolean force, Runnable whenDone) {
-        // Increment counter so each check produces a BetaUpdate with a unique
-        // (monotonically increasing) versionCode. This prevents
-        // BetaUpdate.higherThan() from returning false on repeated manual checks
-        // when the same GitHub release is found — LaunchActivity captures
-        // prevUpdate *before* calling checkUpdate(), so without this counter
-        // the dialog would only appear on the very first check.
         final int thisCheck = ++checkCounter;
-        GitHubUpdateHelper.checkForUpdates(new GitHubUpdateHelper.UpdateCallback() {
+        final String installedSha256 = sha256(
+                new File(applicationContext.getPackageCodePath()));
+        GitHubUpdateHelper.UpdateCallback cb = new GitHubUpdateHelper.UpdateCallback() {
             @Override
             public void onUpdateAvailable(GitHubUpdateHelper.GitHubRelease release) {
+                if (!force && installedSha256 != null && release.apkSha256 != null
+                        && installedSha256.equalsIgnoreCase(release.apkSha256)) {
+                    FileLog.d(TAG + ": installed SHA256 matches release, no update");
+                    pendingUpdate = null;
+                    pendingRelease = null;
+                    pendingApkUrl = null;
+                    if (whenDone != null) whenDone.run();
+                    return;
+                }
                 String title = !TextUtils.isEmpty(release.name) ? release.name : release.tagName;
                 String changelog = release.body;
                 String apkUrl = GitHubUpdateHelper.findApkDownloadUrl(release);
@@ -140,7 +147,8 @@ public class ApplicationLoaderImpl extends ApplicationLoader {
                 });
                 if (whenDone != null) whenDone.run();
             }
-        });
+        };
+        GitHubUpdateHelper.checkForUpdates(cb, force, installedSha256);
     }
 
     @Override
@@ -184,7 +192,7 @@ public class ApplicationLoaderImpl extends ApplicationLoader {
             try {
                 File dir = new File(applicationContext.getCacheDir(), APK_DIR);
                 if (!dir.exists()) dir.mkdirs();
-                tempFile = new File(dir, "xenon_update.apk");
+                tempFile = new File(dir, APK_FILENAME);
                 if (tempFile.exists()) tempFile.delete();
 
                 URL url = new URL(apkUrl);
@@ -224,10 +232,11 @@ public class ApplicationLoaderImpl extends ApplicationLoader {
                 downloadedApkFile = tempFile;
                 downloading = false;
                 downloadProgress = 1f;
+                String sha256Hex = sha256(tempFile);
                 if (pendingRelease != null && !TextUtils.isEmpty(pendingRelease.tagName)) {
                     File tagFile = new File(tempFile.getParent(), tempFile.getName() + ".tag");
                     try (java.io.FileWriter w = new java.io.FileWriter(tagFile)) {
-                        w.write(pendingRelease.tagName);
+                        w.write(pendingRelease.tagName + "|" + (sha256Hex != null ? sha256Hex : ""));
                     } catch (Throwable ignored) {}
                 }
                 if (onComplete != null) {
@@ -284,7 +293,66 @@ public class ApplicationLoaderImpl extends ApplicationLoader {
 
     @Override
     public File getDownloadedUpdateFile() {
-        return downloadedApkFile;
+        if (downloadedApkFile != null && downloadedApkFile.exists()) {
+            return downloadedApkFile;
+        }
+        File cachedApk = new File(applicationContext.getCacheDir(), APK_DIR + "/" + APK_FILENAME);
+        if (!cachedApk.exists() || cachedApk.length() <= 0) {
+            return null;
+        }
+        File tagFile = new File(cachedApk.getParent(), cachedApk.getName() + ".tag");
+        String storedTag = null;
+        String storedSha256 = null;
+        if (tagFile.exists()) {
+            try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.FileReader(tagFile))) {
+                String line = r.readLine();
+                if (line != null) {
+                    int pipe = line.indexOf('|');
+                    if (pipe >= 0) {
+                        storedTag = line.substring(0, pipe);
+                        storedSha256 = line.substring(pipe + 1);
+                        if (storedSha256.isEmpty()) storedSha256 = null;
+                    } else {
+                        storedTag = line;
+                    }
+                }
+            } catch (Throwable ignored) {}
+        }
+        if (storedSha256 != null) {
+            String computed = sha256(cachedApk);
+            if (computed == null || !computed.equals(storedSha256)) {
+                return null;
+            }
+        }
+        if (pendingRelease != null && !TextUtils.isEmpty(pendingRelease.tagName)) {
+            if (!pendingRelease.tagName.equals(storedTag)) {
+                return null;
+            }
+        }
+        downloadedApkFile = cachedApk;
+        return cachedApk;
+    }
+
+    private static String sha256(File file) {
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            FileInputStream fis = new FileInputStream(file);
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = fis.read(buffer)) != -1) {
+                md.update(buffer, 0, read);
+            }
+            fis.close();
+            byte[] hash = md.digest();
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b & 0xff));
+            }
+            return sb.toString();
+        } catch (Throwable e) {
+            FileLog.e(TAG + ": SHA256 failed", e);
+            return null;
+        }
     }
 
     public long getDownloadTotalSize() {
@@ -315,7 +383,12 @@ public class ApplicationLoaderImpl extends ApplicationLoader {
             File tagFile = new File(cachedApk.getParent(), cachedApk.getName() + ".tag");
             if (tagFile.exists() && pendingRelease != null && !TextUtils.isEmpty(pendingRelease.tagName)) {
                 try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.FileReader(tagFile))) {
-                    tagMatch = pendingRelease.tagName.equals(r.readLine());
+                    String line = r.readLine();
+                    if (line != null) {
+                        int pipe = line.indexOf('|');
+                        String storedTag = pipe >= 0 ? line.substring(0, pipe) : line;
+                        tagMatch = pendingRelease.tagName.equals(storedTag);
+                    }
                 } catch (Throwable ignored) {}
             }
             if (tagMatch) {
