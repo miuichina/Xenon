@@ -92,37 +92,32 @@ public class GitHubUpdateHelper {
 
                 release.parseSha256FromBody();
 
-                if (force) {
-                    // Force mode: skip hash comparison, always report as available
-                    if (findApkDownloadUrl(release) == null) {
-                        AndroidUtilities.runOnUIThread(() ->
-                                callback.onError("No arm64 build for this release"));
-                    } else {
-                        AndroidUtilities.runOnUIThread(() -> callback.onUpdateAvailable(release));
-                    }
+                if (findApkDownloadUrl(release) == null) {
+                    AndroidUtilities.runOnUIThread(() ->
+                            callback.onError("No arm64 build for this release"));
                     return;
                 }
 
                 if (installedSha256 != null && release.apkSha256 != null) {
                     if (installedSha256.equalsIgnoreCase(release.apkSha256)) {
-                        FileLog.d(TAG + ": SHA256 matches, no update");
+                        FileLog.d(TAG + ": SHA256 matches (" + installedSha256.substring(0, 16) + "...), no update");
                         AndroidUtilities.runOnUIThread(callback::onNoUpdate);
                         return;
                     }
-                    FileLog.d(TAG + ": SHA256 differs, update available");
-                    String apkUrl = findApkDownloadUrl(release);
-                    if (apkUrl == null) {
-                        AndroidUtilities.runOnUIThread(() ->
-                                callback.onError("No arm64 build for this release"));
-                    } else {
-                        AndroidUtilities.runOnUIThread(() -> callback.onUpdateAvailable(release));
-                    }
+                    FileLog.d(TAG + ": SHA256 differs (installed=" + installedSha256.substring(0, 16)
+                            + "... release=" + release.apkSha256.substring(0, 16) + "...), update available");
+                    AndroidUtilities.runOnUIThread(() -> callback.onUpdateAvailable(release));
                     return;
                 }
 
+                FileLog.d(TAG + ": SHA256 unavailable (installed=" + (installedSha256 != null ? "set" : "null")
+                        + " release=" + (release.apkSha256 != null ? "set" : "null")
+                        + "), falling back to commit hash");
+
                 String currentHash = BuildConfig.GIT_COMMIT_SHORT;
+                String remoteHash = release.commitShortHash;
                 FileLog.d(TAG + ": local=" + currentHash
-                        + " remote=" + release.tagName
+                        + " remote=" + (remoteHash != null ? remoteHash : release.tagName)
                         + " name=" + release.name);
                 if (TextUtils.isEmpty(currentHash) || "unknown".equals(currentHash)) {
                     AndroidUtilities.runOnUIThread(() ->
@@ -130,26 +125,27 @@ public class GitHubUpdateHelper {
                     return;
                 }
 
-                // Use startsWith comparison because git short hash length varies
-                // depending on clone depth (shallow vs full), so the embedded hash
-                // and the release tag may have different lengths (e.g. 7 vs 9 chars).
-                String remote = release.tagName.trim().toLowerCase();
                 String local = currentHash.trim().toLowerCase();
-                boolean isSameBuild = remote.startsWith(local)
-                        || local.startsWith(remote);
+                if (!TextUtils.isEmpty(remoteHash)) {
+                    String remote = remoteHash.trim().toLowerCase();
+                    boolean isSameBuild = remote.startsWith(local) || local.startsWith(remote);
+                    if (isSameBuild) {
+                        FileLog.d(TAG + ": commit hashes match, no update");
+                        AndroidUtilities.runOnUIThread(callback::onNoUpdate);
+                        return;
+                    }
+                }
+                // fallback: compare against tagName
+                String tagNameLower = release.tagName.trim().toLowerCase();
+                boolean isSameBuild = tagNameLower.startsWith(local) || local.startsWith(tagNameLower);
                 if (isSameBuild) {
                     FileLog.d(TAG + ": hashes match, no update");
                     AndroidUtilities.runOnUIThread(callback::onNoUpdate);
                 } else if (isReleaseOlderThanInstalled(release)) {
-                    // Hash differs but the GitHub "latest" was published before
-                    // the locally installed build — almost certainly a rollback
-                    // on the release page. Treat as up-to-date instead of
-                    // offering to install an older APK over the current one.
                     FileLog.d(TAG + ": remote release is older than installed, ignoring");
                     AndroidUtilities.runOnUIThread(callback::onNoUpdate);
                 } else {
-                    String apkUrl = findApkDownloadUrl(release);
-                    FileLog.d(TAG + ": update available, apk=" + apkUrl);
+                    FileLog.d(TAG + ": update available");
                     AndroidUtilities.runOnUIThread(() -> callback.onUpdateAvailable(release));
                 }
             } catch (Exception e) {
@@ -321,29 +317,67 @@ public class GitHubUpdateHelper {
         public List<GitHubAsset> assets;
 
         public String apkSha256;
+        public String commitShortHash;
 
         void parseSha256FromBody() {
             if (body == null) return;
+            String fallback = null;
             for (String line : body.split("\n")) {
                 String trimmed = line.trim();
-                int colon = trimmed.indexOf(':');
-                if (colon < 0) continue;
-                String key = trimmed.substring(0, colon).trim().toLowerCase();
-                String value = trimmed.substring(colon + 1).trim();
-                if (!key.contains("sha256") && !key.contains("sha-256") && !key.contains("checksum")) continue;
-                StringBuilder hex = new StringBuilder();
-                for (int i = 0; i < value.length(); i++) {
-                    char c = value.charAt(i);
-                    if ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
-                        hex.append(c);
-                    } else if (hex.length() > 0) {
-                        break;
+                String trimmedLower = trimmed.toLowerCase();
+
+                // Parse Short Hash: xxxxxxx from the body
+                if (commitShortHash == null && trimmedLower.startsWith("short hash")) {
+                    int ci = trimmed.indexOf(':');
+                    if (ci >= 0) {
+                        String val = trimmed.substring(ci + 1).trim();
+                        if (!val.isEmpty()) commitShortHash = val;
                     }
                 }
-                if (hex.length() == 64) {
-                    apkSha256 = hex.toString().toLowerCase();
-                    return;
+
+                int colon = trimmed.indexOf(':');
+                String firstHex = null;
+                for (int i = 0; i < trimmed.length(); i++) {
+                    char c = trimmed.charAt(i);
+                    if ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+                        int start = i;
+                        while (i < trimmed.length() && ((trimmed.charAt(i) >= '0' && trimmed.charAt(i) <= '9')
+                                || (trimmed.charAt(i) >= 'a' && trimmed.charAt(i) <= 'f')
+                                || (trimmed.charAt(i) >= 'A' && trimmed.charAt(i) <= 'F'))) {
+                            i++;
+                        }
+                        String hex = trimmed.substring(start, i);
+                        if (hex.length() == 64) {
+                            if (firstHex == null) firstHex = hex;
+                            if (line.toLowerCase().contains("arm64") || line.toLowerCase().contains("arm64-v8a")) {
+                                apkSha256 = hex.toLowerCase();
+                                return;
+                            }
+                        }
+                    }
                 }
+                if (firstHex != null && fallback == null) {
+                    boolean shaHint = false;
+                    if (colon >= 0) {
+                        String key = trimmed.substring(0, colon).trim().toLowerCase();
+                        shaHint = key.contains("sha256") || key.contains("sha-256") || key.contains("checksum");
+                    }
+                    if (!shaHint) {
+                        int firstSpace = Integer.MAX_VALUE;
+                        int firstTab = trimmedLower.indexOf('\t');
+                        int firstSpaceChar = trimmedLower.indexOf(' ');
+                        if (firstTab >= 0) firstSpace = Math.min(firstSpace, firstTab);
+                        if (firstSpaceChar >= 0) firstSpace = Math.min(firstSpace, firstSpaceChar);
+                        String prefix = firstSpace < Integer.MAX_VALUE ? trimmedLower.substring(0, firstSpace) : trimmedLower;
+                        shaHint = "sha256".equals(prefix) || "sha-256".equals(prefix) || "checksum".equals(prefix);
+                    }
+                    if (shaHint) {
+                        fallback = firstHex;
+                    }
+                }
+            }
+            if (fallback != null) {
+                apkSha256 = fallback.toLowerCase();
             }
         }
     }

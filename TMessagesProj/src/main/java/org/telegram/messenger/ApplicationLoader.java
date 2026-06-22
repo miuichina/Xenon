@@ -770,4 +770,7 @@ public class ApplicationLoader extends Application {
     public long getDownloadBytesDownloaded() {
         return 0;
     }
+    public String getPendingReleaseTag() {
+        return null;
+    }
 }
