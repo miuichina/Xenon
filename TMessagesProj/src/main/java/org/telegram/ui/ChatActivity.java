@@ -35599,6 +35599,7 @@ public class ChatActivity extends BaseFragment implements
             return;
         }
         if (!actionBar.isSearchFieldVisible()) {
+            fragmentView.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);
             animatorSearchFieldVisibility.setValue(true, true);
             if (headerItem != null) {
                 headerItem.setVisibility(View.GONE);
