@@ -230,7 +230,7 @@
     <string name="CopyCallback">Copy Callback Data</string>
     <string name="CopyInlineQuery">Copy Inline Query</string>
     <string name="CopyID">Copy ID</string>
-    <string name="ShowRPCError">Toast all RPC errors</string>
+    <string name="ShowRPCError">Show all RPC errors</string>
     <string name="ShowRPCErrorException">Exceptions: %s</string>
     <string name="SoonRemovedOption">This experimental option will be removed and enabled by default soon, if you are having issues with this option, please **report to us**.</string>
     <string name="TabletMode">Tablet mode</string>
@@ -325,7 +325,9 @@
     <string name="NavigationAnimationBezier">Classic</string>
     <string name="NavigationAnimationSpring">Natural</string>
     <string name="CloudConfig">Cloud Settings</string>
-    <string name="CloudConfigDesc">Save your Xenon Settings to Telegram cloud.</string>
+    <string name="CloudConfigDesc">Save your Xenon Settings to file.</string>
+    <string name="SaveSettingsToFile">Save settings to file</string>
+    <string name="RestoreSettingsFromFile">Restore settings from file</string>
     <string name="CloudConfigSyncDate">Last synced: %s, cloud: %s</string>
     <string name="CloudConfigSyncDateNever">never</string>
     <string name="CloudConfigSync">Sync to cloud</string>
@@ -374,6 +376,11 @@
     <string name="TabsPositionTop">Top</string>
     <string name="TabsPositionBottom">Bottom</string>
     <string name="StrokeOnViews">Glare effects</string>
+    <string name="ForceBlurLiquidGlass">Force enable blur and liquid glass options</string>
+    <string name="DisableGooeyAvatarAnimation">Disable \"Gooey\" avatar animation</string>
+    <string name="GooeyAvatarOffset">Avatar pull-in offset</string>
+    <string name="GooeyAvatarOffsetLeft">Higher</string>
+    <string name="GooeyAvatarOffsetRight">Lower</string>
     <string name="HideRecordButton">Hide record button</string>
     <string name="TelegaDetectorEnabled">Telega detector</string>
     <string name="TelegaDetectorHint">Checks if a profile uses or used Telega.</string>
@@ -402,4 +409,15 @@
     <string name="TextAnimBlurDuration">Blur duration</string>
     <string name="AlternativeTransition">Alternative transition</string>
     <string name="TransitionSpeed">Transition speed (ms)</string>
+    <string name="DownloadingUpdate">Downloading update...</string>
+    <string name="UpdateDownloaded">Update downloaded!</string>
+    <string name="NekoUpdate">Update</string>
+    <string name="ForceUpdate">Force update</string>
+    <string name="AutoDownloadUpdate">Automatically download update</string>
+    <string name="HowToOpenConfigFile">How do you want to open this file?</string>
+    <string name="OpenAsXenonConfig">As Xenon config</string>
+    <string name="OpenAsFile">As file</string>
+    <string name="ImportSettingsSuccess">Settings imported!</string>
+    <string name="ImportSettingsFailed">Failed to import settings</string>
+    <string name="TextAnimationTestHint">Type here to test...</string>
 </resources>

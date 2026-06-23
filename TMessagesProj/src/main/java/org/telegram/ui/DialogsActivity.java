@@ -13535,16 +13535,23 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 presentFragment(new ChatActivity(args));
             });
             Drawable ghostDrawable = activity.getResources().getDrawable(R.drawable.ghost).mutate();
+            ghostDrawable.setColorFilter(new PorterDuffColorFilter(0xffffffff, PorterDuff.Mode.SRC_IN));
             ghostDrawable.setBounds(0, 0, AndroidUtilities.dp(24), AndroidUtilities.dp(24));
             Bitmap ghostBitmap = Bitmap.createBitmap(AndroidUtilities.dp(24), AndroidUtilities.dp(24), Bitmap.Config.ARGB_8888);
             Canvas ghostCanvas = new Canvas(ghostBitmap);
             ghostDrawable.draw(ghostCanvas);
-            io.add(new BitmapDrawable(activity.getResources(), ghostBitmap), NekoConfig.ghostModeEnabled
+            String ghostText = NekoConfig.ghostModeEnabled
                     ? LocaleController.getString(R.string.DisableGhostMode)
-                    : LocaleController.getString(R.string.GhostMode), () -> {
+                    : LocaleController.getString(R.string.GhostMode);
+            ActionBarMenuSubItem ghostItem = new ActionBarMenuSubItem(activity, false, false, null);
+            ghostItem.setPadding(AndroidUtilities.dp(18), 0, AndroidUtilities.dp(18), 0);
+            ghostItem.setTextAndIcon(ghostText, 0, new BitmapDrawable(activity.getResources(), ghostBitmap));
+            ghostItem.setOnClickListener(v -> {
                 NekoConfig.toggleGhostMode();
                 showItemOptions();
+                io.dismiss();
             });
+            io.add(ghostItem);
             if (ApplicationLoader.applicationLoaderInstance != null) {
                 ApplicationLoader.applicationLoaderInstance.addItemOptions(io);
             }

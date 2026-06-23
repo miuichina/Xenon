@@ -38,6 +38,8 @@ import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.Parcelable;
 import android.os.StatFs;
 import android.os.StrictMode;
@@ -81,6 +83,7 @@ import androidx.annotation.RequiresApi;
 import androidx.arch.core.util.Function;
 import androidx.collection.LongSparseArray;
 import androidx.core.app.ActivityCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.pm.ShortcutInfoCompat;
 import androidx.core.content.pm.ShortcutManagerCompat;
 import androidx.core.graphics.ColorUtils;
@@ -257,6 +260,7 @@ import java.util.zip.ZipInputStream;
 import zxc.iconic.xenon.Extra;
 import zxc.iconic.xenon.forward.ForwardContext;
 import zxc.iconic.xenon.NekoConfig;
+import zxc.iconic.xenon.helpers.ApkInstaller;
 import zxc.iconic.xenon.helpers.MonetHelper;
 import zxc.iconic.xenon.helpers.remote.UpdateHelper;
 
@@ -5984,6 +5988,103 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
     }
 
     private boolean firstAppUpdateCheck = true;
+    private android.os.Handler autoUpdateHandler;
+    private boolean autoUpdateCheckScheduledFromResume;
+
+    private void startUpdateDownload(BetaUpdate update) {
+        final Bulletin[] progBulletin = new Bulletin[1];
+        AndroidUtilities.runOnUIThread(() -> {
+            try {
+                Bulletin b = BulletinFactory.global()
+                        .createSimpleBulletin(R.raw.ic_download, "Downloading update...", "Cancel", Integer.MAX_VALUE, () -> ApplicationLoader.applicationLoaderInstance.cancelDownloadingUpdate());
+                if (b.getLayout() instanceof Bulletin.LottieLayout) {
+                    ((Bulletin.LottieLayout) b.getLayout()).setIconPaddingBottom(2);
+                }
+                b.show();
+                progBulletin[0] = b;
+            } catch (Throwable ignored) {}
+        }, 100);
+
+        ApplicationLoader.applicationLoaderInstance.downloadUpdate(() -> {
+            AndroidUtilities.runOnUIThread(() -> {
+                try { if (progBulletin[0] != null) progBulletin[0].hide(); } catch (Throwable ignored) {}
+            });
+            File apkFile = ApplicationLoader.applicationLoaderInstance.getDownloadedUpdateFile();
+            if (apkFile != null && apkFile.exists()) {
+                AndroidUtilities.runOnUIThread(() -> {
+                    try {
+                        Bulletin b2 = BulletinFactory.global()
+                                .createSimpleBulletin(R.raw.ic_download,
+                                        LocaleController.getString(R.string.UpdateDownloaded),
+                                        "Update",
+                                        Integer.MAX_VALUE,
+                                        () -> zxc.iconic.xenon.helpers.ApkInstaller.installUpdate(LaunchActivity.this, apkFile));
+                        if (b2.getLayout() instanceof Bulletin.LottieLayout) {
+                            ((Bulletin.LottieLayout) b2.getLayout()).setIconPaddingBottom(2);
+                        }
+                        b2.show();
+                    } catch (Throwable ignored) {}
+                });
+            }
+        });
+
+        AndroidUtilities.runOnUIThread(new Runnable() {
+            @Override
+            public void run() {
+                if (ApplicationLoader.applicationLoaderInstance.isDownloadingUpdate() && progBulletin[0] != null) {
+                    try {
+                        float prog = ApplicationLoader.applicationLoaderInstance.getDownloadingUpdateProgress();
+                        long total = ApplicationLoader.applicationLoaderInstance.getDownloadTotalSize();
+                        long downloaded = ApplicationLoader.applicationLoaderInstance.getDownloadBytesDownloaded();
+                        String text;
+                        if (total > 0) {
+                            String d = android.text.format.Formatter.formatShortFileSize(LaunchActivity.this, downloaded);
+                            String t = android.text.format.Formatter.formatShortFileSize(LaunchActivity.this, total);
+                            text = "Downloading update... " + d + " / " + t;
+                        } else {
+                            text = "Downloading update... " + (int)(prog * 100) + "%";
+                        }
+                        ((Bulletin.LottieLayout) progBulletin[0].getLayout()).textView.setText(text);
+                    } catch (Throwable ignored) {}
+                    AndroidUtilities.runOnUIThread(this, 500);
+                }
+            }
+        }, 500);
+    }
+
+    public void startAutoUpdateCheck() {
+        if (autoUpdateHandler != null) {
+            autoUpdateHandler.removeCallbacksAndMessages(null);
+        }
+        if (autoUpdateCheckScheduledFromResume) {
+            autoUpdateCheckScheduledFromResume = false;
+            scheduleNextAutoCheck();
+        } else {
+            performAutoUpdateCheck();
+        }
+    }
+
+    private void performAutoUpdateCheck() {
+        if (!NekoConfig.autoDownloadUpdate) return;
+
+        ApplicationLoader.applicationLoaderInstance.checkUpdate(false, () -> {
+            BetaUpdate update = ApplicationLoader.applicationLoaderInstance.getUpdate();
+            if (update != null && !ApplicationLoader.applicationLoaderInstance.isDownloadingUpdate()) {
+                startUpdateDownload(update);
+            }
+            scheduleNextAutoCheck();
+        });
+    }
+
+    private void scheduleNextAutoCheck() {
+        if (!NekoConfig.autoDownloadUpdate) return;
+        if (autoUpdateHandler == null) {
+            autoUpdateHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+        }
+        autoUpdateHandler.removeCallbacksAndMessages(null);
+        autoUpdateHandler.postDelayed(this::performAutoUpdateCheck, 30 * 60 * 1000L);
+    }
+
     /**
      * Process-scoped guard: only one automatic update check is performed per
      * cold boot of the app. Subsequent automatic triggers (e.g. {@link #onResume()}
@@ -6022,7 +6123,11 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                     }
                 }
                 if (pendingUpdate != null && !ApplicationLoader.applicationLoaderInstance.isDownloadingUpdate() && (first || prevUpdate == null || pendingUpdate.higherThan(prevUpdate))) {
-                    ApplicationLoader.applicationLoaderInstance.showCustomUpdateAppPopup(LaunchActivity.this, pendingUpdate, currentAccount);
+                    if (NekoConfig.autoDownloadUpdate) {
+                        startUpdateDownload(pendingUpdate);
+                    } else {
+                        ApplicationLoader.applicationLoaderInstance.showCustomUpdateAppPopup(LaunchActivity.this, pendingUpdate, currentAccount);
+                    }
                 }
             });
             return;
@@ -7009,6 +7114,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
     protected void onResume() {
         super.onResume();
         isResumed = true;
+        NotificationManagerCompat.from(this).cancel(8732833);
         pipActivityHandler.onResume();
         if (onResumeStaticCallback != null) {
             onResumeStaticCallback.run();
@@ -7076,6 +7182,10 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
             showUpdateActivity(UserConfig.selectedAccount, SharedConfig.pendingAppUpdate, true);
         }
         checkAppUpdate(false, null);
+        if (NekoConfig.autoDownloadUpdate && ApplicationLoader.applicationLoaderInstance.isCustomUpdate()) {
+            autoUpdateCheckScheduledFromResume = true;
+            startAutoUpdateCheck();
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             ApplicationLoader.canDrawOverlays = Settings.canDrawOverlays(this);

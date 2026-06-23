@@ -6534,23 +6534,7 @@ public class ChatActivity extends BaseFragment implements
                 return super.createAccessibilityNodeInfo();
             }
         };
-        chatListView.addEdgeEffectListener(new org.telegram.ui.Components.EdgeEffectTrackerFactory.OnEdgeEffectListener() {
-            private final Runnable invalidator = new Runnable() {
-                @Override
-                public void run() {
-                    invalidateMergedVisibleBlurredPositionsAndSources(BLUR_INVALIDATE_FLAG_SCROLL | BLUR_INVALIDATE_FLAG_CLIP);
-                    if (chatListView.hasActiveEdgeEffects()) {
-                        chatListView.postOnAnimation(this);
-                    }
-                }
-            };
-
-            @Override
-            public void onEdgeEffectVisibilityChange(int direction, boolean isVisible) {
-                chatListView.removeCallbacks(invalidator);
-                chatListView.postOnAnimation(invalidator);
-            }
-        });
+        chatListView.addEdgeEffectListener(() -> invalidateMergedVisibleBlurredPositionsAndSources(BLUR_INVALIDATE_FLAG_SCROLL | BLUR_INVALIDATE_FLAG_CLIP));
         if (false && currentEncryptedChat != null) {
             chatListView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
         }
@@ -7800,23 +7784,7 @@ public class ChatActivity extends BaseFragment implements
                 }
             }
         });
-        messagesSearchListView.addEdgeEffectListener(new org.telegram.ui.Components.EdgeEffectTrackerFactory.OnEdgeEffectListener() {
-            private final Runnable invalidator = new Runnable() {
-                @Override
-                public void run() {
-                    invalidateMergedVisibleBlurredPositionsAndSources(BLUR_INVALIDATE_FLAG_SCROLL | BLUR_INVALIDATE_FLAG_CLIP);
-                    if (messagesSearchListView.hasActiveEdgeEffects()) {
-                        messagesSearchListView.postOnAnimation(this);
-                    }
-                }
-            };
-
-            @Override
-            public void onEdgeEffectVisibilityChange(int direction, boolean isVisible) {
-                messagesSearchListView.removeCallbacks(invalidator);
-                messagesSearchListView.postOnAnimation(invalidator);
-            }
-        });
+        messagesSearchListView.addEdgeEffectListener(() -> invalidateMergedVisibleBlurredPositionsAndSources(BLUR_INVALIDATE_FLAG_SCROLL | BLUR_INVALIDATE_FLAG_CLIP));
         hashtagLoadingView = new FlickerLoadingView(context, themeDelegate);
         hashtagLoadingView.setViewType(FlickerLoadingView.DIALOG_CELL_TYPE);
 
@@ -35631,6 +35599,7 @@ public class ChatActivity extends BaseFragment implements
             return;
         }
         if (!actionBar.isSearchFieldVisible()) {
+            fragmentView.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);
             animatorSearchFieldVisibility.setValue(true, true);
             if (headerItem != null) {
                 headerItem.setVisibility(View.GONE);
@@ -42086,6 +42055,53 @@ public class ChatActivity extends BaseFragment implements
                         return;
                     } else {
                         scrollToPositionOnRecreate = -1;
+                    }
+                }
+                String docNameLower = message.getDocumentName().toLowerCase();
+                if (docNameLower.endsWith("xenon_settings_backup.json")) {
+                    File cfgFile = null;
+                    if (message.messageOwner.attachPath != null && message.messageOwner.attachPath.length() != 0) {
+                        File f = new File(message.messageOwner.attachPath);
+                        if (f.exists()) {
+                            cfgFile = f;
+                        }
+                    }
+                    if (cfgFile == null) {
+                        File f = getFileLoader().getPathToMessage(message.messageOwner);
+                        if (f.exists()) {
+                            cfgFile = f;
+                        }
+                    }
+                    if (cfgFile != null) {
+                        try {
+                            String content = new String(java.nio.file.Files.readAllBytes(cfgFile.toPath()), "UTF-8");
+                            new org.json.JSONObject(content);
+                            Activity activity = getParentActivity();
+                            if (activity != null) {
+                                AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+                                builder.setTitle(LocaleController.getString(R.string.Nekogram));
+                                builder.setMessage(LocaleController.getString(R.string.HowToOpenConfigFile));
+                                builder.setPositiveButton(LocaleController.getString(R.string.OpenAsXenonConfig), (dialog, which) -> {
+                                    try {
+                                        NekoConfig.importConfigs(content);
+                                        BulletinFactory.global().createSimpleBulletin(R.raw.chats_infotip, LocaleController.getString(R.string.ImportSettingsSuccess)).show();
+                                    } catch (Exception e) {
+                                        FileLog.e(e);
+                                        BulletinFactory.global().createSimpleBulletin(R.raw.chats_infotip, LocaleController.getString(R.string.ImportSettingsFailed)).show();
+                                    }
+                                });
+                                builder.setNegativeButton(LocaleController.getString(R.string.OpenAsFile), (dialog, which) -> {
+                                    try {
+                                        AndroidUtilities.openForView(message, activity, themeDelegate, false);
+                                    } catch (Exception e) {
+                                        FileLog.e(e);
+                                        alertUserOpenError(message);
+                                    }
+                                });
+                                builder.show();
+                                return;
+                            }
+                        } catch (Exception ignored) {}
                     }
                 }
                 boolean handled = false;

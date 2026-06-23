@@ -244,7 +244,7 @@ public class TextAnimationEditText extends EditTextCaption {
         if ((getGravity() & Gravity.VERTICAL_GRAVITY_MASK) != Gravity.TOP) {
             voffsetCursor = getTotalPaddingTop() - getExtendedPaddingTop();
         }
-        canvas.translate(getPaddingLeft() - getScrollX(), getExtendedPaddingTop() + voffsetCursor - getScrollY());
+        canvas.translate(getPaddingLeft(), getExtendedPaddingTop() + voffsetCursor);
         cursorPaint.setColor(cursorColor);
         float x = animCursorX;
         float lineTop = layout.getLineTop(line);
@@ -268,10 +268,17 @@ public class TextAnimationEditText extends EditTextCaption {
         if ((getGravity() & Gravity.VERTICAL_GRAVITY_MASK) != Gravity.TOP) {
             voffsetText = getTotalPaddingTop() - getExtendedPaddingTop();
         }
-        canvas.translate(getPaddingLeft() - getScrollX(), getExtendedPaddingTop() + voffsetText - getScrollY());
-        canvas.clipRect(getScrollX(), getScrollY(),
-                getScrollX() + getWidth() - getPaddingLeft() - getPaddingRight(),
-                getScrollY() + getHeight() - getExtendedPaddingTop() - getExtendedPaddingBottom());
+
+        int scrollX = getScrollX();
+        int scrollY = getScrollY();
+        canvas.clipRect(
+                scrollX + getPaddingLeft(),
+                scrollY + getExtendedPaddingTop(),
+                scrollX + getWidth() - getPaddingRight(),
+                scrollY + getHeight() - getExtendedPaddingBottom()
+        );
+
+        canvas.translate(getPaddingLeft(), getExtendedPaddingTop() + voffsetText);
 
         animPaint.setColor(getCurrentTextColor());
         animPaint.setTypeface(getTypeface());

@@ -748,6 +748,8 @@ public class ApplicationLoader extends Application {
         return false;
     }
     public void downloadUpdate() {}
+    public void downloadUpdate(Runnable onComplete) {}
+    public void downloadUpdate(String apkUrl, Runnable onComplete) {}
     public void cancelDownloadingUpdate() {}
     public boolean isDownloadingUpdate() {
         return false;
@@ -761,5 +763,11 @@ public class ApplicationLoader extends Application {
     }
     public File getDownloadedUpdateFile() {
         return null;
+    }
+    public long getDownloadTotalSize() {
+        return 0;
+    }
+    public long getDownloadBytesDownloaded() {
+        return 0;
     }
 }

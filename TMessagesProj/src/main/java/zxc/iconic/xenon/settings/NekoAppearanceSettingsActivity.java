@@ -1,15 +1,25 @@
 package zxc.iconic.xenon.settings;
 
 import android.content.Context;
+import android.content.DialogInterface;
+import android.text.InputType;
+import android.util.TypedValue;
+import android.view.MotionEvent;
 import android.view.View;
+import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
+import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.TextCheckCell;
+import org.telegram.ui.Components.EditTextBoldCursor;
+import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.RecyclerListView;
+import org.telegram.ui.Components.TextAnimationEditText;
 import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.UniversalAdapter;
 import org.telegram.ui.Components.UniversalRecyclerView;
@@ -42,8 +52,18 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
 
     private final int strokeOnViewsRow = rowId++;
     private final int hideRecordButtonRow = rowId++;
+    private final int disableGooeyAvatarAnimationRow = rowId++;
+    private final int gooeyAvatarOffsetRow = rowId++;
     private final int alternativeTransitionRow = rowId++;
     private final int alternativeTransitionSpeedRow = rowId++;
+    private final int alternativeTransitionEaseRow = rowId++;
+
+    private final int textAnimationRow = rowId++;
+    private final int textAnimTestInputRow = rowId++;
+    private final int textAnimCursorRow = rowId++;
+    private final int textAnimFadeRow = rowId++;
+    private final int textAnimBlurRow = rowId++;
+    private final int textAnimBlurDurationRow = rowId++;
 
     @Override
     public boolean onFragmentCreate() {
@@ -69,15 +89,55 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         items.add(UItem.asHeader(LocaleController.getString(R.string.ChangeChannelNameColor2)));
         items.add(EmojiSetCellFactory.of(emojiSetsRow, LocaleController.getString(R.string.EmojiSets)).slug("emojiSets"));
         items.add(UItem.asCheck(predictiveBackAnimationRow, LocaleController.getString(R.string.PredictiveBackAnimation)).slug("predictiveBackAnimation").setChecked(NekoConfig.predictiveBackAnimation));
+        items.add(UItem.asCheck(disableGooeyAvatarAnimationRow, LocaleController.getString(R.string.DisableGooeyAvatarAnimation)).setChecked(NekoConfig.disableGooeyAvatarAnimation).slug("disableGooeyAvatarAnimation"));
+        SeekbarConfig offsetConfig = new SeekbarConfig(
+                LocaleController.getString(R.string.GooeyAvatarOffset),
+                LocaleController.getString(R.string.GooeyAvatarOffsetLeft),
+                LocaleController.getString(R.string.GooeyAvatarOffsetRight),
+                -100, 100, 1,
+                progress -> NekoConfig.setGooeyAvatarOffset(Math.round(progress)));
+        items.add(SeekbarCellFactory.of(gooeyAvatarOffsetRow, offsetConfig, NekoConfig.gooeyAvatarOffset).slug("gooeyAvatarOffset"));
         items.add(UItem.asCheck(hideRecordButtonRow, LocaleController.getString(R.string.HideRecordButton)).setChecked(NekoConfig.hideRecordButton).slug("hideRecordButton"));
         items.add(UItem.asCheck(alternativeTransitionRow, LocaleController.getString(R.string.AlternativeTransition)).setChecked(NekoConfig.alternativeTransition).slug("alternativeTransition"));
         if (NekoConfig.alternativeTransition) {
             SeekbarConfig speedConfig = new SeekbarConfig(
                     LocaleController.getString(R.string.TransitionSpeed),
-                    "100", "1000", 100, 1000,
+                    "100", "1000", 100, 1000, 5,
                     progress -> NekoConfig.setAlternativeTransitionSpeed(Math.round(progress / 5f) * 5));
             items.add(SeekbarCellFactory.of(alternativeTransitionSpeedRow, speedConfig, NekoConfig.alternativeTransitionSpeed).slug("alternativeTransitionSpeed"));
+            items.add(TextSettingsCellFactory.of(alternativeTransitionEaseRow, "Change ease", NekoConfig.alternativeTransitionEase).slug("alternativeTransitionEase"));
         }
+        items.add(UItem.asHeader(LocaleController.getString(R.string.TextAnimation)));
+        boolean animSupported = android.os.Build.VERSION.SDK_INT >= 26;
+        items.add(UItem.asCheck(textAnimationRow, LocaleController.getString(R.string.TextAnimationToggle), animSupported ? null : LocaleController.getString(R.string.TextAnimationApiWarning)).slug("textAnimation").setChecked(NekoConfig.textAnimationEnabled).setEnabled(animSupported));
+        if (NekoConfig.textAnimationEnabled && animSupported) {
+            items.add(TextAnimationTestInputFactory.of(textAnimTestInputRow));
+            SeekbarConfig cursorConfig = new SeekbarConfig(
+                    LocaleController.getString(R.string.TextAnimCursor),
+                    "0", "100", 0, 100,
+                    progress -> NekoConfig.setTextAnimCursorSpeed(Math.round(progress)));
+            items.add(SeekbarCellFactory.of(textAnimCursorRow, cursorConfig, NekoConfig.textAnimCursorSpeed).slug("textAnimCursor"));
+
+            SeekbarConfig fadeConfig = new SeekbarConfig(
+                    LocaleController.getString(R.string.TextAnimFadeDuration),
+                    "50", "800", 50, 800, 5,
+                    progress -> NekoConfig.setTextAnimFadeDuration(Math.round(progress / 5f) * 5));
+            items.add(SeekbarCellFactory.of(textAnimFadeRow, fadeConfig, NekoConfig.textAnimFadeDuration).slug("textAnimFadeDuration"));
+
+            SeekbarConfig blurConfig = new SeekbarConfig(
+                    LocaleController.getString(R.string.TextAnimBlurStrength),
+                    "0", "30", 0, 30,
+                    progress -> NekoConfig.setTextAnimBlurStrength(Math.round(progress)));
+            items.add(SeekbarCellFactory.of(textAnimBlurRow, blurConfig, NekoConfig.textAnimBlurStrength).slug("textAnimBlurStrength"));
+
+            SeekbarConfig blurDurationConfig = new SeekbarConfig(
+                    LocaleController.getString(R.string.TextAnimBlurDuration),
+                    "50", "1000", 50, 1000, 5,
+                    progress -> NekoConfig.setTextAnimBlurDuration(Math.round(progress / 5f) * 5));
+            items.add(SeekbarCellFactory.of(textAnimBlurDurationRow, blurDurationConfig, NekoConfig.textAnimBlurDuration).slug("textAnimBlurDuration"));
+        }
+        items.add(UItem.asShadow(null));
+
         items.add(UItem.asCheck(appBarShadowRow, LocaleController.getString(R.string.DisableAppBarShadow)).slug("appBarShadow").setChecked(NekoConfig.disableAppBarShadow));
         items.add(UItem.asCheck(formatTimeWithSecondsRow, LocaleController.getString(R.string.FormatWithSeconds)).slug("formatTimeWithSeconds").setChecked(NekoConfig.formatTimeWithSeconds));
         items.add(UItem.asCheck(disableNumberRoundingRow, LocaleController.getString(R.string.DisableNumberRounding), "4.8K -> 4777").slug("disableNumberRounding").setChecked(NekoConfig.disableNumberRounding));
@@ -117,7 +177,20 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     @Override
     protected void onItemClick(UItem item, View view, int position, float x, float y) {
         var id = item.id;
-        if (id == tabletModeRow) {
+        if (id == textAnimTestInputRow) {
+            if (view instanceof TextAnimationEditText) {
+                view.requestFocus();
+                AndroidUtilities.showKeyboard(view);
+            }
+        } else if (id == textAnimationRow) {
+            if (android.os.Build.VERSION.SDK_INT >= 26) {
+                NekoConfig.toggleTextAnimation();
+                if (view instanceof TextCheckCell) {
+                    ((TextCheckCell) view).setChecked(NekoConfig.textAnimationEnabled);
+                }
+                listView.adapter.update(true);
+            }
+        } else if (id == tabletModeRow) {
             ArrayList<String> arrayList = new ArrayList<>();
             ArrayList<Integer> types = new ArrayList<>();
             arrayList.add(LocaleController.getString(R.string.TabletModeAuto));
@@ -223,6 +296,12 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.strokeOnViews);
             }
+        } else if (id == disableGooeyAvatarAnimationRow) {
+            NekoConfig.toggleDisableGooeyAvatarAnimation();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.disableGooeyAvatarAnimation);
+            }
+            showRestartBulletin();
         } else if (id == hideRecordButtonRow) {
             NekoConfig.toggleHideRecordButton();
             if (view instanceof TextCheckCell) {
@@ -234,7 +313,55 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
                 ((TextCheckCell) view).setChecked(NekoConfig.alternativeTransition);
             }
             listView.adapter.update(true);
+        } else if (id == alternativeTransitionEaseRow) {
+            showEaseDialog();
         }
+    }
+
+    private void showEaseDialog() {
+        Context context = getParentActivity();
+        if (context == null) return;
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(context, resourcesProvider);
+        builder.setTitle("Change ease");
+
+        LinearLayout container = new LinearLayout(context);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(16), AndroidUtilities.dp(24), 0);
+
+        EditTextBoldCursor editText = new EditTextBoldCursor(context);
+        editText.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
+        editText.setTextColor(Theme.getColor(Theme.key_dialogTextBlack, resourcesProvider));
+        editText.setInputType(InputType.TYPE_CLASS_TEXT);
+        editText.setText(NekoConfig.alternativeTransitionEase);
+        editText.setSelection(editText.getText().length());
+
+        container.addView(editText, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        builder.setView(container);
+
+        builder.setPositiveButton(LocaleController.getString("OK", R.string.OK), (dialog, which) -> {
+            String text = editText.getText().toString().trim();
+            if (!text.isEmpty()) {
+                NekoConfig.setAlternativeTransitionEase(text);
+                listView.adapter.update(true);
+            }
+        });
+
+        builder.setNegativeButton(LocaleController.getString("Cancel", R.string.Cancel), null);
+
+        String defaultEase = "0.37,0.01,0.1,1";
+        builder.setNeutralButton(LocaleController.getString("Reset", R.string.Reset), (dialog, which) -> {
+            NekoConfig.setAlternativeTransitionEase(defaultEase);
+            listView.adapter.update(true);
+        });
+
+        AlertDialog dialog = builder.show();
+        if (NekoConfig.alternativeTransitionEase.equals(defaultEase)) {
+            dialog.getButton(DialogInterface.BUTTON_NEUTRAL).setAlpha(0.5f);
+        }
+
+        editText.requestFocus();
+        AndroidUtilities.showKeyboard(editText);
     }
 
     @Override
@@ -269,6 +396,47 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             var item = UItem.ofFactory(EmojiSetCellFactory.class);
             item.id = id;
             item.text = title;
+            return item;
+        }
+    }
+
+    private static class TextAnimationTestInputFactory extends UItem.UItemFactory<TextAnimationEditText> {
+        static {
+            setup(new TextAnimationTestInputFactory());
+        }
+
+        @Override
+        public TextAnimationEditText createView(Context context, RecyclerListView listView, int currentAccount, int classGuid, Theme.ResourcesProvider resourcesProvider) {
+            TextAnimationEditText editText = new TextAnimationEditText(context, resourcesProvider) {
+                @Override
+                public boolean onTouchEvent(MotionEvent event) {
+                    if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                        getParent().requestDisallowInterceptTouchEvent(true);
+                    }
+                    return super.onTouchEvent(event);
+                }
+            };
+            editText.setHint(LocaleController.getString(R.string.TextAnimationTestHint));
+            editText.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
+            editText.setHintTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteHintText, resourcesProvider));
+            editText.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText, resourcesProvider));
+            editText.setBackground(null);
+            editText.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(12), AndroidUtilities.dp(16), AndroidUtilities.dp(12));
+            editText.setSingleLine(false);
+            editText.setMaxLines(3);
+            editText.setMinHeight(AndroidUtilities.dp(48));
+            editText.setFocusable(true);
+            editText.setFocusableInTouchMode(true);
+            return editText;
+        }
+
+        @Override
+        public void bindView(View view, UItem item, boolean divider, UniversalAdapter adapter, UniversalRecyclerView listView) {
+        }
+
+        public static UItem of(int id) {
+            var item = UItem.ofFactory(TextAnimationTestInputFactory.class);
+            item.id = id;
             return item;
         }
     }

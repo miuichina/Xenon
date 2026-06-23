@@ -1,6 +1,7 @@
 package zxc.iconic.xenon.settings;
 
 import android.animation.ValueAnimator;
+import android.app.Activity;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -336,7 +337,17 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
     }
 
     protected void showRestartBulletin() {
-        BulletinFactory.of(this).createErrorBulletin(LocaleController.formatString(R.string.RestartAppToTakeEffect)).show();
+        Activity activity = getParentActivity();
+        if (activity == null) return;
+        BulletinFactory.of(this).createSimpleBulletin(R.raw.chats_infotip,
+                LocaleController.formatString(R.string.RestartAppToTakeEffect),
+                LocaleController.getString(R.string.BotUnblockNoCaps),
+                () -> {
+                    android.content.Intent intent = new android.content.Intent(activity, org.telegram.ui.LaunchActivity.class);
+                    intent.setFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    activity.startActivity(intent);
+                    activity.finishAffinity();
+                }).show();
     }
 
     protected void updateRows() {
@@ -558,14 +569,20 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
         public final String right;
         public final int min;
         public final int max;
+        public final int step;
         public final AltSeekbar.OnDrag onDrag;
 
         public SeekbarConfig(String title, String left, String right, int min, int max, AltSeekbar.OnDrag onDrag) {
+            this(title, left, right, min, max, 1, onDrag);
+        }
+
+        public SeekbarConfig(String title, String left, String right, int min, int max, int step, AltSeekbar.OnDrag onDrag) {
             this.title = title;
             this.left = left;
             this.right = right;
             this.min = min;
             this.max = max;
+            this.step = step;
             this.onDrag = onDrag;
         }
     }
@@ -616,19 +633,14 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
         }
 
         public void bind(SeekbarConfig config, int currentValue) {
-            // Build the seekbar lazily on first bind. Subsequent rebinds (e.g.
-            // adapter.update from fillItems) intentionally do NOT rebuild it —
-            // each fillItems pass produces a fresh SeekbarConfig with a fresh
-            // OnDrag lambda, but those lambdas typically just close over the
-            // same NekoConfig static field, so reusing the original one keeps
-            // the in-progress drag state alive and avoids tearing down the
-            // underlying SeekBarView.
-            if (seekbar == null) {
-                seekbar = new AltSeekbar(getContext(), config.onDrag, config.min, config.max,
-                        config.title, config.left, config.right, resourcesProvider);
-                seekbar.setDefaultValue(currentValue);
-                addView(seekbar, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+            if (seekbar != null) {
+                removeView(seekbar);
             }
+            seekbar = new AltSeekbar(getContext(), config.onDrag, config.min, config.max,
+                    config.title, config.left, config.right, resourcesProvider);
+            seekbar.setDefaultValue(currentValue);
+            seekbar.setStep(config.step);
+            addView(seekbar, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
             seekbar.setValue(currentValue);
         }
     }

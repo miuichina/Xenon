@@ -95,6 +95,65 @@ public final class ApkInstaller {
         }
     }
 
+    public static void installUpdate(Activity context, File apkFile) {
+        if (context == null || apkFile == null || !apkFile.exists()) {
+            return;
+        }
+        if (hasBrokenPackageInstaller(context)) {
+            AndroidUtilities.openForView(apkFile, "install.apk", "application/vnd.android.package-archive", context, null, false);
+            return;
+        }
+        if (dialog != null && dialog.isShowing()) {
+            return;
+        }
+        LinearLayout linearLayout = new LinearLayout(context);
+        linearLayout.setOrientation(LinearLayout.VERTICAL);
+        linearLayout.setLayoutParams(LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP | Gravity.LEFT, 4, 4, 4, 4));
+
+        RLottieImageView imageView = new RLottieImageView(context);
+        imageView.setAutoRepeat(true);
+        imageView.setAnimation(R.raw.db_migration_placeholder, 160, 160);
+        imageView.playAnimation();
+        linearLayout.addView(imageView, LayoutHelper.createLinear(160, 160, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 17, 24, 17, 0));
+
+        TextView textView = new TextView(context);
+        textView.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+        textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
+        textView.setTextColor(Theme.getColor(Theme.key_dialogTextBlack));
+        textView.setSingleLine(true);
+        textView.setEllipsize(TextUtils.TruncateAt.END);
+        textView.setText(LocaleController.getString(R.string.UpdateInstalling));
+        linearLayout.addView(textView, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 17, 20, 17, 0));
+
+        TextView textView2 = new TextView(context);
+        textView2.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12);
+        textView2.setTextColor(Theme.getColor(Theme.key_dialogTextGray));
+        textView2.setText(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || Settings.canDrawOverlays(context) ?
+                LocaleController.getString(R.string.UpdateInstallingRelaunch) :
+                LocaleController.getString(R.string.UpdateInstallingNotification));
+        linearLayout.addView(textView2, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 17, 4, 17, 24));
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setView(linearLayout);
+        dialog = builder.create();
+        dialog.setCanceledOnTouchOutside(false);
+        dialog.setCancelable(false);
+        dialog.show();
+        Utilities.globalQueue.postRunnable(() -> {
+            var receiver = register(context, () -> {
+                if (dialog != null) {
+                    dialog.dismiss();
+                    dialog = null;
+                }
+            });
+            installapk(context, apkFile);
+            Intent intent = receiver.waitIntent();
+            if (intent != null) {
+                context.startActivity(intent);
+            }
+        });
+    }
+
     public static void installUpdate(Activity context, TLRPC.Document document) {
         if (context == null || document == null) {
             return;
@@ -281,6 +340,7 @@ public final class ApkInstaller {
                                 .setSmallIcon(R.drawable.notification)
                                 .setColor(NekoConfig.getNotificationColor())
                                 .setShowWhen(false)
+                                .setAutoCancel(true)
                                 .setContentText(LocaleController.getString(R.string.UpdateInstalledNotification))
                                 .setCategory(NotificationCompat.CATEGORY_STATUS)
                                 .setContentIntent(pendingIntent)

@@ -72,6 +72,10 @@ public class GitHubUpdateHelper {
      * @param callback result callback (never null)
      */
     public static void checkForUpdates(UpdateCallback callback) {
+        checkForUpdates(callback, false);
+    }
+
+    public static void checkForUpdates(UpdateCallback callback, boolean force) {
         new Thread(() -> {
             try {
                 FileLog.d(TAG + ": checking for updates...");
@@ -79,6 +83,17 @@ public class GitHubUpdateHelper {
                 if (release == null || TextUtils.isEmpty(release.tagName)) {
                     FileLog.d(TAG + ": release is null or has no tag");
                     AndroidUtilities.runOnUIThread(callback::onNoUpdate);
+                    return;
+                }
+
+                if (force) {
+                    // Force mode: skip hash comparison, always report as available
+                    if (findApkDownloadUrl(release) == null) {
+                        AndroidUtilities.runOnUIThread(() ->
+                                callback.onError("No arm64 build for this release"));
+                    } else {
+                        AndroidUtilities.runOnUIThread(() -> callback.onUpdateAvailable(release));
+                    }
                     return;
                 }
 

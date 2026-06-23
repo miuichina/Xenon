@@ -8,6 +8,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
+import android.graphics.Paint;
 import android.graphics.Shader;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
@@ -160,6 +161,29 @@ public class GlassPreviewCell extends View {
         }
         wallpaper.setAlpha(255);
         wallpaperBitmap = centerCropDrawable(wallpaper, getMeasuredWidth(), getMeasuredHeight());
+
+        // Paint colorful stripes behind the glass area
+        Paint stripePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        stripePaint.setStrokeWidth(dp(12));
+        stripePaint.setAlpha(70);
+        if (!bubbleRect.isEmpty()) {
+            Canvas stripeCanvas = new Canvas(wallpaperBitmap);
+            stripeCanvas.clipRect(bubbleRect);
+            int[] colors = {
+                    0xFF757575, 0xFF9E9E9E, 0xFFBDBDBD,
+                    0xFF9E9E9E, 0xFF757575, 0xFFFFFFFF
+            };
+            float[] angles = { -30, -15, 0, 15, 30, 45 };
+            float cx = getMeasuredWidth() / 2f, cy = getMeasuredHeight() / 2f;
+            float len = (float) Math.sqrt(getMeasuredWidth() * getMeasuredWidth() + getMeasuredHeight() * getMeasuredHeight());
+            for (int i = 0; i < colors.length; i++) {
+                stripePaint.setColor(colors[i]);
+                stripeCanvas.save();
+                stripeCanvas.rotate(angles[i], cx, cy);
+                stripeCanvas.drawLine(cx - len / 2f, cy, cx + len / 2f, cy, stripePaint);
+                stripeCanvas.restore();
+            }
+        }
 
         // Record the wallpaper bitmap into the RenderNode source.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

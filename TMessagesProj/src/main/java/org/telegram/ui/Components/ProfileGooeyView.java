@@ -44,6 +44,7 @@ public class ProfileGooeyView extends FrameLayout {
     private float pullProgress;
     private float blurIntensity;
     private boolean enabled;
+    private int gooeyEndOffsetDp;
 
     @Nullable
     public NotchInfoUtils.NotchInfo notchInfo;
@@ -111,6 +112,14 @@ public class ProfileGooeyView extends FrameLayout {
             return;
         }
         this.enabled = enabled;
+        invalidate();
+    }
+
+    public void setGooeyEndOffsetDp(int dp) {
+        if (this.gooeyEndOffsetDp == dp) {
+            return;
+        }
+        this.gooeyEndOffsetDp = dp;
         invalidate();
     }
 
@@ -208,7 +217,7 @@ public class ProfileGooeyView extends FrameLayout {
                 bitmapCanvas.scale((float) bitmap.getWidth() / bitmapOrigW, (float) bitmap.getHeight() / bitmapOrigH);
                 if (notchInfo != null) {
                     bitmapCanvas.save();
-                    bitmapCanvas.translate(-optimizedOffsetX, dp(BLACK_KING_BAR));
+                    bitmapCanvas.translate(-optimizedOffsetX, dp(BLACK_KING_BAR) + dp(gooeyEndOffsetDp));
                     if (notchInfo.isLikelyCircle) {
                         float rad = Math.min(notchInfo.bounds.width(), notchInfo.bounds.height()) / 2f;
                         bitmapCanvas.drawCircle(notchInfo.bounds.centerX(), notchInfo.bounds.bottom - notchInfo.bounds.width() / 2f, rad, blackPaint);
@@ -220,7 +229,10 @@ public class ProfileGooeyView extends FrameLayout {
                     }
                     bitmapCanvas.restore();
                 } else {
+                    bitmapCanvas.save();
+                    bitmapCanvas.translate(0, dp(gooeyEndOffsetDp));
                     bitmapCanvas.drawRect(0, 0, optimizedW, dp(BLACK_KING_BAR), blackPaint);
+                    bitmapCanvas.restore();
                 }
                 bitmapCanvas.restore();
 
@@ -391,6 +403,7 @@ public class ProfileGooeyView extends FrameLayout {
 
             c = effectNotchNode.beginRecording();
             c.scale(1f / gooScaleFactor, 1f / gooScaleFactor, 0, 0);
+            c.translate(0, dp(gooeyEndOffsetDp));
             if (notchInfo != null) {
                 c.translate(-left, -top);
                 c.translate(0, dp(BLACK_KING_BAR));

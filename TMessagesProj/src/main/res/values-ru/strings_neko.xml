@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="NekoSettings">Настройки Xenon</string>
     <string name="PreferIPv6">Предпочитать подключение через IPv6</string>
@@ -106,10 +106,10 @@
     <string name="AdvancedGlassSection">Параметры стекла</string>
     <string name="AdvancedGlassAlpha">Прозрачность стекла</string>
     <string name="AdvancedGlassBlur">Сила блюра</string>
-    <string name="GlassBottomSheet">Стекло в нижних панелях</string>
-    <string name="GlassBottomSheetDesc">Применять жидкое стекло к нижним панелям, контекстным меню и попапам. Требует включённое размытие.</string>
     <string name="AdvancedGlassWallpaperBlur">Единый блюр обоев</string>
     <string name="AdvancedGlassWallpaperBlurDesc">Если включено, стекло берёт чистые обои чата и размывает их тем же блюром, что и остальные стеклянные элементы. Если выключено, используется стоковый frosted-блюр Telegram.</string>
+    <string name="GlassBottomSheet">Стекло в нижних панелях</string>
+    <string name="GlassBottomSheetDesc">Применять жидкое стекло к нижним панелям, контекстным меню и попапам. Требует включённое размытие.</string>
     <string name="AdvancedGlassRefraction">Сила рефракции</string>
     <string name="AdvancedGlassDispersion">Хроматическая дисперсия</string>
     <string name="AdvancedGlassGlare">Сила блика</string>
@@ -230,7 +230,7 @@
     <string name="CopyCallback">Скопировать Callback Data</string>
     <string name="CopyInlineQuery">Копировать строчный запрос</string>
     <string name="CopyID">Копировать ID</string>
-    <string name="ShowRPCError">Всплывающие уведомления обо всех ошибках RPC</string>
+    <string name="ShowRPCError">Показывать все ошибки RPC</string>
     <string name="ShowRPCErrorException">Исключения: %s</string>
     <string name="SoonRemovedOption">Это экспериментальный параметр скоро будет удалён и включён по умолчанию. Если у вас есть проблемы с этим параметром, пожалуйста **сообщите нам**.</string>
     <string name="TabletMode">Режим планшета</string>
@@ -325,7 +325,9 @@
     <string name="NavigationAnimationBezier">Стандартная</string>
     <string name="NavigationAnimationSpring">Обычная</string>
     <string name="CloudConfig">Облачные настройки</string>
-    <string name="CloudConfigDesc">Сохранить ваши настройки Xenon в облачном хранилище Telegram.</string>
+    <string name="CloudConfigDesc">Сохранить ваши настройки Xenon в файл.</string>
+    <string name="SaveSettingsToFile">Сохранить настройки в файл</string>
+    <string name="RestoreSettingsFromFile">Восстановить настройки из файла</string>
     <string name="CloudConfigSyncDate">Последняя синхронизация: %s, в облаке: %s</string>
     <string name="CloudConfigSyncDateNever">никогда</string>
     <string name="CloudConfigSync">Синхронизировать с облаком</string>
@@ -374,6 +376,11 @@
     <string name="TabsPositionTop">Сверху</string>
     <string name="TabsPositionBottom">Снизу</string>
     <string name="StrokeOnViews">Эффекты бликов</string>
+    <string name="ForceBlurLiquidGlass">Принудительно включить размытие и жидкое стекло</string>
+    <string name="DisableGooeyAvatarAnimation">Отключить \"тягучую\" анимацию аватарки</string>
+    <string name="GooeyAvatarOffset">Смещение точки втягивания</string>
+    <string name="GooeyAvatarOffsetLeft">Выше</string>
+    <string name="GooeyAvatarOffsetRight">Ниже</string>
     <string name="HideRecordButton">Скрыть кнопку записи</string>
     <string name="TelegaDetectorEnabled">Telega детектор</string>
     <string name="TextAnimation">Анимация текста</string>
@@ -394,4 +401,15 @@
     <string name="AccessibilitySettings">Настройки доступности</string>
     <string name="AlternativeTransition">Альтернативный переход</string>
     <string name="TransitionSpeed">Скорость перехода (мс)</string>
+    <string name="DownloadingUpdate">Загрузка обновления...</string>
+    <string name="UpdateDownloaded">Обновление загружено!</string>
+    <string name="NekoUpdate">Обновить</string>
+    <string name="ForceUpdate">Принудительное обновление</string>
+    <string name="AutoDownloadUpdate">Автоматически загружать обновление</string>
+    <string name="HowToOpenConfigFile">Как вы хотите открыть этот файл?</string>
+    <string name="OpenAsXenonConfig">Как конфиг Xenon</string>
+    <string name="OpenAsFile">Как файл</string>
+    <string name="ImportSettingsSuccess">Настройки импортированы!</string>
+    <string name="ImportSettingsFailed">Не удалось импортировать настройки</string>
+    <string name="TextAnimationTestHint">Напишите здесь для теста...</string>
 </resources>

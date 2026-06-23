@@ -2,13 +2,11 @@ package zxc.iconic.xenon.settings;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
 import android.text.InputType;
 import android.util.TypedValue;
 import android.view.Gravity;
-import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -21,8 +19,6 @@ import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.AnimatedTextView;
-import org.telegram.ui.Components.Bulletin;
-import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.EditTextBoldCursor;
 import org.telegram.ui.Components.LayoutHelper;
@@ -52,6 +48,7 @@ public class AltSeekbar extends FrameLayout {
     private final OnDrag onDrag;
 
     private final int min, max;
+    private int step = 1;
     private float currentValue;
     private int roundedValue;
     private int defaultValue;
@@ -103,8 +100,9 @@ public class AltSeekbar extends FrameLayout {
         seekBarView.setDelegate((stop, progress) -> {
             currentValue = min + (max - min) * progress;
             onDrag.run(currentValue);
-            if (Math.round(currentValue) != roundedValue) {
-                roundedValue = Math.round(currentValue);
+            int newRounded = step > 1 ? Math.round(currentValue / step) * step : Math.round(currentValue);
+            if (newRounded != roundedValue) {
+                roundedValue = newRounded;
                 updateText();
             }
         });
@@ -127,10 +125,17 @@ public class AltSeekbar extends FrameLayout {
         valuesView.addView(rightTextView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.RIGHT | Gravity.CENTER_VERTICAL));
 
         addView(valuesView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP | Gravity.FILL_HORIZONTAL, 21, 52, 21, 0));
+
+        roundedValue = min;
+        updateText();
     }
 
     public void setDefaultValue(int value) {
         defaultValue = value;
+    }
+
+    public void setStep(int step) {
+        this.step = step;
     }
 
     private void showInputDialog(Context context, String title) {
@@ -144,7 +149,7 @@ public class AltSeekbar extends FrameLayout {
         EditTextBoldCursor editText = new EditTextBoldCursor(context);
         editText.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
         editText.setTextColor(Theme.getColor(Theme.key_dialogTextBlack, resourcesProvider));
-        editText.setInputType(InputType.TYPE_CLASS_NUMBER);
+        editText.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_SIGNED);
         editText.setText(String.valueOf(roundedValue));
         editText.setSelection(editText.getText().length());
 
@@ -163,23 +168,7 @@ public class AltSeekbar extends FrameLayout {
         });
 
         builder.setNegativeButton(LocaleController.getString("Cancel", R.string.Cancel), null);
-        builder.setNeutralButton(LocaleController.getString("Reset", R.string.Reset), (dialog, which) -> {
-            if (defaultValue == min) {
-                BulletinFactory.of(Bulletin.BulletinWindow.make(getContext()), resourcesProvider)
-                        .createSimpleBulletin(R.raw.chats_infotip, LocaleController.getString(R.string.CouldNotResetNoDefault))
-                        .show();
-            } else {
-                setValue(defaultValue);
-                if (onDrag != null) {
-                    onDrag.run(defaultValue);
-                }
-            }
-        });
         AlertDialog dialog = builder.show();
-        if (defaultValue == min) {
-            Button resetBtn = (Button) dialog.getButton(DialogInterface.BUTTON_NEUTRAL);
-            resetBtn.setAlpha(0.5f);
-        }
 
         editText.requestFocus();
         AndroidUtilities.showKeyboard(editText);
@@ -210,8 +199,9 @@ public class AltSeekbar extends FrameLayout {
     public void setValue(float value) {
         currentValue = value;
         seekBarView.setProgress((value - min) / (float) (max - min));
-        if (Math.round(currentValue) != roundedValue) {
-            roundedValue = Math.round(currentValue);
+        int newRounded = step > 1 ? Math.round(currentValue / step) * step : Math.round(currentValue);
+        if (newRounded != roundedValue) {
+            roundedValue = newRounded;
             updateText();
         }
     }

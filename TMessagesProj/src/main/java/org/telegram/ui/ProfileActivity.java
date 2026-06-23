@@ -6044,6 +6044,15 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     }
 
     private void updateGooey() {
+        avatarGooey.setGooeyEndOffsetDp(NekoConfig.gooeyAvatarOffset);
+        if (NekoConfig.disableGooeyAvatarAnimation) {
+            avatarGooey.setGooeyEnabled(false);
+            avatarGooey.setAlpha(MathUtils.clamp(1f - (pullUpProgress - 0.5f) / 0.5f, 0f, 1f));
+            if (storyView != null && playProfileAnimation != 2) {
+                storyView.setAlpha(pullUpProgress > 0 ? lerp(1.0f, 0.0f, ilerp(pullUpProgress, 0, 0.5f)) : 1.0f);
+            }
+            return;
+        }
         float v = Math.min(pullUpProgress, 0.25f) / 0.25f;
         if (isTopic) {
             avatarGooey.setAlpha(1f - v);
@@ -8495,9 +8504,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 + actionBar.getTranslationY();
 
             if (!openAnimationInProgress) {
-                float endY = -dp(29);
+                float endY = -dp(29) + dp(NekoConfig.gooeyAvatarOffset);
                 if (avatarGooey != null && avatarGooey.notchInfo != null && avatarGooey.notchInfo.isLikelyCircle) {
-                    endY = avatarGooey.notchInfo.bounds.centerY();
+                    endY = avatarGooey.notchInfo.bounds.centerY() + dp(NekoConfig.gooeyAvatarOffset);
                 }
                 float startY =
                     (actionBar.getOccupyStatusBar() ? AndroidUtilities.statusBarHeight : 0)
