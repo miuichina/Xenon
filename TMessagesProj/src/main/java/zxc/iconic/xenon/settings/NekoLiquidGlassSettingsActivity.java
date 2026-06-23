@@ -26,6 +26,7 @@ import zxc.iconic.xenon.NekoConfig;
 public class NekoLiquidGlassSettingsActivity extends BaseNekoSettingsActivity {
 
     private final int useAdvancedLiquidGlassRow  = rowId++;
+    private final int glassBottomSheetRow        = rowId++;
     private final int previewRow                 = rowId++;
     private final int advancedGlassAlphaRow      = rowId++;
     private final int advancedGlassWallpaperBlurRow = rowId++;
@@ -34,6 +35,7 @@ public class NekoLiquidGlassSettingsActivity extends BaseNekoSettingsActivity {
     private final int advancedGlassDispersionRow = rowId++;
     private final int advancedGlassGlareRow      = rowId++;
     private final int advancedGlassTintPercentRow = rowId++;
+    private final int advancedGlassTintBlackWhiteRow = rowId++;
     private final int liquidGlassIntensityRow    = rowId++;
     private final int liquidGlassThicknessRow    = rowId++;
     private final int resetRow                   = rowId++;
@@ -63,6 +65,10 @@ public class NekoLiquidGlassSettingsActivity extends BaseNekoSettingsActivity {
                 LocaleController.getString(R.string.UseAdvancedLiquidGlass),
                 LocaleController.getString(R.string.UseAdvancedLiquidGlassDesc))
                 .slug("useAdvancedLiquidGlass").setChecked(NekoConfig.useAdvancedLiquidGlass));
+        items.add(UItem.asCheck(glassBottomSheetRow,
+                LocaleController.getString(R.string.GlassBottomSheet),
+                LocaleController.getString(R.string.GlassBottomSheetDesc))
+                .slug("glassBottomSheet").setChecked(NekoConfig.glassBottomSheet));
         if (NekoConfig.useAdvancedLiquidGlass) {
             items.add(UItem.asCheck(advancedGlassWallpaperBlurRow,
                     LocaleController.getString(R.string.AdvancedGlassWallpaperBlur),
@@ -140,6 +146,11 @@ public class NekoLiquidGlassSettingsActivity extends BaseNekoSettingsActivity {
                                 }
                             }),
                     NekoConfig.advancedGlassTintPercent).slug("advancedGlassTintPercent"));
+            items.add(UItem.asCheck(advancedGlassTintBlackWhiteRow,
+                            LocaleController.getString(R.string.AdvancedGlassTintBlackWhite),
+                            LocaleController.getString(R.string.AdvancedGlassTintBlackWhiteDesc))
+                    .slug("advancedGlassTintBlackWhite")
+                    .setChecked(NekoConfig.advancedGlassTintBlackWhite));
         } else {
             // Standard (non-advanced) sliders
             items.add(SeekbarCellFactory.of(liquidGlassIntensityRow,
@@ -193,10 +204,25 @@ public class NekoLiquidGlassSettingsActivity extends BaseNekoSettingsActivity {
             listView.post(this::invalidatePreview);
             showRestartBulletin();
 
+        } else if (id == glassBottomSheetRow) {
+            NekoConfig.toggleGlassBottomSheet();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.glassBottomSheet);
+            }
+            showRestartBulletin();
+
         } else if (id == advancedGlassWallpaperBlurRow) {
             NekoConfig.toggleAdvancedGlassWallpaperBlur();
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.advancedGlassWallpaperBlur);
+            }
+            listView.post(this::invalidatePreview);
+            showRestartBulletin();
+
+        } else if (id == advancedGlassTintBlackWhiteRow) {
+            NekoConfig.toggleAdvancedGlassTintBlackWhite();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.advancedGlassTintBlackWhite);
             }
             listView.post(this::invalidatePreview);
             showRestartBulletin();

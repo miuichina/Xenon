@@ -162,6 +162,15 @@ public class BlurredBackgroundProviderImpl {
         return new BlurredBackgroundProviderBuilder(resourcesProvider)
                 .setBackgroundColor((r, isDark) -> {
                     final float alpha = glassTintAlpha(LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0.90f : 0.86f);
+                    if (zxc.iconic.xenon.NekoConfig.advancedGlassTintBlackWhite) {
+                        // Override the theme-based tint with a neutral black/white base:
+                        // black in dark theme, white in light theme. tintWithAccent still
+                        // mixes the accent into the RGB channels afterwards (gated on
+                        // advanced glass + tintPercent slider), so the surface keeps a
+                        // natural tone instead of a flat wash. The slider controls how
+                        // strongly the tint is applied downstream in the render node.
+                        return tintWithAccent(Theme.multAlpha(isDark ? Color.BLACK : Color.WHITE, alpha), r);
+                    }
                     final int colorBg = Theme.getColor(Theme.key_actionBarDefaultSubmenuBackground, r);
                     final int accent = Theme.getColor(Theme.key_chat_messageLinkIn, r);
                     final int tinted = ColorUtils.blendARGB(colorBg, accent, isDark ? 0.13f : 0.09f);
@@ -170,6 +179,24 @@ public class BlurredBackgroundProviderImpl {
                 .setStrokeColorTop(0x30FFFFFF, 0x24FFFFFF)
                 .setStrokeColorBottom(0x1AFFFFFF, 0x14FFFFFF)
                 .setShadowColor(0x18000000, 0)
+                .setStrokeWidth(dpf2(0.5f), dpf2(0.5f))
+                .build();
+    }
+
+    public static BlurredBackgroundProvider bottomSheet(Theme.ResourcesProvider resourcesProvider) {
+        return new BlurredBackgroundProviderBuilder(resourcesProvider)
+                .setBackgroundColor((r, isDark) -> {
+                    final float alpha = glassTintAlpha(LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0.90f : 0.86f);
+                    if (zxc.iconic.xenon.NekoConfig.advancedGlassTintBlackWhite) {
+                        // Use a neutral black/white base in advanced glass mode (same pattern as chatTitlePill).
+                        return tintWithAccent(Theme.multAlpha(isDark ? Color.BLACK : Color.WHITE, alpha), r);
+                    }
+                    final int colorBg = Theme.getColor(Theme.key_dialogBackground, r);
+                    return tintWithAccent(Theme.multAlpha(colorBg, alpha), r);
+                })
+                .setStrokeColorTop(0x10FFFFFF, 0x10FFFFFF)
+                .setStrokeColorBottom(0x10FFFFFF, 0x08FFFFFF)
+                .setShadowColor(0x20000000, 0)
                 .setStrokeWidth(dpf2(0.5f), dpf2(0.5f))
                 .build();
     }

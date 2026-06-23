@@ -98,12 +98,16 @@
     <string name="LiquidGlassIntensity">Интенсивность преломления</string>
     <string name="LiquidGlassThickness">Толщина стекла</string>
     <string name="AdvancedGlassTintPercent">Сила затемнения стекла</string>
+    <string name="AdvancedGlassTintBlackWhite">Чёрно-белый tint</string>
+    <string name="AdvancedGlassTintBlackWhiteDesc">Использовать чёрный tint в тёмной теме и белый в светлой вместо цвета темы.</string>
     <string name="LiquidGlassTitle">Жидкое стекло</string>
     <string name="LiquidGlassSettingsDesc">Расширенные настройки стекла</string>
     <string name="LiquidGlassPreview">Предпросмотр</string>
     <string name="AdvancedGlassSection">Параметры стекла</string>
     <string name="AdvancedGlassAlpha">Прозрачность стекла</string>
     <string name="AdvancedGlassBlur">Сила блюра</string>
+    <string name="GlassBottomSheet">������ � �������</string>
+    <string name="GlassBottomSheetDesc">��������� ������ ������ � ����������� ���� � �������. ������� ���������� ��������.</string>
     <string name="AdvancedGlassWallpaperBlur">Единый блюр обоев</string>
     <string name="AdvancedGlassWallpaperBlurDesc">Если включено, стекло берёт чистые обои чата и размывает их тем же блюром, что и остальные стеклянные элементы. Если выключено, используется стоковый frosted-блюр Telegram.</string>
     <string name="AdvancedGlassRefraction">Сила рефракции</string>

@@ -101,6 +101,8 @@
     <string name="LiquidGlassIntensity">Refraction intensity</string>
     <string name="LiquidGlassThickness">Glass thickness</string>
     <string name="AdvancedGlassTintPercent">Glass tint strength</string>
+    <string name="AdvancedGlassTintBlackWhite">Black &amp; white tint</string>
+    <string name="AdvancedGlassTintBlackWhiteDesc">Use black tint in dark theme and white tint in light theme instead of the theme color.</string>
     <string name="LiquidGlassTitle">Liquid Glass</string>
     <string name="LiquidGlassSettingsDesc">Advanced glass settings</string>
     <string name="LiquidGlassPreview">Preview</string>
@@ -108,6 +110,8 @@
     <string name="AdvancedGlassAlpha">Glass transparency</string>
     <string name="AdvancedGlassBlur">Blur strength</string>
     <string name="AdvancedGlassWallpaperBlur">Unified wallpaper blur</string>
+    <string name="GlassBottomSheet">Glass in bottom sheets</string>
+    <string name="GlassBottomSheetDesc">Apply liquid glass background to popups and bottom menus. Requires blur to be enabled.</string>
     <string name="AdvancedGlassWallpaperBlurDesc">When enabled, glass uses the raw chat wallpaper and blurs it with the same advanced glass blur. When disabled, Telegram stock frosted wallpaper blur is used.</string>
     <string name="AdvancedGlassRefraction">Refraction strength</string>
     <string name="AdvancedGlassDispersion">Chromatic dispersion</string>

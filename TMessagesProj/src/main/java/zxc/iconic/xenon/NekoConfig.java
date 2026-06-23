@@ -179,6 +179,8 @@ public class NekoConfig {
     public static final float DEFAULT_ADVANCED_GLASS_FRESNEL = 1.0f;
     public static final float DEFAULT_ADVANCED_GLASS_GLARE = 1.0f;
     public static final int DEFAULT_ADVANCED_GLASS_TINT_PERCENT = 20;
+    public static final boolean DEFAULT_ADVANCED_GLASS_TINT_BLACK_WHITE = false;
+    public static final boolean DEFAULT_GLASS_BOTTOM_SHEET = true;
 
     public static float liquidGlassIntensity = 0.75f;
     public static int liquidGlassThickness = 11;
@@ -192,6 +194,8 @@ public class NekoConfig {
     public static float advancedGlassFresnel = DEFAULT_ADVANCED_GLASS_FRESNEL;
     public static float advancedGlassGlare = DEFAULT_ADVANCED_GLASS_GLARE;
     public static int advancedGlassTintPercent = DEFAULT_ADVANCED_GLASS_TINT_PERCENT;
+    public static boolean advancedGlassTintBlackWhite = DEFAULT_ADVANCED_GLASS_TINT_BLACK_WHITE;
+    public static boolean glassBottomSheet = DEFAULT_GLASS_BOTTOM_SHEET;
 
     public static boolean shouldNOTTrustMe = false;
 
@@ -322,6 +326,8 @@ public class NekoConfig {
             advancedGlassFresnel = preferences.getFloat("advancedGlassFresnel", DEFAULT_ADVANCED_GLASS_FRESNEL);
             advancedGlassGlare = preferences.getFloat("advancedGlassGlare", DEFAULT_ADVANCED_GLASS_GLARE);
             advancedGlassTintPercent = preferences.getInt("advancedGlassTintPercent", DEFAULT_ADVANCED_GLASS_TINT_PERCENT);
+            advancedGlassTintBlackWhite = preferences.getBoolean("advancedGlassTintBlackWhite", DEFAULT_ADVANCED_GLASS_TINT_BLACK_WHITE);
+            glassBottomSheet = preferences.getBoolean("glassBottomSheet", DEFAULT_GLASS_BOTTOM_SHEET);
             cameraInVideoMessages = preferences.getInt("cameraInVideoMessages", CAMERA_FRONT);
             removeAds = preferences.getBoolean("removeAds", false);
             textAnimationEnabled = preferences.getBoolean("textAnimationEnabled", false);
@@ -1226,6 +1232,23 @@ public class NekoConfig {
         editor.apply();
     }
 
+    public static void toggleAdvancedGlassTintBlackWhite() {
+        advancedGlassTintBlackWhite = !advancedGlassTintBlackWhite;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("advancedGlassTintBlackWhite", advancedGlassTintBlackWhite);
+        editor.putBoolean("glassBottomSheet", glassBottomSheet);
+        editor.apply();
+    }
+
+    public static void toggleGlassBottomSheet() {
+        glassBottomSheet = !glassBottomSheet;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("glassBottomSheet", glassBottomSheet);
+        editor.apply();
+    }
+
     public static void resetAdvancedGlassToDefaults() {
         advancedGlassAlpha = DEFAULT_ADVANCED_GLASS_ALPHA;
         advancedGlassBlur = DEFAULT_ADVANCED_GLASS_BLUR;
@@ -1234,6 +1257,8 @@ public class NekoConfig {
         advancedGlassFresnel = DEFAULT_ADVANCED_GLASS_FRESNEL;
         advancedGlassGlare = DEFAULT_ADVANCED_GLASS_GLARE;
         advancedGlassTintPercent = DEFAULT_ADVANCED_GLASS_TINT_PERCENT;
+        advancedGlassTintBlackWhite = DEFAULT_ADVANCED_GLASS_TINT_BLACK_WHITE;
+        glassBottomSheet = DEFAULT_GLASS_BOTTOM_SHEET;
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putInt("advancedGlassAlpha", advancedGlassAlpha);
@@ -1243,6 +1268,8 @@ public class NekoConfig {
         editor.putFloat("advancedGlassFresnel", advancedGlassFresnel);
         editor.putFloat("advancedGlassGlare", advancedGlassGlare);
         editor.putInt("advancedGlassTintPercent", advancedGlassTintPercent);
+        editor.putBoolean("advancedGlassTintBlackWhite", advancedGlassTintBlackWhite);
+        editor.putBoolean("glassBottomSheet", glassBottomSheet);
         editor.apply();
     }
 

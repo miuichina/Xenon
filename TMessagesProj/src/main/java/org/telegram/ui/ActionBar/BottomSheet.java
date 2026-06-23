@@ -77,8 +77,15 @@ import org.telegram.ui.Components.Bulletin;
 import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.messenger.SharedConfig;
+import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
+import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawableRenderNode;
+import org.telegram.ui.Components.blur3.drawable.color.impl.BlurredBackgroundProviderImpl;
+import org.telegram.ui.Components.blur3.source.BlurredBackgroundSourceRenderNode;
 import org.telegram.ui.LaunchActivity;
 
+import android.annotation.SuppressLint;
+import android.graphics.Bitmap;
 import java.util.ArrayList;
 
 public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
@@ -218,6 +225,12 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
     protected int dimBehindAlpha = 51;
 
     protected boolean allowNestedScroll = true;
+
+    // ----- Liquid glass background for attached-mode BottomSheets -----
+    @Nullable private BlurredBackgroundSourceRenderNode glassSource;
+    @Nullable private BlurredBackgroundDrawable glassDrawable;
+    @Nullable private View glassHostView;
+    private boolean glassApplied;
 
     protected Drawable shadowDrawable;
     protected int backgroundPaddingTop;
@@ -2102,8 +2115,82 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
 
     }
 
-    protected void onContainerViewTranslation() {
 
+    @SuppressLint("NewApi")
+    private void setupGlassBackground() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return;
+        if (!SharedConfig.chatBlurEnabled()) return;
+        if (attachedFragment == null) return;
+
+        final View hostView = attachedFragment.getLayoutContainer();
+        if (hostView == null) return;
+        if (hostView.getWidth() == 0 || hostView.getHeight() == 0) return;
+        if (containerView == null || containerView.getWidth() == 0) return;
+
+        glassHostView = hostView;
+
+        // 1. Create RenderNode source.
+        glassSource = new BlurredBackgroundSourceRenderNode(null);
+
+        // 2. Snapshot hostView (captures the content behind the sheet).
+        final Bitmap hostSnapshot = Bitmap.createBitmap(
+                hostView.getWidth(), hostView.getHeight(), Bitmap.Config.ARGB_8888);
+        final android.graphics.Canvas snapshotCanvas = new android.graphics.Canvas(hostSnapshot);
+        hostView.draw(snapshotCanvas);
+
+        // 3. Draw snapshot into the RenderNode source (one-time).
+        final android.graphics.Canvas rc = glassSource.beginRecording(
+                hostView.getWidth(), hostView.getHeight());
+        rc.drawBitmap(hostSnapshot, 0f, 0f, null);
+        glassSource.endRecording();
+        hostSnapshot.recycle();
+
+        // 4. Set blur radius from glass config.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            glassSource.setBlur(zxc.iconic.xenon.NekoConfig.useAdvancedLiquidGlass
+                    ? (float) dp(Math.max(1, zxc.iconic.xenon.NekoConfig.advancedGlassBlur))
+                    : (float) dp(8));
+        }
+
+        // 5. Create the drawable and enable AGSL liquid glass effect.
+        glassDrawable = glassSource.createDrawable();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && glassDrawable instanceof BlurredBackgroundDrawableRenderNode) {
+            ((BlurredBackgroundDrawableRenderNode) glassDrawable).setLiquidGlassEffectAllowed();
+        }
+
+        // 6. Apply color provider (uses key_dialogBackground tinted by accent).
+        glassDrawable.setColorProvider(
+                BlurredBackgroundProviderImpl.bottomSheet(resourcesProvider));
+
+        // 7. Set corner radii: rounded at the top, square at the bottom (matches the sheet shape).
+        final float r = (float) dp(12);
+        glassDrawable.setRadius(r, r, 0f, 0f);
+
+        // 8. Inset the glass visual area to match the sheet body (shadow padding region).
+        glassDrawable.setPadding(backgroundPaddingLeft);
+
+        // 9. Replace shadowDrawable as containerView background.
+        containerView.setBackgroundDrawable(glassDrawable);
+
+        glassApplied = true;
+    }
+    protected void onContainerViewTranslation() {
+        // One-time glass setup on the first animation frame.
+        if (!glassApplied && attachedFragment != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                setupGlassBackground();
+            }
+        }
+        // Update the glass source offset to track containerView position during animation/drag.
+        if (glassApplied && glassDrawable != null && glassHostView != null && containerView != null) {
+            final int[] hostLoc = new int[2];
+            final int[] viewLoc = new int[2];
+            glassHostView.getLocationOnScreen(hostLoc);
+            containerView.getLocationOnScreen(viewLoc);
+            glassDrawable.setSourceOffset(viewLoc[0] - hostLoc[0], viewLoc[1] - hostLoc[1]);
+            glassDrawable.invalidateSelf();
+        }
     }
 
     @Override
