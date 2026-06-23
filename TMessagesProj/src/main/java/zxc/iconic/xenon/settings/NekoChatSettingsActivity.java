@@ -59,6 +59,7 @@ public class NekoChatSettingsActivity extends BaseNekoSettingsActivity implement
     private final int disableJumpToNextRow = rowId++;
     private final int disableGreetingStickerRow = rowId++;
     private final int hideChannelBottomButtonsRow = rowId++;
+    private final int removeAdsRow = rowId++;
     private final int doubleTapActionRow = rowId++;
     private final int maxRecentStickersRow = rowId++;
 
@@ -158,6 +159,7 @@ public class NekoChatSettingsActivity extends BaseNekoSettingsActivity implement
         items.add(UItem.asCheck(disableJumpToNextRow, LocaleController.getString(R.string.DisableJumpToNextChannel)).slug("disableJumpToNext").setChecked(NekoConfig.disableJumpToNextChannel));
         items.add(UItem.asCheck(disableGreetingStickerRow, LocaleController.getString(R.string.DisableGreetingSticker)).slug("disableGreetingSticker").setChecked(NekoConfig.disableGreetingSticker));
         items.add(UItem.asCheck(hideChannelBottomButtonsRow, LocaleController.getString(R.string.HideChannelBottomButtons)).slug("hideChannelBottomButtons").setChecked(NekoConfig.hideChannelBottomButtons));
+        items.add(UItem.asCheck(removeAdsRow, LocaleController.getString(R.string.RemoveAds)).slug("removeAds").setChecked(NekoConfig.removeAds));
         items.add(TextSettingsCellFactory.of(doubleTapActionRow, LocaleController.getString(R.string.DoubleTapAction), NekoConfig.doubleTapInAction == NekoConfig.doubleTapOutAction ?
                 getDoubleTapActionText(NekoConfig.doubleTapInAction) :
                 getDoubleTapActionText(NekoConfig.doubleTapInAction) + ", " + getDoubleTapActionText(NekoConfig.doubleTapOutAction)).slug("doubleTapAction"));
@@ -505,6 +507,11 @@ public class NekoChatSettingsActivity extends BaseNekoSettingsActivity implement
             NekoConfig.toggleHideChannelBottomButtons();
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.hideChannelBottomButtons);
+            }
+        } else if (id == removeAdsRow) {
+            NekoConfig.toggleRemoveAds();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.removeAds);
             }
         }
     }

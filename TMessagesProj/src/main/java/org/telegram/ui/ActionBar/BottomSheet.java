@@ -24,8 +24,11 @@ import android.graphics.ColorFilter;
 import android.graphics.Insets;
 import android.graphics.Paint;
 import android.graphics.PixelFormat;
+import android.graphics.BitmapShader;
+import android.graphics.Matrix;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
+import android.graphics.Shader;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.graphics.Region;
@@ -135,6 +138,11 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
     private int cellType;
     private Integer selectedPos;
     protected SheetBackDrawable backDrawable = new SheetBackDrawable();
+    private Bitmap blurOverlayBitmap;
+    private BitmapShader blurOverlayShader;
+    private Paint blurOverlayPaint;
+    private Matrix blurOverlayMatrix;
+    private View blurOverlayView;
 
     protected static class SheetBackDrawable extends Drawable {
         private final Paint bgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -1558,6 +1566,53 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
     @Override
     public void show() {
         if (!AndroidUtilities.isSafeToShow(getContext())) return;
+        if (zxc.iconic.xenon.NekoConfig.blurOverlay && blurOverlayBitmap == null) {
+            AndroidUtilities.makeGlobalBlurBitmap(bitmap -> {
+                if (bitmap == null || dismissed) {
+                    if (bitmap != null) bitmap.recycle();
+                    return;
+                }
+                blurOverlayBitmap = bitmap;
+                blurOverlayShader = new BitmapShader(bitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
+                blurOverlayMatrix = new Matrix();
+                blurOverlayMatrix.postScale(8f, 8f);
+                blurOverlayShader.setLocalMatrix(blurOverlayMatrix);
+                blurOverlayPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                blurOverlayPaint.setShader(blurOverlayShader);
+                blurOverlayView = new View(getContext()) {
+                    @Override
+                    protected void onDraw(Canvas canvas) {
+                        if (blurOverlayPaint == null) return;
+                        canvas.drawPaint(blurOverlayPaint);
+                    }
+                    @Override
+                    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+                        super.onSizeChanged(w, h, oldw, oldh);
+                        if (blurOverlayMatrix != null && blurOverlayShader != null && blurOverlayBitmap != null) {
+                            blurOverlayMatrix.reset();
+                            blurOverlayMatrix.postScale((float) w / blurOverlayBitmap.getWidth(),
+                                    (float) h / blurOverlayBitmap.getHeight());
+                            blurOverlayShader.setLocalMatrix(blurOverlayMatrix);
+                        }
+                    }
+                };
+                blurOverlayView.setLayoutParams(new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+                if (container != null) {
+                    container.post(() -> {
+                        if (blurOverlayView != null && container != null && blurOverlayView.getParent() == null) {
+                            blurOverlayView.setAlpha(0f);
+                            container.addView(blurOverlayView, 0);
+                            blurOverlayView.animate()
+                                    .alpha(1f)
+                                    .setDuration(200)
+                                    .setInterpolator(CubicBezierInterpolator.DEFAULT)
+                                    .start();
+                        }
+                    });
+                }
+            }, 8);
+        }
         if (attachedFragment != null) {
             onCreateInternal();
         } else {
@@ -1988,6 +2043,18 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
             return;
         }
         dismissed = true;
+        if (blurOverlayView != null) {
+            blurOverlayView.animate()
+                    .alpha(0f)
+                    .setDuration(250)
+                    .setInterpolator(CubicBezierInterpolator.EASE_OUT)
+                    .withEndAction(() -> {
+                        if (blurOverlayView != null && container != null) {
+                            container.removeView(blurOverlayView);
+                        }
+                    })
+                    .start();
+        }
         if (onHideListener != null) {
             onHideListener.onDismiss(this);
         }
@@ -2237,6 +2304,20 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
     }
 
     public void dismissInternal() {
+        if (blurOverlayView != null) {
+            blurOverlayView.animate().cancel();
+            if (container != null) {
+                container.removeView(blurOverlayView);
+            }
+        }
+        if (blurOverlayBitmap != null) {
+            blurOverlayBitmap.recycle();
+            blurOverlayBitmap = null;
+        }
+        blurOverlayView = null;
+        blurOverlayShader = null;
+        blurOverlayPaint = null;
+        blurOverlayMatrix = null;
         if (attachedFragment != null) {
             attachedFragment.removeSheet(this);
             AndroidUtilities.removeFromParent(container);

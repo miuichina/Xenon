@@ -202,6 +202,8 @@ public class NekoConfig {
     public static boolean glassBottomSheet = DEFAULT_GLASS_BOTTOM_SHEET;
 
     public static boolean forceBlurLiquidGlass = false;
+    public static boolean blurOverlay = false;
+    public static boolean replaceDialogsWithSheet = false;
     public static boolean keepUnreadChatsOnTop = false;
     public static boolean keepUnreadArchivedOnTop = false;
     public static boolean shouldNOTTrustMe = false;
@@ -253,6 +255,8 @@ public class NekoConfig {
             askBeforeCall = preferences.getBoolean("askBeforeCall", true);
             shouldNOTTrustMe = preferences.getBoolean("shouldNOTTrustMe", false);
             forceBlurLiquidGlass = preferences.getBoolean("forceBlurLiquidGlass", false);
+            blurOverlay = preferences.getBoolean("blurOverlay", false);
+            replaceDialogsWithSheet = preferences.getBoolean("replaceDialogsWithSheet", false);
             keepUnreadChatsOnTop = preferences.getBoolean("keepUnreadChatsOnTop", false);
             keepUnreadArchivedOnTop = preferences.getBoolean("keepUnreadArchivedOnTop", false);
             disableNumberRounding = preferences.getBoolean("disableNumberRounding", false);
@@ -1003,6 +1007,22 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("forceBlurLiquidGlass", forceBlurLiquidGlass);
+        editor.apply();
+    }
+
+    public static void toggleBlurOverlay() {
+        blurOverlay = !blurOverlay;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("blurOverlay", blurOverlay);
+        editor.apply();
+    }
+
+    public static void toggleReplaceDialogsWithSheet() {
+        replaceDialogsWithSheet = !replaceDialogsWithSheet;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("replaceDialogsWithSheet", replaceDialogsWithSheet);
         editor.apply();
     }
 

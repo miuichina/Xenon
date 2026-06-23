@@ -3,6 +3,8 @@ package zxc.iconic.xenon.settings;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.text.InputType;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
 import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.View;
@@ -16,7 +18,9 @@ import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.TextCheckCell;
+import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.EditTextBoldCursor;
+import org.telegram.ui.Components.URLSpanNoUnderline;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.TextAnimationEditText;
@@ -51,6 +55,8 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int tabsPositionRow = rowId++;
 
     private final int strokeOnViewsRow = rowId++;
+    private final int blurOverlayRow = rowId++;
+    private final int replaceDialogsWithSheetRow = rowId++;
     private final int hideRecordButtonRow = rowId++;
     private final int disableGooeyAvatarAnimationRow = rowId++;
     private final int gooeyAvatarOffsetRow = rowId++;
@@ -59,6 +65,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int alternativeTransitionRow = rowId++;
     private final int alternativeTransitionSpeedRow = rowId++;
     private final int alternativeTransitionEaseRow = rowId++;
+    private final int alternativeTransitionEaseDescriptionRow = rowId++;
 
     private final int textAnimationRow = rowId++;
     private final int textAnimTestInputRow = rowId++;
@@ -112,6 +119,12 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
                     progress -> NekoConfig.setAlternativeTransitionSpeed(Math.round(progress / 5f) * 5));
             items.add(SeekbarCellFactory.of(alternativeTransitionSpeedRow, speedConfig, NekoConfig.alternativeTransitionSpeed).slug("alternativeTransitionSpeed"));
             items.add(TextSettingsCellFactory.of(alternativeTransitionEaseRow, "Change ease", NekoConfig.alternativeTransitionEase).slug("alternativeTransitionEase"));
+            var description = new SpannableStringBuilder(LocaleController.getString(R.string.AlternativeTransitionEaseDescription));
+            int linkStart = description.toString().indexOf("cubic-bezier.com");
+            if (linkStart >= 0) {
+                description.setSpan(new URLSpanNoUnderline("https://cubic-bezier.com"), linkStart, linkStart + "cubic-bezier.com".length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+            items.add(UItem.asShadow(alternativeTransitionEaseDescriptionRow, description));
         }
         items.add(UItem.asHeader(LocaleController.getString(R.string.TextAnimation)));
         boolean animSupported = android.os.Build.VERSION.SDK_INT >= 26;
@@ -176,6 +189,8 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
 
         items.add(UItem.asHeader(LocaleController.getString(R.string.LiteOptionsBlur2)));
         items.add(UItem.asCheck(strokeOnViewsRow, LocaleController.getString(R.string.StrokeOnViews)).setChecked(NekoConfig.strokeOnViews).slug("strokeOnViews"));
+        items.add(UItem.asCheck(blurOverlayRow, LocaleController.getString(R.string.BlurOverlay)).setChecked(NekoConfig.blurOverlay).slug("blurOverlay"));
+        items.add(UItem.asCheck(replaceDialogsWithSheetRow, LocaleController.getString(R.string.ReplaceDialogsWithSheet)).setChecked(NekoConfig.replaceDialogsWithSheet).slug("replaceDialogsWithSheet"));
         items.add(UItem.asShadow(null));
 
     }
@@ -301,6 +316,27 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             NekoConfig.toggleStrokeOnViews();
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.strokeOnViews);
+            }
+        } else if (id == blurOverlayRow) {
+            NekoConfig.toggleBlurOverlay();
+            item.checked = NekoConfig.blurOverlay;
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.blurOverlay);
+            }
+            if (NekoConfig.blurOverlay && !NekoConfig.replaceDialogsWithSheet) {
+                BulletinFactory.of(this).createSimpleBulletin(R.raw.chats_infotip,
+                        LocaleController.getString(R.string.BlurOverlayBulletinText),
+                        LocaleController.getString(R.string.BlurOverlayBulletinButton),
+                        () -> {
+                            NekoConfig.toggleReplaceDialogsWithSheet();
+                            listView.adapter.update(true);
+                        }).show();
+            }
+        } else if (id == replaceDialogsWithSheetRow) {
+            NekoConfig.toggleReplaceDialogsWithSheet();
+            item.checked = NekoConfig.replaceDialogsWithSheet;
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.replaceDialogsWithSheet);
             }
         } else if (id == disableGooeyAvatarAnimationRow) {
             NekoConfig.toggleDisableGooeyAvatarAnimation();

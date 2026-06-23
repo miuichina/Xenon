@@ -414,4 +414,9 @@
     <string name="ImportSettingsSuccess">Настройки импортированы!</string>
     <string name="ImportSettingsFailed">Не удалось импортировать настройки</string>
     <string name="TextAnimationTestHint">Напишите здесь для теста...</string>
+    <string name="BlurOverlay">Размытие за BottomSheet</string>
+    <string name="ReplaceDialogsWithSheet">Заменять диалоги на BottomSheet</string>
+    <string name="BlurOverlayBulletinText">Включите «Заменять диалоги на BottomSheet» для лучшего опыта</string>
+    <string name="BlurOverlayBulletinButton">Включить</string>
+    <string name="AlternativeTransitionEaseDescription">Экспериментируйте с ease на cubic-bezier.com</string>
 </resources>

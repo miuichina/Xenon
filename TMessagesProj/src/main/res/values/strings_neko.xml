@@ -422,4 +422,9 @@
     <string name="ImportSettingsSuccess">Settings imported!</string>
     <string name="ImportSettingsFailed">Failed to import settings</string>
     <string name="TextAnimationTestHint">Type here to test...</string>
+    <string name="BlurOverlay">Blur behind BottomSheet</string>
+    <string name="ReplaceDialogsWithSheet">Replace dialogs with BottomSheet</string>
+    <string name="BlurOverlayBulletinText">Enable Replace dialogs with BottomSheet for better experience</string>
+    <string name="BlurOverlayBulletinButton">Enable</string>
+    <string name="AlternativeTransitionEaseDescription">Experiment with ease on cubic-bezier.com</string>
 </resources>
