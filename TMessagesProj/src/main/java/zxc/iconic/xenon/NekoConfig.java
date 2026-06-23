@@ -184,7 +184,7 @@ public class NekoConfig {
     public static final float DEFAULT_ADVANCED_GLASS_GLARE = 1.0f;
     public static final int DEFAULT_ADVANCED_GLASS_TINT_PERCENT = 20;
     public static final boolean DEFAULT_ADVANCED_GLASS_TINT_BLACK_WHITE = false;
-    public static final boolean DEFAULT_GLASS_BOTTOM_SHEET = true;
+    public static final boolean DEFAULT_GLASS_BOTTOM_SHEET = false;
 
     public static float liquidGlassIntensity = 0.75f;
     public static int liquidGlassThickness = 11;

@@ -232,6 +232,8 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
     @Nullable private View glassHostView;
     private boolean glassApplied;
 
+
+
     protected Drawable shadowDrawable;
     protected int backgroundPaddingTop;
     protected int backgroundPaddingLeft;
