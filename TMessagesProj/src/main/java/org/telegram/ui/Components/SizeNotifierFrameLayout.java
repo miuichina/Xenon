@@ -605,6 +605,23 @@ public class SizeNotifierFrameLayout extends FrameLayout implements Theme.Colora
         return who == getBackgroundImage() || super.verifyDrawable(who);
     }
 
+    @Override
+    public void invalidateDrawable(@NonNull Drawable drawable) {
+        super.invalidateDrawable(drawable);
+        // Re-derive the glass blur source when a custom chat wallpaper finishes
+        // loading asynchronously. ChatBackgroundDrawable calls invalidateSelf()
+        // when its ImageReceiver delivers the bitmap; without this hook,
+        // navbarContentSourceWallpaper stays bound to a null-bitmap source and
+        // shows a frosted fallback until the user re-enters the chat.
+        // We only do this for ChatBackgroundDrawable — MotionBackgroundDrawable
+        // calls invalidateSelf() on every animation frame and must not trigger
+        // a wallpaper re-blur each time.
+        if (drawable == backgroundDrawable
+                && drawable instanceof org.telegram.ui.ChatBackgroundDrawable) {
+            onUpdateBackgroundDrawable(backgroundDrawable);
+        }
+    }
+
     final BlurBackgroundTask blurBackgroundTask = new BlurBackgroundTask();
 
     public void startBlur() {

@@ -2120,12 +2120,23 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
     private void setupGlassBackground() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return;
         if (!SharedConfig.chatBlurEnabled()) return;
-        if (attachedFragment == null) return;
-
-        final View hostView = attachedFragment.getLayoutContainer();
-        if (hostView == null) return;
-        if (hostView.getWidth() == 0 || hostView.getHeight() == 0) return;
+        if (!zxc.iconic.xenon.NekoConfig.glassBottomSheet) return;
         if (containerView == null || containerView.getWidth() == 0) return;
+
+        // Resolve the host view whose content will be captured as the glass source.
+        // Attached mode: the fragment's own layout container (same window as the sheet).
+        // Dialog mode:  the main activity's decor view (a separate window — its draw()
+        //               does NOT include the dialog, so the snapshot is always clean).
+        final View hostView;
+        if (attachedFragment != null) {
+            hostView = attachedFragment.getLayoutContainer();
+            if (hostView == null) return;
+        } else {
+            if (LaunchActivity.instance == null
+                    || LaunchActivity.instance.getWindow() == null) return;
+            hostView = LaunchActivity.instance.getWindow().getDecorView();
+        }
+        if (hostView.getWidth() == 0 || hostView.getHeight() == 0) return;
 
         glassHostView = hostView;
 
@@ -2177,7 +2188,7 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
     }
     protected void onContainerViewTranslation() {
         // One-time glass setup on the first animation frame.
-        if (!glassApplied && attachedFragment != null) {
+        if (!glassApplied) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 setupGlassBackground();
             }
