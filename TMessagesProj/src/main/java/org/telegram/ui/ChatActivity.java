@@ -6534,7 +6534,23 @@ public class ChatActivity extends BaseFragment implements
                 return super.createAccessibilityNodeInfo();
             }
         };
-        chatListView.addEdgeEffectListener(() -> invalidateMergedVisibleBlurredPositionsAndSources(BLUR_INVALIDATE_FLAG_SCROLL | BLUR_INVALIDATE_FLAG_CLIP));
+        chatListView.addEdgeEffectListener(new org.telegram.ui.Components.EdgeEffectTrackerFactory.OnEdgeEffectListener() {
+            private final Runnable invalidator = new Runnable() {
+                @Override
+                public void run() {
+                    invalidateMergedVisibleBlurredPositionsAndSources(BLUR_INVALIDATE_FLAG_SCROLL | BLUR_INVALIDATE_FLAG_CLIP);
+                    if (chatListView.hasActiveEdgeEffects()) {
+                        chatListView.postOnAnimation(this);
+                    }
+                }
+            };
+
+            @Override
+            public void onEdgeEffectVisibilityChange(int direction, boolean isVisible) {
+                chatListView.removeCallbacks(invalidator);
+                chatListView.postOnAnimation(invalidator);
+            }
+        });
         if (false && currentEncryptedChat != null) {
             chatListView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
         }
@@ -7784,7 +7800,23 @@ public class ChatActivity extends BaseFragment implements
                 }
             }
         });
-        messagesSearchListView.addEdgeEffectListener(() -> invalidateMergedVisibleBlurredPositionsAndSources(BLUR_INVALIDATE_FLAG_SCROLL | BLUR_INVALIDATE_FLAG_CLIP));
+        messagesSearchListView.addEdgeEffectListener(new org.telegram.ui.Components.EdgeEffectTrackerFactory.OnEdgeEffectListener() {
+            private final Runnable invalidator = new Runnable() {
+                @Override
+                public void run() {
+                    invalidateMergedVisibleBlurredPositionsAndSources(BLUR_INVALIDATE_FLAG_SCROLL | BLUR_INVALIDATE_FLAG_CLIP);
+                    if (messagesSearchListView.hasActiveEdgeEffects()) {
+                        messagesSearchListView.postOnAnimation(this);
+                    }
+                }
+            };
+
+            @Override
+            public void onEdgeEffectVisibilityChange(int direction, boolean isVisible) {
+                messagesSearchListView.removeCallbacks(invalidator);
+                messagesSearchListView.postOnAnimation(invalidator);
+            }
+        });
         hashtagLoadingView = new FlickerLoadingView(context, themeDelegate);
         hashtagLoadingView.setViewType(FlickerLoadingView.DIALOG_CELL_TYPE);
 

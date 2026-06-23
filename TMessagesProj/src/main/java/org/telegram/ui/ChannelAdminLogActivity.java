@@ -1346,6 +1346,23 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
         chatListView.setVerticalScrollBarEnabled(true);
         chatListView.setAdapter(chatAdapter = new ChatActivityAdapter(context));
         chatListView.setClipToPadding(false);
+        chatListView.addEdgeEffectListener(new org.telegram.ui.Components.EdgeEffectTrackerFactory.OnEdgeEffectListener() {
+            private final Runnable invalidator = new Runnable() {
+                @Override
+                public void run() {
+                    invalidateMergedVisibleBlurredPositionsAndSources(BLUR_INVALIDATE_FLAG_SCROLL | BLUR_INVALIDATE_FLAG_CLIP);
+                    if (chatListView.hasActiveEdgeEffects()) {
+                        chatListView.postOnAnimation(this);
+                    }
+                }
+            };
+
+            @Override
+            public void onEdgeEffectVisibilityChange(int direction, boolean isVisible) {
+                chatListView.removeCallbacks(invalidator);
+                chatListView.postOnAnimation(invalidator);
+            }
+        });
         chatListView.setPadding(0,
             recommendedAdditionalSizeY + AndroidUtilities.statusBarHeight + ActionBar.getCurrentActionBarHeight() + dp(4), 0,
             recommendedAdditionalSizeY + dp(44 + 9 + 7) + AndroidUtilities.navigationBarHeight);
