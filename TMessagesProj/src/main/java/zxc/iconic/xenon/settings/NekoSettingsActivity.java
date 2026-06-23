@@ -268,7 +268,7 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity implements Fa
                         AndroidUtilities.runOnUIThread(() -> {
                             try {
                                 Bulletin b = BulletinFactory.global()
-                                        .createSimpleBulletin(R.raw.ic_download, "Downloading update...", "Cancel", Integer.MAX_VALUE, () -> impl.cancelDownloadingUpdate());
+                                        .createSimpleBulletin(R.raw.ic_download, LocaleController.getString(R.string.DownloadingUpdate), LocaleController.getString(R.string.Cancel), Integer.MAX_VALUE, () -> impl.cancelDownloadingUpdate());
                                 if (b.getLayout() instanceof Bulletin.LottieLayout) {
                                     ((Bulletin.LottieLayout) b.getLayout()).setIconPaddingBottom(2);
                                 }
@@ -287,7 +287,7 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity implements Fa
                                         Bulletin b2 = BulletinFactory.global()
                                                 .createSimpleBulletin(R.raw.ic_download,
                                                         LocaleController.getString(R.string.UpdateDownloaded),
-                                                        "Update",
+                                                        LocaleController.getString(R.string.NekoUpdate),
                                                         Integer.MAX_VALUE,
                                                         () -> zxc.iconic.xenon.helpers.ApkInstaller.installUpdate(activity, apkFile));
                                         if (b2.getLayout() instanceof Bulletin.LottieLayout) {
@@ -310,9 +310,9 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity implements Fa
                                         if (total > 0) {
                                             String d = android.text.format.Formatter.formatShortFileSize(activity, downloaded);
                                             String t = android.text.format.Formatter.formatShortFileSize(activity, total);
-                                            text = "Downloading update... " + d + " / " + t;
+                                            text = LocaleController.getString(R.string.DownloadingUpdate) + " " + d + " / " + t;
                                         } else {
-                                            text = "Downloading update... " + (int)(prog * 100) + "%";
+                                            text = LocaleController.getString(R.string.DownloadingUpdate) + " " + (int)(prog * 100) + "%";
                                         }
                                         ((Bulletin.LottieLayout) progBulletin[0].getLayout()).textView.setText(text);
                                     } catch (Throwable ignored) {}
@@ -334,7 +334,7 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity implements Fa
                         AndroidUtilities.runOnUIThread(() -> {
                             try {
                                 Bulletin b = BulletinFactory.global()
-                                        .createSimpleBulletin(R.raw.ic_download, "Downloading update...", "Cancel", Integer.MAX_VALUE, () -> impl.cancelDownloadingUpdate());
+                                        .createSimpleBulletin(R.raw.ic_download, LocaleController.getString(R.string.DownloadingUpdate), LocaleController.getString(R.string.Cancel), Integer.MAX_VALUE, () -> impl.cancelDownloadingUpdate());
                                 if (b.getLayout() instanceof Bulletin.LottieLayout) {
                                     ((Bulletin.LottieLayout) b.getLayout()).setIconPaddingBottom(2);
                                 }
@@ -353,7 +353,7 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity implements Fa
                                         Bulletin b2 = BulletinFactory.global()
                                                 .createSimpleBulletin(R.raw.ic_download,
                                                         LocaleController.getString(R.string.UpdateDownloaded),
-                                                        "Update",
+                                                        LocaleController.getString(R.string.NekoUpdate),
                                                         Integer.MAX_VALUE,
                                                         () -> zxc.iconic.xenon.helpers.ApkInstaller.installUpdate(activity, apkFile));
                                         if (b2.getLayout() instanceof Bulletin.LottieLayout) {
@@ -376,9 +376,9 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity implements Fa
                                         if (total > 0) {
                                             String d = android.text.format.Formatter.formatShortFileSize(activity, downloaded);
                                             String t = android.text.format.Formatter.formatShortFileSize(activity, total);
-                                            text = "Downloading update... " + d + " / " + t;
+                                            text = LocaleController.getString(R.string.DownloadingUpdate) + " " + d + " / " + t;
                                         } else {
-                                            text = "Downloading update... " + (int)(prog * 100) + "%";
+                                            text = LocaleController.getString(R.string.DownloadingUpdate) + " " + (int)(prog * 100) + "%";
                                         }
                                         ((Bulletin.LottieLayout) progBulletin[0].getLayout()).textView.setText(text);
                                     } catch (Throwable ignored) {}

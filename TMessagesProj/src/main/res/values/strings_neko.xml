@@ -321,7 +321,9 @@
     <string name="NavigationAnimationBezier">Classic</string>
     <string name="NavigationAnimationSpring">Natural</string>
     <string name="CloudConfig">Cloud Settings</string>
-    <string name="CloudConfigDesc">Save your Xenon Settings to Telegram cloud.</string>
+    <string name="CloudConfigDesc">Save your Xenon Settings to file.</string>
+    <string name="SaveSettingsToFile">Save settings to file</string>
+    <string name="RestoreSettingsFromFile">Restore settings from file</string>
     <string name="CloudConfigSyncDate">Last synced: %s, cloud: %s</string>
     <string name="CloudConfigSyncDateNever">never</string>
     <string name="CloudConfigSync">Sync to cloud</string>
@@ -403,7 +405,9 @@
     <string name="TextAnimBlurDuration">Blur duration</string>
     <string name="AlternativeTransition">Alternative transition</string>
     <string name="TransitionSpeed">Transition speed (ms)</string>
+    <string name="DownloadingUpdate">Downloading update...</string>
     <string name="UpdateDownloaded">Update downloaded!</string>
+    <string name="NekoUpdate">Update</string>
     <string name="ForceUpdate">Force update</string>
     <string name="AutoDownloadUpdate">Automatically download update</string>
     <string name="HowToOpenConfigFile">How do you want to open this file?</string>

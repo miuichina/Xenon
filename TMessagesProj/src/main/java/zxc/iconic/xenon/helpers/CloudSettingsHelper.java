@@ -51,7 +51,7 @@ public class CloudSettingsHelper {
         linearLayout.setOrientation(LinearLayout.VERTICAL);
 
         ButtonWithCounterView saveButton = new ButtonWithCounterView(context, true, resourcesProvider).setRound();
-        saveButton.setText("Save settings to file", false);
+        saveButton.setText(LocaleController.getString(R.string.SaveSettingsToFile), false);
         linearLayout.addView(saveButton, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48, 16, 0, 16, 0));
         saveButton.setOnClickListener(view -> {
             try {
@@ -75,7 +75,7 @@ public class CloudSettingsHelper {
         });
 
         ButtonWithCounterView restoreButton = new ButtonWithCounterView(context, false, resourcesProvider).setRound();
-        restoreButton.setText("Restore settings from file", false);
+        restoreButton.setText(LocaleController.getString(R.string.RestoreSettingsFromFile), false);
         linearLayout.addView(restoreButton, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48, 16, 8, 16, 0));
         restoreButton.setOnClickListener(view -> {
             Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
