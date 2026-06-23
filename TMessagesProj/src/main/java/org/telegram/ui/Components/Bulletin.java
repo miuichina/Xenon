@@ -35,6 +35,7 @@ import android.util.Property;
 import android.util.TypedValue;
 import android.view.GestureDetector;
 import android.view.Gravity;
+import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
@@ -358,6 +359,7 @@ public class Bulletin {
                             layoutTransition.animateEnter(layout, layout::onEnterTransitionStart, () -> {
                                 layout.transitionRunningEnter = false;
                                 layout.onEnterTransitionEnd();
+                                layout.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);
                                 if (setCanHideOnShow) setCanHide(true);
                             }, offset -> {
                                 if (currentDelegate != null && !top) {
@@ -372,6 +374,7 @@ public class Bulletin {
                             updatePosition();
                             layout.onEnterTransitionStart();
                             layout.onEnterTransitionEnd();
+                            layout.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);
                             if (setCanHideOnShow) setCanHide(true);
                         }
                     }
