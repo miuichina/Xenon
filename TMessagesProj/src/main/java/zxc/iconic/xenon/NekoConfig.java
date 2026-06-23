@@ -199,6 +199,7 @@ public class NekoConfig {
 
     public static boolean forceBlurLiquidGlass = false;
     public static boolean keepUnreadChatsOnTop = false;
+    public static boolean keepUnreadArchivedOnTop = false;
     public static boolean shouldNOTTrustMe = false;
 
     public static int userMcc = 0;
@@ -249,6 +250,7 @@ public class NekoConfig {
             shouldNOTTrustMe = preferences.getBoolean("shouldNOTTrustMe", false);
             forceBlurLiquidGlass = preferences.getBoolean("forceBlurLiquidGlass", false);
             keepUnreadChatsOnTop = preferences.getBoolean("keepUnreadChatsOnTop", false);
+            keepUnreadArchivedOnTop = preferences.getBoolean("keepUnreadArchivedOnTop", false);
             disableNumberRounding = preferences.getBoolean("disableNumberRounding", false);
             disableAppBarShadow = preferences.getBoolean("disableAppBarShadow", false);
             hideRecordButton = preferences.getBoolean("hideRecordButton", false);
@@ -1000,9 +1002,21 @@ public class NekoConfig {
 
     public static void toggleKeepUnreadChatsOnTop() {
         keepUnreadChatsOnTop = !keepUnreadChatsOnTop;
+        if (!keepUnreadChatsOnTop) {
+            keepUnreadArchivedOnTop = false;
+        }
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("keepUnreadChatsOnTop", keepUnreadChatsOnTop);
+        editor.putBoolean("keepUnreadArchivedOnTop", keepUnreadArchivedOnTop);
+        editor.apply();
+    }
+
+    public static void toggleKeepUnreadArchivedOnTop() {
+        keepUnreadArchivedOnTop = !keepUnreadArchivedOnTop;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("keepUnreadArchivedOnTop", keepUnreadArchivedOnTop);
         editor.apply();
     }
 
