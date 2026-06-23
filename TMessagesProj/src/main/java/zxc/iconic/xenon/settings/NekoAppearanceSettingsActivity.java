@@ -54,6 +54,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int hideRecordButtonRow = rowId++;
     private final int disableGooeyAvatarAnimationRow = rowId++;
     private final int gooeyAvatarOffsetRow = rowId++;
+    private final int keepUnreadChatsOnTopRow = rowId++;
     private final int alternativeTransitionRow = rowId++;
     private final int alternativeTransitionSpeedRow = rowId++;
     private final int alternativeTransitionEaseRow = rowId++;
@@ -97,6 +98,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
                 -100, 100, 1,
                 progress -> NekoConfig.setGooeyAvatarOffset(Math.round(progress)));
         items.add(SeekbarCellFactory.of(gooeyAvatarOffsetRow, offsetConfig, NekoConfig.gooeyAvatarOffset).slug("gooeyAvatarOffset"));
+        items.add(UItem.asCheck(keepUnreadChatsOnTopRow, LocaleController.getString(R.string.KeepUnreadChatsOnTop)).setChecked(NekoConfig.keepUnreadChatsOnTop).slug("keepUnreadChatsOnTop"));
         items.add(UItem.asCheck(hideRecordButtonRow, LocaleController.getString(R.string.HideRecordButton)).setChecked(NekoConfig.hideRecordButton).slug("hideRecordButton"));
         items.add(UItem.asCheck(alternativeTransitionRow, LocaleController.getString(R.string.AlternativeTransition)).setChecked(NekoConfig.alternativeTransition).slug("alternativeTransition"));
         if (NekoConfig.alternativeTransition) {
@@ -300,6 +302,12 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             NekoConfig.toggleDisableGooeyAvatarAnimation();
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.disableGooeyAvatarAnimation);
+            }
+            showRestartBulletin();
+        } else if (id == keepUnreadChatsOnTopRow) {
+            NekoConfig.toggleKeepUnreadChatsOnTop();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.keepUnreadChatsOnTop);
             }
             showRestartBulletin();
         } else if (id == hideRecordButtonRow) {

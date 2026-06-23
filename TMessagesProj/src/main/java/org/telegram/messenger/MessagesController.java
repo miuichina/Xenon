@@ -1392,6 +1392,12 @@ public class MessagesController extends BaseController implements NotificationCe
                 return 0;
             }
         }
+        if (NekoConfig.keepUnreadChatsOnTop) {
+            boolean unread1 = hasImportantUnread(dialog1);
+            boolean unread2 = hasImportantUnread(dialog2);
+            if (unread1 && !unread2) return -1;
+            if (!unread1 && unread2) return 1;
+        }
         MediaDataController mediaDataController = getMediaDataController();
         long date1 = DialogObject.getLastMessageOrDraftDate(dialog1, mediaDataController.getDraft(dialog1.id, 0));
         long date2 = DialogObject.getLastMessageOrDraftDate(dialog2, mediaDataController.getDraft(dialog2.id, 0));
@@ -1428,6 +1434,12 @@ public class MessagesController extends BaseController implements NotificationCe
                 return 0;
             }
         }
+        if (NekoConfig.keepUnreadChatsOnTop) {
+            boolean unread1 = hasImportantUnread(dialog1);
+            boolean unread2 = hasImportantUnread(dialog2);
+            if (unread1 && !unread2) return -1;
+            if (!unread1 && unread2) return 1;
+        }
         MediaDataController mediaDataController = getMediaDataController();
         long date1 = DialogObject.getLastMessageOrDraftDate(dialog1, mediaDataController.getDraft(dialog1.id, 0));
         long date2 = DialogObject.getLastMessageOrDraftDate(dialog2, mediaDataController.getDraft(dialog2.id, 0));
@@ -1438,6 +1450,14 @@ public class MessagesController extends BaseController implements NotificationCe
         }
         return 0;
     };
+
+    private boolean hasImportantUnread(TLRPC.Dialog dialog) {
+        if (dialog == null) return false;
+        if (dialog.unread_mentions_count > 0) return true;
+        if (dialog.unread_mark) return true;
+        if (getDialogUnreadCount(dialog) > 0 && !isDialogMuted(dialog.id, 0)) return true;
+        return false;
+    }
 
     private Comparator<TLRPC.Update> updatesComparator = (lhs, rhs) -> {
         int ltype = getUpdateType(lhs);
@@ -13614,6 +13634,9 @@ public class MessagesController extends BaseController implements NotificationCe
             if (filterDialogsChanged) {
                 sortDialogs(null);
                 getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload);
+            } else if (NekoConfig.keepUnreadChatsOnTop) {
+                sortDialogs(null);
+                getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload);
             }
             getNotificationCenter().postNotificationName(NotificationCenter.updateInterfaces, UPDATE_MASK_READ_DIALOG_MESSAGE);
             if (dialogsToUpdate != null) {
@@ -14412,6 +14435,9 @@ public class MessagesController extends BaseController implements NotificationCe
                                     break;
                                 }
                             }
+                        } else if (NekoConfig.keepUnreadChatsOnTop && prevCount != dialog.unread_count) {
+                            sortDialogs(null);
+                            getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload);
                         }
                         getNotificationCenter().postNotificationName(NotificationCenter.updateInterfaces, UPDATE_MASK_READ_DIALOG_MESSAGE);
                     }
@@ -14466,6 +14492,9 @@ public class MessagesController extends BaseController implements NotificationCe
                                     break;
                                 }
                             }
+                        } else if (NekoConfig.keepUnreadChatsOnTop && prevCount != dialog.unread_count) {
+                            sortDialogs(null);
+                            getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload);
                         }
                         getNotificationCenter().postNotificationName(NotificationCenter.updateInterfaces, UPDATE_MASK_READ_DIALOG_MESSAGE);
                     }
