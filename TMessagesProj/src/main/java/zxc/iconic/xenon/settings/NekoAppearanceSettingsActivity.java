@@ -55,6 +55,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int disableGooeyAvatarAnimationRow = rowId++;
     private final int gooeyAvatarOffsetRow = rowId++;
     private final int keepUnreadChatsOnTopRow = rowId++;
+    private final int keepUnreadArchivedOnTopRow = rowId++;
     private final int alternativeTransitionRow = rowId++;
     private final int alternativeTransitionSpeedRow = rowId++;
     private final int alternativeTransitionEaseRow = rowId++;
@@ -99,6 +100,9 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
                 progress -> NekoConfig.setGooeyAvatarOffset(Math.round(progress)));
         items.add(SeekbarCellFactory.of(gooeyAvatarOffsetRow, offsetConfig, NekoConfig.gooeyAvatarOffset).slug("gooeyAvatarOffset"));
         items.add(UItem.asCheck(keepUnreadChatsOnTopRow, LocaleController.getString(R.string.KeepUnreadChatsOnTop)).setChecked(NekoConfig.keepUnreadChatsOnTop).slug("keepUnreadChatsOnTop"));
+        if (NekoConfig.keepUnreadChatsOnTop) {
+            items.add(UItem.asCheck(keepUnreadArchivedOnTopRow, LocaleController.getString(R.string.KeepUnreadArchivedOnTop)).setChecked(NekoConfig.keepUnreadArchivedOnTop).slug("keepUnreadArchivedOnTop"));
+        }
         items.add(UItem.asCheck(hideRecordButtonRow, LocaleController.getString(R.string.HideRecordButton)).setChecked(NekoConfig.hideRecordButton).slug("hideRecordButton"));
         items.add(UItem.asCheck(alternativeTransitionRow, LocaleController.getString(R.string.AlternativeTransition)).setChecked(NekoConfig.alternativeTransition).slug("alternativeTransition"));
         if (NekoConfig.alternativeTransition) {
@@ -310,6 +314,12 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
                 ((TextCheckCell) view).setChecked(NekoConfig.keepUnreadChatsOnTop);
             }
             showRestartBulletin();
+            listView.adapter.update(true);
+        } else if (id == keepUnreadArchivedOnTopRow) {
+            NekoConfig.toggleKeepUnreadArchivedOnTop();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.keepUnreadArchivedOnTop);
+            }
         } else if (id == hideRecordButtonRow) {
             NekoConfig.toggleHideRecordButton();
             if (view instanceof TextCheckCell) {

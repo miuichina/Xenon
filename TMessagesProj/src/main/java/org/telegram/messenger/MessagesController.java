@@ -13634,7 +13634,7 @@ public class MessagesController extends BaseController implements NotificationCe
             if (filterDialogsChanged) {
                 sortDialogs(null);
                 getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload);
-            } else if (NekoConfig.keepUnreadChatsOnTop) {
+            } else if (NekoConfig.keepUnreadChatsOnTop || NekoConfig.keepUnreadArchivedOnTop) {
                 sortDialogs(null);
                 getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload);
             }
@@ -14435,7 +14435,7 @@ public class MessagesController extends BaseController implements NotificationCe
                                     break;
                                 }
                             }
-                        } else if (NekoConfig.keepUnreadChatsOnTop && prevCount != dialog.unread_count) {
+                        } else if ((NekoConfig.keepUnreadChatsOnTop || NekoConfig.keepUnreadArchivedOnTop) && prevCount != dialog.unread_count) {
                             sortDialogs(null);
                             getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload);
                         }
@@ -14492,7 +14492,7 @@ public class MessagesController extends BaseController implements NotificationCe
                                     break;
                                 }
                             }
-                        } else if (NekoConfig.keepUnreadChatsOnTop && prevCount != dialog.unread_count) {
+                        } else if ((NekoConfig.keepUnreadChatsOnTop || NekoConfig.keepUnreadArchivedOnTop) && prevCount != dialog.unread_count) {
                             sortDialogs(null);
                             getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload);
                         }
@@ -21662,6 +21662,12 @@ public class MessagesController extends BaseController implements NotificationCe
                 dialogsForward.add(0, dialog);
             }
         }
+        if (NekoConfig.keepUnreadArchivedOnTop) {
+            ArrayList<TLRPC.Dialog> mainDialogs = dialogsByFolder.get(0);
+            if (mainDialogs != null) {
+                mainDialogs.removeIf(d -> d.folder_id == 1 && !hasImportantUnread(d));
+            }
+        }
         for (int a = 0; a < dialogsByFolder.size(); a++) {
             int folderId = dialogsByFolder.keyAt(a);
             ArrayList<TLRPC.Dialog> dialogs = dialogsByFolder.valueAt(a);
@@ -21694,6 +21700,16 @@ public class MessagesController extends BaseController implements NotificationCe
             }
         } else {
             dialogs.add(index, dialog);
+        }
+        if (NekoConfig.keepUnreadArchivedOnTop && folderId == 1 && hasImportantUnread(dialog)) {
+            ArrayList<TLRPC.Dialog> mainDialogs = dialogsByFolder.get(0);
+            if (mainDialogs == null) {
+                mainDialogs = new ArrayList<>();
+                dialogsByFolder.put(0, mainDialogs);
+            }
+            if (!mainDialogs.contains(dialog)) {
+                mainDialogs.add(dialog);
+            }
         }
     }
 
