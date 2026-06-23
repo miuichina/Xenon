@@ -418,5 +418,6 @@
     <string name="ReplaceDialogsWithSheet">Заменять диалоги на BottomSheet</string>
     <string name="BlurOverlayBulletinText">Включите «Заменять диалоги на BottomSheet» для лучшего опыта</string>
     <string name="BlurOverlayBulletinButton">Включить</string>
+    <string name="BlurOverlayRadius">Радиус размытия</string>
     <string name="AlternativeTransitionEaseDescription">Экспериментируйте с ease на cubic-bezier.com</string>
 </resources>

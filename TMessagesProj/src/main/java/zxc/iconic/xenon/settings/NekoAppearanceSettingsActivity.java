@@ -56,6 +56,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
 
     private final int strokeOnViewsRow = rowId++;
     private final int blurOverlayRow = rowId++;
+    private final int blurOverlayRadiusRow = rowId++;
     private final int replaceDialogsWithSheetRow = rowId++;
     private final int hideRecordButtonRow = rowId++;
     private final int disableGooeyAvatarAnimationRow = rowId++;
@@ -190,6 +191,13 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         items.add(UItem.asHeader(LocaleController.getString(R.string.LiteOptionsBlur2)));
         items.add(UItem.asCheck(strokeOnViewsRow, LocaleController.getString(R.string.StrokeOnViews)).setChecked(NekoConfig.strokeOnViews).slug("strokeOnViews"));
         items.add(UItem.asCheck(blurOverlayRow, LocaleController.getString(R.string.BlurOverlay)).setChecked(NekoConfig.blurOverlay).slug("blurOverlay"));
+        if (NekoConfig.blurOverlay) {
+            SeekbarConfig blurRadiusConfig = new SeekbarConfig(
+                    LocaleController.getString(R.string.BlurOverlayRadius),
+                    "2", "20", 2, 20, 1,
+                    progress -> NekoConfig.setBlurOverlayRadius(Math.round(progress)));
+            items.add(SeekbarCellFactory.of(blurOverlayRadiusRow, blurRadiusConfig, NekoConfig.blurOverlayRadius).slug("blurOverlayRadius"));
+        }
         items.add(UItem.asCheck(replaceDialogsWithSheetRow, LocaleController.getString(R.string.ReplaceDialogsWithSheet)).setChecked(NekoConfig.replaceDialogsWithSheet).slug("replaceDialogsWithSheet"));
         items.add(UItem.asShadow(null));
 
@@ -323,6 +331,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.blurOverlay);
             }
+            listView.adapter.update(true);
             if (NekoConfig.blurOverlay && !NekoConfig.replaceDialogsWithSheet) {
                 BulletinFactory.of(this).createSimpleBulletin(R.raw.chats_infotip,
                         LocaleController.getString(R.string.BlurOverlayBulletinText),

@@ -1567,6 +1567,7 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
     public void show() {
         if (!AndroidUtilities.isSafeToShow(getContext())) return;
         if (zxc.iconic.xenon.NekoConfig.blurOverlay && blurOverlayBitmap == null) {
+            int radius = zxc.iconic.xenon.NekoConfig.blurOverlayRadius;
             AndroidUtilities.makeGlobalBlurBitmap(bitmap -> {
                 if (bitmap == null || dismissed) {
                     if (bitmap != null) bitmap.recycle();
@@ -1575,7 +1576,7 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
                 blurOverlayBitmap = bitmap;
                 blurOverlayShader = new BitmapShader(bitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
                 blurOverlayMatrix = new Matrix();
-                blurOverlayMatrix.postScale(8f, 8f);
+                blurOverlayMatrix.postScale(radius, radius);
                 blurOverlayShader.setLocalMatrix(blurOverlayMatrix);
                 blurOverlayPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
                 blurOverlayPaint.setShader(blurOverlayShader);
@@ -1611,7 +1612,7 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
                         }
                     });
                 }
-            }, 8);
+            }, radius);
         }
         if (attachedFragment != null) {
             onCreateInternal();

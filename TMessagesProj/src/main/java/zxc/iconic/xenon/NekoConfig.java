@@ -203,6 +203,7 @@ public class NekoConfig {
 
     public static boolean forceBlurLiquidGlass = false;
     public static boolean blurOverlay = false;
+    public static int blurOverlayRadius = 8;
     public static boolean replaceDialogsWithSheet = false;
     public static boolean keepUnreadChatsOnTop = false;
     public static boolean keepUnreadArchivedOnTop = false;
@@ -256,6 +257,7 @@ public class NekoConfig {
             shouldNOTTrustMe = preferences.getBoolean("shouldNOTTrustMe", false);
             forceBlurLiquidGlass = preferences.getBoolean("forceBlurLiquidGlass", false);
             blurOverlay = preferences.getBoolean("blurOverlay", false);
+            blurOverlayRadius = preferences.getInt("blurOverlayRadius", 8);
             replaceDialogsWithSheet = preferences.getBoolean("replaceDialogsWithSheet", false);
             keepUnreadChatsOnTop = preferences.getBoolean("keepUnreadChatsOnTop", false);
             keepUnreadArchivedOnTop = preferences.getBoolean("keepUnreadArchivedOnTop", false);
@@ -1015,6 +1017,14 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("blurOverlay", blurOverlay);
+        editor.apply();
+    }
+
+    public static void setBlurOverlayRadius(int value) {
+        blurOverlayRadius = value;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("blurOverlayRadius", blurOverlayRadius);
         editor.apply();
     }
 
