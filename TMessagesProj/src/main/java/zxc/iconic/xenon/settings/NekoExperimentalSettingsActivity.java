@@ -42,6 +42,7 @@ public class NekoExperimentalSettingsActivity extends BaseNekoSettingsActivity {
     private final int telegaDetectorRow = rowId++;
 
     private final int liquidGlassRow = rowId++;
+    private final int forceBlurLiquidGlassRow = rowId++;
     private final int useCamera2ApiRow = rowId++;
 
     private final int downloadSpeedBoostRow = rowId++;
@@ -67,6 +68,7 @@ public class NekoExperimentalSettingsActivity extends BaseNekoSettingsActivity {
         items.add(UItem.asCheck(telegaDetectorRow, LocaleController.getString(R.string.TelegaDetectorEnabled), LocaleController.getString(R.string.TelegaDetectorHint)).slug("telegaDetector").setChecked(NekoConfig.telegaDetectorEnabled));
         items.add(UItem.asShadow(null));
 
+        items.add(UItem.asCheck(forceBlurLiquidGlassRow, LocaleController.getString(R.string.ForceBlurLiquidGlass)).setChecked(NekoConfig.forceBlurLiquidGlass).slug("forceBlurLiquidGlass"));
         if (android.os.Build.VERSION.SDK_INT >= 33) {
             items.add(UItem.asHeader(LocaleController.getString(R.string.LiquidGlassSettings)));
             items.add(TextSettingsCellFactory.of(liquidGlassRow, LocaleController.getString(R.string.LiquidGlassTitle), LocaleController.getString(R.string.LiquidGlassSettingsDesc)).slug("liquidGlass"));
@@ -132,6 +134,11 @@ public class NekoExperimentalSettingsActivity extends BaseNekoSettingsActivity {
             NekoConfig.setTelegaDetectorEnabled(!NekoConfig.telegaDetectorEnabled);
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.telegaDetectorEnabled);
+            }
+        } else if (id == forceBlurLiquidGlassRow) {
+            NekoConfig.toggleForceBlurLiquidGlass();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.forceBlurLiquidGlass);
             }
         } else if (id == useCamera2ApiRow) {
             NekoConfig.toggleUseCamera2Api();

@@ -197,6 +197,7 @@ public class NekoConfig {
     public static float advancedGlassGlare = DEFAULT_ADVANCED_GLASS_GLARE;
     public static int advancedGlassTintPercent = DEFAULT_ADVANCED_GLASS_TINT_PERCENT;
 
+    public static boolean forceBlurLiquidGlass = false;
     public static boolean shouldNOTTrustMe = false;
 
     public static int userMcc = 0;
@@ -245,6 +246,7 @@ public class NekoConfig {
             confirmAVMessage = preferences.getBoolean("confirmAVMessage", false);
             askBeforeCall = preferences.getBoolean("askBeforeCall", true);
             shouldNOTTrustMe = preferences.getBoolean("shouldNOTTrustMe", false);
+            forceBlurLiquidGlass = preferences.getBoolean("forceBlurLiquidGlass", false);
             disableNumberRounding = preferences.getBoolean("disableNumberRounding", false);
             disableAppBarShadow = preferences.getBoolean("disableAppBarShadow", false);
             hideRecordButton = preferences.getBoolean("hideRecordButton", false);
@@ -983,6 +985,14 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("hideRecordButton", hideRecordButton);
+        editor.apply();
+    }
+
+    public static void toggleForceBlurLiquidGlass() {
+        forceBlurLiquidGlass = !forceBlurLiquidGlass;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("forceBlurLiquidGlass", forceBlurLiquidGlass);
         editor.apply();
     }
 

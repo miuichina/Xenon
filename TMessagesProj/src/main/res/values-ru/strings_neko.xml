@@ -370,6 +370,7 @@
     <string name="TabsPositionTop">Сверху</string>
     <string name="TabsPositionBottom">Снизу</string>
     <string name="StrokeOnViews">Эффекты бликов</string>
+    <string name="ForceBlurLiquidGlass">Принудительно включить размытие и жидкое стекло</string>
     <string name="DisableGooeyAvatarAnimation">Отключить \"тягучую\" анимацию аватарки</string>
     <string name="GooeyAvatarOffset">Смещение точки втягивания</string>
     <string name="GooeyAvatarOffsetLeft">Выше</string>
