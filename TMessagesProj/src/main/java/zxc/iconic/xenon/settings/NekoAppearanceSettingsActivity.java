@@ -52,6 +52,8 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
 
     private final int strokeOnViewsRow = rowId++;
     private final int hideRecordButtonRow = rowId++;
+    private final int disableGooeyAvatarAnimationRow = rowId++;
+    private final int gooeyAvatarOffsetRow = rowId++;
     private final int alternativeTransitionRow = rowId++;
     private final int alternativeTransitionSpeedRow = rowId++;
     private final int alternativeTransitionEaseRow = rowId++;
@@ -87,6 +89,14 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         items.add(UItem.asHeader(LocaleController.getString(R.string.ChangeChannelNameColor2)));
         items.add(EmojiSetCellFactory.of(emojiSetsRow, LocaleController.getString(R.string.EmojiSets)).slug("emojiSets"));
         items.add(UItem.asCheck(predictiveBackAnimationRow, LocaleController.getString(R.string.PredictiveBackAnimation)).slug("predictiveBackAnimation").setChecked(NekoConfig.predictiveBackAnimation));
+        items.add(UItem.asCheck(disableGooeyAvatarAnimationRow, LocaleController.getString(R.string.DisableGooeyAvatarAnimation)).setChecked(NekoConfig.disableGooeyAvatarAnimation).slug("disableGooeyAvatarAnimation"));
+        SeekbarConfig offsetConfig = new SeekbarConfig(
+                LocaleController.getString(R.string.GooeyAvatarOffset),
+                LocaleController.getString(R.string.GooeyAvatarOffsetLeft),
+                LocaleController.getString(R.string.GooeyAvatarOffsetRight),
+                -100, 100, 1,
+                progress -> NekoConfig.setGooeyAvatarOffset(Math.round(progress)));
+        items.add(SeekbarCellFactory.of(gooeyAvatarOffsetRow, offsetConfig, NekoConfig.gooeyAvatarOffset).slug("gooeyAvatarOffset"));
         items.add(UItem.asCheck(hideRecordButtonRow, LocaleController.getString(R.string.HideRecordButton)).setChecked(NekoConfig.hideRecordButton).slug("hideRecordButton"));
         items.add(UItem.asCheck(alternativeTransitionRow, LocaleController.getString(R.string.AlternativeTransition)).setChecked(NekoConfig.alternativeTransition).slug("alternativeTransition"));
         if (NekoConfig.alternativeTransition) {
@@ -286,6 +296,12 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.strokeOnViews);
             }
+        } else if (id == disableGooeyAvatarAnimationRow) {
+            NekoConfig.toggleDisableGooeyAvatarAnimation();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.disableGooeyAvatarAnimation);
+            }
+            showRestartBulletin();
         } else if (id == hideRecordButtonRow) {
             NekoConfig.toggleHideRecordButton();
             if (view instanceof TextCheckCell) {

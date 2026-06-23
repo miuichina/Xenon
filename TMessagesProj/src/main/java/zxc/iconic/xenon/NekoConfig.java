@@ -148,6 +148,8 @@ public class NekoConfig {
     public static boolean hideBottomNavigationBar = false;
     public static boolean bottomFilterTabs = false;
     public static boolean strokeOnViews = true;
+    public static boolean disableGooeyAvatarAnimation = false;
+    public static int gooeyAvatarOffset = 0;
     public static boolean showMainTabs = true;
     public static boolean openSettingsBySwipe = false;
     public static boolean showMainTabsTitle = true;
@@ -302,6 +304,8 @@ public class NekoConfig {
             hideBottomNavigationBar = preferences.getBoolean("hideBottomNavigationBar", false);
             bottomFilterTabs = preferences.getBoolean("bottomFilterTabs", false);
             strokeOnViews = preferences.getBoolean("strokeOnViews", true);
+            disableGooeyAvatarAnimation = preferences.getBoolean("disableGooeyAvatarAnimation", false);
+            gooeyAvatarOffset = preferences.getInt("gooeyAvatarOffset", 0);
             showMainTabs = preferences.getBoolean("showMainTabs", true);
             openSettingsBySwipe = preferences.getBoolean("openSettingsBySwipe", false);
             showMainTabsTitle = preferences.getBoolean("showMainTabsTitle", true);
@@ -507,6 +511,22 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("strokeOnViews", strokeOnViews);
+        editor.apply();
+    }
+
+    public static void toggleDisableGooeyAvatarAnimation() {
+        disableGooeyAvatarAnimation = !disableGooeyAvatarAnimation;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("disableGooeyAvatarAnimation", disableGooeyAvatarAnimation);
+        editor.apply();
+    }
+
+    public static void setGooeyAvatarOffset(int value) {
+        gooeyAvatarOffset = value;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("gooeyAvatarOffset", gooeyAvatarOffset);
         editor.apply();
     }
 

@@ -370,6 +370,10 @@
     <string name="TabsPositionTop">Сверху</string>
     <string name="TabsPositionBottom">Снизу</string>
     <string name="StrokeOnViews">Эффекты бликов</string>
+    <string name="DisableGooeyAvatarAnimation">Отключить \"тягучую\" анимацию аватарки</string>
+    <string name="GooeyAvatarOffset">Смещение точки втягивания</string>
+    <string name="GooeyAvatarOffsetLeft">Выше</string>
+    <string name="GooeyAvatarOffsetRight">Ниже</string>
     <string name="HideRecordButton">Скрыть кнопку записи</string>
     <string name="TelegaDetectorEnabled">Telega детектор</string>
     <string name="TextAnimation">Анимация текста</string>
