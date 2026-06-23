@@ -1,6 +1,7 @@
 package zxc.iconic.xenon.settings;
 
 import android.animation.ValueAnimator;
+import android.app.Activity;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -336,7 +337,17 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
     }
 
     protected void showRestartBulletin() {
-        BulletinFactory.of(this).createErrorBulletin(LocaleController.formatString(R.string.RestartAppToTakeEffect)).show();
+        Activity activity = getParentActivity();
+        if (activity == null) return;
+        BulletinFactory.of(this).createSimpleBulletin(R.raw.chats_infotip,
+                LocaleController.formatString(R.string.RestartAppToTakeEffect),
+                LocaleController.getString(R.string.BotUnblockNoCaps),
+                () -> {
+                    android.content.Intent intent = new android.content.Intent(activity, org.telegram.ui.LaunchActivity.class);
+                    intent.setFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    activity.startActivity(intent);
+                    activity.finishAffinity();
+                }).show();
     }
 
     protected void updateRows() {

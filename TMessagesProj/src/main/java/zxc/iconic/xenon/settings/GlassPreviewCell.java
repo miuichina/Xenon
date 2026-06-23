@@ -170,8 +170,8 @@ public class GlassPreviewCell extends View {
             Canvas stripeCanvas = new Canvas(wallpaperBitmap);
             stripeCanvas.clipRect(bubbleRect);
             int[] colors = {
-                    0xFFE53935, 0xFFFF9800, 0xFFFFEB3B,
-                    0xFF4CAF50, 0xFF2196F3, 0xFF9C27B0
+                    0xFF757575, 0xFF9E9E9E, 0xFFBDBDBD,
+                    0xFF9E9E9E, 0xFF757575, 0xFFFFFFFF
             };
             float[] angles = { -30, -15, 0, 15, 30, 45 };
             float cx = getMeasuredWidth() / 2f, cy = getMeasuredHeight() / 2f;
