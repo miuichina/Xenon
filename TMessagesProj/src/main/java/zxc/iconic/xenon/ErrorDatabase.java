@@ -1,10 +1,9 @@
 package zxc.iconic.xenon;
 
-import android.widget.Toast;
-
 import org.telegram.messenger.AndroidUtilities;
-import org.telegram.messenger.ApplicationLoader;
+import org.telegram.messenger.R;
 import org.telegram.tgnet.TLObject;
+import org.telegram.ui.Components.BulletinFactory;
 
 public class ErrorDatabase {
 
@@ -12,6 +11,8 @@ public class ErrorDatabase {
         if (text.equals("FILE_REFERENCE_EXPIRED")) {
             return;
         }
-        AndroidUtilities.runOnUIThread(() -> Toast.makeText(ApplicationLoader.applicationContext, text, Toast.LENGTH_SHORT).show());
+        AndroidUtilities.runOnUIThread(() ->
+            BulletinFactory.global().createSimpleBulletin(R.raw.error, text).show()
+        );
     }
 }
