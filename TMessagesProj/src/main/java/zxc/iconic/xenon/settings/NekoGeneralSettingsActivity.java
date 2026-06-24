@@ -43,6 +43,7 @@ public class NekoGeneralSettingsActivity extends BaseNekoSettingsActivity {
     private final int disabledInstantCameraRow = rowId++;
     private final int askBeforeCallRow = rowId++;
     private final int openArchiveOnPullRow = rowId++;
+    private final int autoCheckUpdateRow = rowId++;
     private final int autoDownloadUpdateRow = rowId++;
 
     private CharSequence getTranslationProvider() {
@@ -149,6 +150,10 @@ public class NekoGeneralSettingsActivity extends BaseNekoSettingsActivity {
         items.add(UItem.asCheck(disabledInstantCameraRow, LocaleController.getString(R.string.DisableInstantCamera)).slug("disabledInstantCamera").setChecked(NekoConfig.disableInstantCamera));
         items.add(UItem.asCheck(askBeforeCallRow, LocaleController.getString(R.string.AskBeforeCalling)).slug("askBeforeCall").setChecked(NekoConfig.askBeforeCall));
         items.add(UItem.asCheck(openArchiveOnPullRow, LocaleController.getString(R.string.OpenArchiveOnPull)).slug("openArchiveOnPull").setChecked(NekoConfig.openArchiveOnPull));
+        items.add(UItem.asShadow(null));
+
+        items.add(UItem.asHeader(LocaleController.getString(R.string.UpdatesHeader)));
+        items.add(UItem.asCheck(autoCheckUpdateRow, LocaleController.getString(R.string.AutoCheckUpdate)).slug("autoCheckUpdate").setChecked(NekoConfig.autoCheckUpdate));
         items.add(UItem.asCheck(autoDownloadUpdateRow, LocaleController.getString(R.string.AutoDownloadUpdate)).slug("autoDownloadUpdate").setChecked(NekoConfig.autoDownloadUpdate));
         items.add(UItem.asShadow(null));
     }
@@ -206,6 +211,11 @@ public class NekoGeneralSettingsActivity extends BaseNekoSettingsActivity {
             NekoConfig.toggleOpenArchiveOnPull();
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.openArchiveOnPull);
+            }
+        } else if (id == autoCheckUpdateRow) {
+            NekoConfig.toggleAutoCheckUpdate();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.autoCheckUpdate);
             }
         } else if (id == autoDownloadUpdateRow) {
             NekoConfig.toggleAutoDownloadUpdate();

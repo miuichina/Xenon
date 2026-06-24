@@ -6072,19 +6072,28 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
     }
 
     private void performAutoUpdateCheck() {
-        if (!NekoConfig.autoDownloadUpdate) return;
+        if (!NekoConfig.autoCheckUpdate) return;
 
         ApplicationLoader.applicationLoaderInstance.checkUpdate(false, () -> {
             BetaUpdate update = ApplicationLoader.applicationLoaderInstance.getUpdate();
             if (update != null && !ApplicationLoader.applicationLoaderInstance.isDownloadingUpdate()) {
-                startUpdateDownload(update);
+                if (NekoConfig.autoDownloadUpdate) {
+                    startUpdateDownload(update);
+                } else {
+                    try {
+                        BulletinFactory.global().createSimpleBulletin(R.raw.ic_download,
+                                LocaleController.getString(R.string.UpdateAvailable),
+                                LocaleController.getString(R.string.ViewAction),
+                                () -> ApplicationLoader.applicationLoaderInstance.showCustomUpdateAppPopup(LaunchActivity.this, update, currentAccount)).show();
+                    } catch (Throwable ignored) {}
+                }
             }
             scheduleNextAutoCheck();
         });
     }
 
     private void scheduleNextAutoCheck() {
-        if (!NekoConfig.autoDownloadUpdate) return;
+        if (!NekoConfig.autoCheckUpdate) return;
         if (autoUpdateHandler == null) {
             autoUpdateHandler = new android.os.Handler(android.os.Looper.getMainLooper());
         }
@@ -7189,7 +7198,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
             showUpdateActivity(UserConfig.selectedAccount, SharedConfig.pendingAppUpdate, true);
         }
         checkAppUpdate(false, null);
-        if (NekoConfig.autoDownloadUpdate && ApplicationLoader.applicationLoaderInstance.isCustomUpdate()) {
+        if (NekoConfig.autoCheckUpdate && ApplicationLoader.applicationLoaderInstance.isCustomUpdate()) {
             autoUpdateCheckScheduledFromResume = true;
             startAutoUpdateCheck();
         }

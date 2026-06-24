@@ -408,6 +408,9 @@
     <string name="NekoUpdate">Обновить</string>
     <string name="ForceUpdate">Принудительное обновление</string>
     <string name="AutoDownloadUpdate">Автоматически загружать обновление</string>
+    <string name="UpdatesHeader">Обновления</string>
+    <string name="AutoCheckUpdate">Автоматически проверять обновления</string>
+    <string name="UpdateAvailable">Доступно обновление!</string>
     <string name="HowToOpenConfigFile">Как вы хотите открыть этот файл?</string>
     <string name="OpenAsXenonConfig">Как конфиг Xenon</string>
     <string name="OpenAsFile">Как файл</string>
