@@ -432,4 +432,8 @@
     <string name="BlurPixelation">Пикселизация</string>
     <string name="BlurSettingsHeader">Блюр</string>
     <string name="RoundedBulletin">Скруглённый bulletin</string>
+    <string name="TestBottomSheet">Тест BottomSheet</string>
+    <string name="TestBottomSheetTitle">привет</string>
+    <string name="TestBottomSheetText">:3</string>
+    <string name="TestBottomSheetClose">Закрыть</string>
 </resources>

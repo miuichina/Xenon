@@ -440,4 +440,8 @@
     <string name="BlurPixelation">Pixelation</string>
     <string name="BlurSettingsHeader">Blur</string>
     <string name="RoundedBulletin">Round bulletin</string>
+    <string name="TestBottomSheet">Test BottomSheet</string>
+    <string name="TestBottomSheetTitle">hi</string>
+    <string name="TestBottomSheetText">:3</string>
+    <string name="TestBottomSheetClose">Close</string>
 </resources>
