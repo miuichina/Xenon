@@ -128,6 +128,7 @@ public class NekoConfig {
     public static boolean silenceNonContacts = false;
     public static boolean disableJumpToNextChannel = false;
     public static boolean autoDownloadUpdate = false;
+    public static boolean autoCheckUpdate = true;
     public static boolean disableVoiceMessageAutoPlay = false;
     public static boolean unmuteVideosWithVolumeButtons = true;
     public static boolean disableMarkdownByDefault = false;
@@ -170,6 +171,7 @@ public class NekoConfig {
     public static int alternativeTransitionSpeed = 300;
     public static String alternativeTransitionEase = "0.37,0.01,0.1,1";
     public static boolean removeChatDelay = false;
+    public static boolean showOnlineDotsInChat = false;
     private static final String XRAY_DEFAULT_CHECK_URL = "https://www.gstatic.com/generate_204";
 
     public static boolean xrayAppProxyEnabled = false;
@@ -215,6 +217,7 @@ public class NekoConfig {
     public static boolean keepUnreadChatsOnTop = false;
     public static boolean keepUnreadArchivedOnTop = false;
     public static boolean shouldNOTTrustMe = false;
+    public static boolean roundedBulletin = false;
 
     public static int userMcc = 0;
 
@@ -293,6 +296,7 @@ public class NekoConfig {
             maxRecentStickers = preferences.getInt("maxRecentStickers", 20);
             disableJumpToNextChannel = preferences.getBoolean("disableJumpToNextChannel", false);
             autoDownloadUpdate = preferences.getBoolean("autoDownloadUpdate", false);
+            autoCheckUpdate = preferences.getBoolean("autoCheckUpdate", true);
             disableGreetingSticker = preferences.getBoolean("disableGreetingSticker", false);
             autoTranslate = preferences.getBoolean("autoTranslate", true);
             disableVoiceMessageAutoPlay = preferences.getBoolean("disableVoiceMessageAutoPlay", false);
@@ -372,6 +376,8 @@ public class NekoConfig {
             alternativeTransitionSpeed = preferences.getInt("alternativeTransitionSpeed", 300);
             alternativeTransitionEase = preferences.getString("alternativeTransitionEase", "0.37,0.01,0.1,1");
             removeChatDelay = preferences.getBoolean("removeChatDelay", false);
+            showOnlineDotsInChat = preferences.getBoolean("showOnlineDotsInChat", false);
+            roundedBulletin = preferences.getBoolean("roundedBulletin", false);
 
             LensHelper.checkLensSupportAsync();
             preferences.registerOnSharedPreferenceChangeListener(listener);
@@ -1230,6 +1236,14 @@ public class NekoConfig {
         editor.apply();
     }
 
+    public static void toggleAutoCheckUpdate() {
+        autoCheckUpdate = !autoCheckUpdate;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("autoCheckUpdate", autoCheckUpdate);
+        editor.apply();
+    }
+
     public static void toggleShowNoQuoteForward() {
         showNoQuoteForward = !showNoQuoteForward;
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
@@ -1468,6 +1482,22 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("removeChatDelay", removeChatDelay);
+        editor.apply();
+    }
+
+    public static void toggleRoundedBulletin() {
+        roundedBulletin = !roundedBulletin;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("roundedBulletin", roundedBulletin);
+        editor.apply();
+    }
+
+    public static void toggleShowOnlineDotsInChat() {
+        showOnlineDotsInChat = !showOnlineDotsInChat;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("showOnlineDotsInChat", showOnlineDotsInChat);
         editor.apply();
     }
 

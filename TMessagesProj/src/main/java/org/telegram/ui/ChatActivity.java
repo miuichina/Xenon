@@ -6500,6 +6500,26 @@ public class ChatActivity extends BaseFragment implements
                             canvas.translate(dp(24) * getSideMenuAlpha(), 0f);
                         }
                         imageReceiver.draw(canvas);
+                        if (NekoConfig.showOnlineDotsInChat && updateVisibility && mcell instanceof ChatMessageCell) {
+                            ChatMessageCell cmcell = (ChatMessageCell) mcell;
+                            TLRPC.User cellUser = cmcell.getCurrentUser();
+                            if (cellUser != null && !cellUser.bot && !cellUser.self) {
+                                TLRPC.User freshUser = MessagesController.getInstance(currentAccount).getUser(cellUser.id);
+                                if (freshUser != null) {
+                                    cellUser = freshUser;
+                                }
+                                if (cellUser.status != null && (cellUser.status.expires > ConnectionsManager.getInstance(currentAccount).getCurrentTime() || MessagesController.getInstance(currentAccount).onlinePrivacy.containsKey(cellUser.id))) {
+                                    float dotRadius = dp(5);
+                                    float borderRadius = dp(7);
+                                    float cx = imageReceiver.getImageX2() - dp(10);
+                                    float cy = imageReceiver.getImageY2() - dp(6);
+                                    Theme.dialogs_onlineCirclePaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhite));
+                                    canvas.drawCircle(cx, cy, borderRadius, Theme.dialogs_onlineCirclePaint);
+                                    Theme.dialogs_onlineCirclePaint.setColor(Theme.getColor(Theme.key_chats_onlineCircle));
+                                    canvas.drawCircle(cx, cy, dotRadius, Theme.dialogs_onlineCirclePaint);
+                                }
+                            }
+                        }
                         canvas.restore();
 
                         if (!replaceAnimation && child.getTranslationY() != 0) {
@@ -22313,6 +22333,9 @@ public class ChatActivity extends BaseFragment implements
                     avatarContainer.updateOnlineCount();
                 }
                 updateSubtitle = true;
+                if (NekoConfig.showOnlineDotsInChat) {
+                    updateVisibleRows();
+                }
             }
             if ((updateMask & MessagesController.UPDATE_MASK_AVATAR) != 0 || (updateMask & MessagesController.UPDATE_MASK_CHAT_AVATAR) != 0 || (updateMask & MessagesController.UPDATE_MASK_NAME) != 0) {
                 checkAndUpdateAvatar();

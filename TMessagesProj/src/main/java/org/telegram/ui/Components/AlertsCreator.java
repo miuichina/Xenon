@@ -8226,8 +8226,7 @@ public class AlertsCreator {
                 hideDim.run();
             }
         });
-        AlertDialog dialog = builder.create();
-        fragment.showDialog(dialog);
+        AlertDialog dialog = builder.show();
         TextView positiveButton = (TextView) dialog.getButton(DialogInterface.BUTTON_POSITIVE);
         if (positiveButton != null) {
             positiveButton.setTextColor(Theme.getColor(Theme.key_text_RedBold));

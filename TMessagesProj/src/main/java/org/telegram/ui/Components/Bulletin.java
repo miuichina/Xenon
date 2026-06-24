@@ -798,16 +798,37 @@ public class Bulletin {
         }
 
         @Override
+        protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+            super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+            if (zxc.iconic.xenon.NekoConfig.roundedBulletin && background != null && !hasCustomBackground) {
+                int h = getMeasuredHeight();
+                int r = Math.min(h / 2, dp(48));
+                if (r != lastBulletinRounding) {
+                    lastBulletinRounding = r;
+                    background = Theme.createRoundRectDrawable(r, bgColor);
+                }
+            }
+        }
+
+        private int lastBulletinRounding;
+        private int bgColor;
+
+        @Override
         protected boolean verifyDrawable(@NonNull Drawable who) {
             return background == who || super.verifyDrawable(who);
         }
 
         protected void setBackground(int color) {
+            bgColor = color;
             setBackground(color, 16);
         }
 
         public void setBackground(int color, int rounding) {
             if (!hasCustomBackground) {
+                bgColor = color;
+                if (zxc.iconic.xenon.NekoConfig.roundedBulletin) {
+                    rounding = 48;
+                }
                 background = Theme.createRoundRectDrawable(dp(rounding), color);
             }
         }

@@ -416,6 +416,9 @@
     <string name="NekoUpdate">Update</string>
     <string name="ForceUpdate">Force update</string>
     <string name="AutoDownloadUpdate">Automatically download update</string>
+    <string name="UpdatesHeader">Updates</string>
+    <string name="AutoCheckUpdate">Automatically check for updates</string>
+    <string name="UpdateAvailable">Update available!</string>
     <string name="HowToOpenConfigFile">How do you want to open this file?</string>
     <string name="OpenAsXenonConfig">As Xenon config</string>
     <string name="OpenAsFile">As file</string>
@@ -439,4 +442,10 @@
     <string name="SaveDeletedMessages">Deleted messages</string>
     <string name="SaveDeletedMessagesDesc">Save messages when they are deleted</string>
     <string name="DeletedMessage">deleted</string>
+    <string name="RoundedBulletin">Round bulletin</string>
+    <string name="TestBottomSheet">Test BottomSheet</string>
+    <string name="TestBottomSheetTitle">hi</string>
+    <string name="TestBottomSheetText">:3</string>
+    <string name="TestBottomSheetClose">Close</string>
+    <string name="ShowOnlineDotsInChat">Show online dots in chat</string>
 </resources>

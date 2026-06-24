@@ -60,6 +60,7 @@ public class NekoChatSettingsActivity extends BaseNekoSettingsActivity implement
     private final int disableGreetingStickerRow = rowId++;
     private final int hideChannelBottomButtonsRow = rowId++;
     private final int removeAdsRow = rowId++;
+    private final int showOnlineDotsInChatRow = rowId++;
     private final int doubleTapActionRow = rowId++;
     private final int maxRecentStickersRow = rowId++;
 
@@ -160,6 +161,7 @@ public class NekoChatSettingsActivity extends BaseNekoSettingsActivity implement
         items.add(UItem.asCheck(disableGreetingStickerRow, LocaleController.getString(R.string.DisableGreetingSticker)).slug("disableGreetingSticker").setChecked(NekoConfig.disableGreetingSticker));
         items.add(UItem.asCheck(hideChannelBottomButtonsRow, LocaleController.getString(R.string.HideChannelBottomButtons)).slug("hideChannelBottomButtons").setChecked(NekoConfig.hideChannelBottomButtons));
         items.add(UItem.asCheck(removeAdsRow, LocaleController.getString(R.string.RemoveAds)).slug("removeAds").setChecked(NekoConfig.removeAds));
+        items.add(UItem.asCheck(showOnlineDotsInChatRow, LocaleController.getString(R.string.ShowOnlineDotsInChat)).setChecked(NekoConfig.showOnlineDotsInChat).slug("showOnlineDotsInChat"));
         items.add(TextSettingsCellFactory.of(doubleTapActionRow, LocaleController.getString(R.string.DoubleTapAction), NekoConfig.doubleTapInAction == NekoConfig.doubleTapOutAction ?
                 getDoubleTapActionText(NekoConfig.doubleTapInAction) :
                 getDoubleTapActionText(NekoConfig.doubleTapInAction) + ", " + getDoubleTapActionText(NekoConfig.doubleTapOutAction)).slug("doubleTapAction"));
@@ -512,6 +514,11 @@ public class NekoChatSettingsActivity extends BaseNekoSettingsActivity implement
             NekoConfig.toggleRemoveAds();
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.removeAds);
+            }
+        } else if (id == showOnlineDotsInChatRow) {
+            NekoConfig.toggleShowOnlineDotsInChat();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.showOnlineDotsInChat);
             }
         }
     }

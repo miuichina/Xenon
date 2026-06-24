@@ -134,8 +134,12 @@ public class ApplicationLoaderImpl extends ApplicationLoader {
                 // feedback for failed checks. Always dispatch via the UI thread.
                 AndroidUtilities.runOnUIThread(() -> {
                     try {
-                        Toast.makeText(applicationContext,
-                                "Update check failed: " + error, Toast.LENGTH_LONG).show();
+                        BulletinFactory.global()
+                                .createSimpleBulletin(R.raw.chats_infotip,
+                                        "Update check failed: " + error,
+                                        "Retry",
+                                        () -> checkUpdate(force, null))
+                                .show();
                     } catch (Throwable ignored) {}
                 });
                 if (whenDone != null) whenDone.run();

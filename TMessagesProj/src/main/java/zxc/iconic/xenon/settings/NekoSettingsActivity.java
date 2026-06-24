@@ -1,5 +1,6 @@
 package zxc.iconic.xenon.settings;
 
+import android.app.Activity;
 import android.content.Context;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
@@ -249,6 +250,11 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity implements Fa
         } else if (id == forceUpdateRow) {
             var activity = getParentActivity();
             if (activity == null) return;
+            var impl = ApplicationLoader.applicationLoaderInstance;
+            if (impl != null && impl.isDownloadingUpdate()) {
+                showDownloadProgress(activity, impl);
+                return;
+            }
             var spinner = new org.telegram.ui.ActionBar.AlertDialog(activity, org.telegram.ui.ActionBar.AlertDialog.ALERT_TYPE_SPINNER);
             spinner.setCanCancel(true);
             spinner.show();
@@ -583,5 +589,59 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity implements Fa
                 }
             }
         }
+    }
+
+    private void showDownloadProgress(Activity activity, ApplicationLoader impl) {
+        final Bulletin[] progBulletin = new Bulletin[1];
+        AndroidUtilities.runOnUIThread(() -> {
+            try {
+                Bulletin b = BulletinFactory.global()
+                        .createSimpleBulletin(R.raw.ic_download, LocaleController.getString(R.string.DownloadingUpdate), LocaleController.getString(R.string.Cancel), Integer.MAX_VALUE, () -> impl.cancelDownloadingUpdate());
+                if (b.getLayout() instanceof Bulletin.LottieLayout) {
+                    ((Bulletin.LottieLayout) b.getLayout()).setIconPaddingBottom(2);
+                }
+                b.show();
+                progBulletin[0] = b;
+            } catch (Throwable ignored) {}
+        }, 100);
+        AndroidUtilities.runOnUIThread(new Runnable() {
+            @Override
+            public void run() {
+                if (impl.isDownloadingUpdate() && progBulletin[0] != null) {
+                    try {
+                        float prog = impl.getDownloadingUpdateProgress();
+                        long total = impl.getDownloadTotalSize();
+                        long downloaded = impl.getDownloadBytesDownloaded();
+                        String text;
+                        if (total > 0) {
+                            String d = android.text.format.Formatter.formatShortFileSize(activity, downloaded);
+                            String t = android.text.format.Formatter.formatShortFileSize(activity, total);
+                            text = LocaleController.getString(R.string.DownloadingUpdate) + " " + d + " / " + t;
+                        } else {
+                            text = LocaleController.getString(R.string.DownloadingUpdate) + " " + (int)(prog * 100) + "%";
+                        }
+                        ((Bulletin.LottieLayout) progBulletin[0].getLayout()).textView.setText(text);
+                    } catch (Throwable ignored) {}
+                    AndroidUtilities.runOnUIThread(this, 500);
+                } else if (progBulletin[0] != null) {
+                    try { progBulletin[0].hide(); } catch (Throwable ignored) {}
+                    File apkFile = impl.getDownloadedUpdateFile();
+                    if (apkFile != null && apkFile.exists()) {
+                        try {
+                            Bulletin b2 = BulletinFactory.global()
+                                    .createSimpleBulletin(R.raw.ic_download,
+                                            LocaleController.getString(R.string.UpdateDownloaded),
+                                            LocaleController.getString(R.string.NekoUpdate),
+                                            Integer.MAX_VALUE,
+                                            () -> ApkInstaller.installUpdate(activity, apkFile));
+                            if (b2.getLayout() instanceof Bulletin.LottieLayout) {
+                                ((Bulletin.LottieLayout) b2.getLayout()).setIconPaddingBottom(2);
+                            }
+                            b2.show();
+                        } catch (Throwable ignored) {}
+                    }
+                }
+            }
+        }, 500);
     }
 }
