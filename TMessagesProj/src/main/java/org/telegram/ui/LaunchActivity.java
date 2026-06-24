@@ -473,6 +473,13 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         frameLayout.setClipToPadding(false);
         frameLayout.setClipChildren(false);
         setContentView(frameLayout);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            try {
+                int uiMode = getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
+                boolean isNight = uiMode == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+                frameLayout.setBackgroundColor(getColor(isNight ? android.R.color.system_neutral1_900 : android.R.color.system_neutral1_50));
+            } catch (Throwable ignored) {}
+        }
         rootAnimatedInsetsListener = new WindowAnimatedInsetsProvider(frameLayout);
         pipActivityController.addPipListener(new IPipActivityListener() {
             final ActivityVisibilityController activityVisibilityController = createActivityVisibilityController(false);
