@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
 import android.text.SpannableStringBuilder;
@@ -144,6 +145,25 @@ public class MessageHelper extends BaseController {
         var spannableStringBuilder = new SpannableStringBuilder();
         spannableStringBuilder
                 .append(spannedStrings[1])
+                .append(' ')
+                .append(LocaleController.getInstance().getFormatterDay().format((long) (messageObject.messageOwner.date) * 1000));
+        return spannableStringBuilder;
+    }
+
+    private static Drawable deletedDrawable;
+    private static SpannableStringBuilder deletedSpan;
+
+    public static CharSequence createDeletedString(MessageObject messageObject) {
+        if (deletedDrawable == null) {
+            deletedDrawable = ApplicationLoader.applicationContext.getResources().getDrawable(R.drawable.msg_delete_solar).mutate();
+        }
+        if (deletedSpan == null) {
+            deletedSpan = new SpannableStringBuilder("\u200B");
+            deletedSpan.setSpan(new ColoredImageSpan(deletedDrawable), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        var spannableStringBuilder = new SpannableStringBuilder();
+        spannableStringBuilder
+                .append(deletedSpan)
                 .append(' ')
                 .append(LocaleController.getInstance().getFormatterDay().format((long) (messageObject.messageOwner.date) * 1000));
         return spannableStringBuilder;

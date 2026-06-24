@@ -428,4 +428,7 @@
     <string name="BlurSettings">Настройки BottomSheet</string>
     <string name="BlurPixelation">Пикселизация</string>
     <string name="BlurSettingsHeader">Блюр</string>
+    <string name="SaveDeletedMessages">Удалённые сообщения</string>
+    <string name="SaveDeletedMessagesDesc">Сохранять сообщения при удалении</string>
+    <string name="DeletedMessage">удалено</string>
 </resources>

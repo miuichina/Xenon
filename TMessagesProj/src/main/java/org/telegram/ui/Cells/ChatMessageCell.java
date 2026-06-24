@@ -1808,6 +1808,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
 
     public final TransitionParams transitionParams = new TransitionParams();
     private boolean edited;
+    private boolean ayuDeleted;
     private boolean imageDrawn;
     private boolean photoImageOutOfBounds;
 
@@ -18379,10 +18380,13 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         boolean hasReplies = messageObject.hasReplies();
         if (messageObject.scheduled || messageObject.isLiveLocation() || messageObject.isPoll() || messageObject.messageOwner.edit_hide || messageObject.getDialogId() == 777000 || messageObject.messageOwner.via_bot_id != 0 || messageObject.messageOwner.via_bot_name != null || author != null && author.bot) {
             edited = false;
+            ayuDeleted = messageObject.isAyuDeleted() && !(currentChat instanceof TLRPC.TL_chat && author != null && author.bot);
         } else if (currentPosition == null || currentMessagesGroup == null || currentMessagesGroup.messages.isEmpty()) {
             edited = (messageObject.messageOwner.flags & TLRPC.MESSAGE_FLAG_EDITED) != 0 || messageObject.isEditing();
+            ayuDeleted = messageObject.isAyuDeleted();
         } else {
             edited = false;
+            ayuDeleted = messageObject.isAyuDeleted();
             hasReplies = currentMessagesGroup.messages.get(0).hasReplies();
             if (!currentMessagesGroup.messages.get(0).messageOwner.edit_hide) {
                 for (int a = 0, size = currentMessagesGroup.messages.size(); a < size; a++) {
@@ -18409,6 +18413,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         } else if (currentMessageObject.translated && AccConfig.showTranslatedLanguage) {
             timeString = MessageHelper.createTranslateString(currentMessageObject);
             customDrawableWidth = timeString instanceof SpannableStringBuilder ? Theme.chat_arrowDrawable.getIntrinsicWidth() : 0;
+        } else if (ayuDeleted) {
+            timeString = MessageHelper.createDeletedString(currentMessageObject);
+            customDrawableWidth = 1;
         } else if (edited) {
             timeString = MessageHelper.createEditedString(currentMessageObject);
             customDrawableWidth = Theme.chat_editDrawable.getIntrinsicWidth();
@@ -20027,6 +20034,10 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         if (sponosoredAlpha != 255) {
             restoreToSponosoredAlpha = canvas.saveLayerAlpha(0, 0, getMeasuredWidth(), getMeasuredHeight(), sponosoredAlpha);
         }
+        int restoreToAyuDeleted = -1;
+        if (ayuDeleted) {
+            restoreToAyuDeleted = canvas.saveLayerAlpha(0, 0, getMeasuredWidth(), getMeasuredHeight(), (int) (255 * 0.75f));
+        }
 
         setupTextColors();
 
@@ -20224,6 +20235,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         }
         updateSelectionTextPosition();
 
+        if (restoreToAyuDeleted != -1) {
+            canvas.restoreToCount(restoreToAyuDeleted);
+        }
         if (restoreToSponosoredAlpha != -1) {
             canvas.restoreToCount(restoreToSponosoredAlpha);
         }
@@ -21697,7 +21711,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                 currentBackgroundShadowDrawable.draw(canvas);
                 currentBackgroundShadowDrawable.setAlpha(255);
             }
-            currentBackgroundDrawable.setAlpha((int) (getAlpha() * 255));
+            currentBackgroundDrawable.setAlpha((int) (getAlpha() * (ayuDeleted ? 255 * 0.75f : 255)));
             currentBackgroundDrawable.setBounds(left, top, right, bottom);
             currentBackgroundDrawable.drawCached(canvas, backgroundCacheParams);
             currentBackgroundDrawable.setAlpha(255);

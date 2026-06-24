@@ -436,4 +436,7 @@
     <string name="BlurSettings">BottomSheet settings</string>
     <string name="BlurPixelation">Pixelation</string>
     <string name="BlurSettingsHeader">Blur</string>
+    <string name="SaveDeletedMessages">Deleted messages</string>
+    <string name="SaveDeletedMessagesDesc">Save messages when they are deleted</string>
+    <string name="DeletedMessage">deleted</string>
 </resources>

@@ -8089,12 +8089,23 @@ public class AlertsCreator {
                 if (mergeDialogId != 0 && selectedMessage.messageOwner.peer_id != null && selectedMessage.messageOwner.peer_id.chat_id == -mergeDialogId) {
                     thisDialogId = mergeDialogId;
                 }
+                if (zxc.iconic.xenon.NekoConfig.enableSaveDeletedMessages && ids != null) {
+                    for (int mid : ids) {
+                        zxc.iconic.xenon.deleted.XenonDeletedState.permitDeleteMessage(thisDialogId, mid);
+                    }
+                }
                 MessagesController.getInstance(currentAccount).deleteMessages(ids, random_ids, encryptedChat, thisDialogId, topicId, deleteForAll[0], mode);
             } else {
                 for (int a = 1; a >= 0; a--) {
                     ids = new ArrayList<>();
                     for (int b = 0; b < selectedMessages[a].size(); b++) {
                         ids.add(selectedMessages[a].keyAt(b));
+                    }
+                    if (zxc.iconic.xenon.NekoConfig.enableSaveDeletedMessages) {
+                        long permDialogId = (a == 1 && mergeDialogId != 0) ? mergeDialogId : thisDialogId;
+                        for (int k = 0; k < ids.size(); k++) {
+                            zxc.iconic.xenon.deleted.XenonDeletedState.permitDeleteMessage(permDialogId, ids.get(k));
+                        }
                     }
                     ArrayList<Long> random_ids = null;
                     if (encryptedChat != null) {

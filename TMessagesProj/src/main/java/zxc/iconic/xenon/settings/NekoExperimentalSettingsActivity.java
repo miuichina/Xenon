@@ -51,6 +51,7 @@ public class NekoExperimentalSettingsActivity extends BaseNekoSettingsActivity {
     private final int contentRestrictionRow = rowId++;
     private final int showRPCErrorRow = rowId++;
     private final int removeChatDelayRow = rowId++;
+    private final int saveDeletedMessagesRow = rowId++;
     private final int xrayProxySettingsRow = rowId++;
 
     private final int sendBugReportRow = rowId++;
@@ -92,6 +93,7 @@ public class NekoExperimentalSettingsActivity extends BaseNekoSettingsActivity {
         }
         items.add(UItem.asCheck(showRPCErrorRow, LocaleController.getString(R.string.ShowRPCError), LocaleController.formatString(R.string.ShowRPCErrorException, "FILE_REFERENCE_EXPIRED")).slug("showRPCError").setChecked(NekoConfig.showRPCError));
         items.add(UItem.asCheck(removeChatDelayRow, LocaleController.getString(R.string.RemoveChatDelay)).slug("removeChatDelay").setChecked(NekoConfig.removeChatDelay));
+        items.add(UItem.asCheck(saveDeletedMessagesRow, (LocaleController.getString(R.string.SaveDeletedMessages) + " (WIP)"), LocaleController.getString(R.string.SaveDeletedMessagesDesc)).slug("saveDeletedMessages").setChecked(NekoConfig.enableSaveDeletedMessages));
         XrayProxyProfileStore.Profile activeProfile = XrayProxyProfileStore.getActiveProfile();
         String xrayStatus = NekoConfig.xrayAppProxyEnabled ? LocaleController.getString(R.string.XrayProxyStatusRunning) : LocaleController.getString(R.string.XrayProxyStatusStopped);
         if (activeProfile != null && !TextUtils.isEmpty(activeProfile.name)) {
@@ -241,6 +243,11 @@ public class NekoExperimentalSettingsActivity extends BaseNekoSettingsActivity {
             NekoConfig.toggleRemoveChatDelay();
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.removeChatDelay);
+            }
+        } else if (id == saveDeletedMessagesRow) {
+            NekoConfig.toggleEnableSaveDeletedMessages();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.enableSaveDeletedMessages);
             }
         } else if (id == downloadSpeedBoostRow) {
             ArrayList<String> arrayList = new ArrayList<>();
