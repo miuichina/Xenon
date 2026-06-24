@@ -428,4 +428,5 @@
     <string name="BlurSettings">Настройки BottomSheet</string>
     <string name="BlurPixelation">Пикселизация</string>
     <string name="BlurSettingsHeader">Блюр</string>
+    <string name="RoundedBulletin">Скруглённый bulletin</string>
 </resources>

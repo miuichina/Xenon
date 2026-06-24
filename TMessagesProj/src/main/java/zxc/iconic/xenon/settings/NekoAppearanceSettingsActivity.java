@@ -63,6 +63,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int alternativeTransitionEaseDescriptionRow = rowId++;
 
     private final int textAnimationSettingsRow = rowId++;
+    private final int roundedBulletinRow = rowId++;
 
     @Override
     public boolean onFragmentCreate() {
@@ -101,6 +102,18 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             items.add(UItem.asCheck(keepUnreadArchivedOnTopRow, LocaleController.getString(R.string.KeepUnreadArchivedOnTop)).setChecked(NekoConfig.keepUnreadArchivedOnTop).slug("keepUnreadArchivedOnTop"));
         }
         items.add(UItem.asCheck(hideRecordButtonRow, LocaleController.getString(R.string.HideRecordButton)).setChecked(NekoConfig.hideRecordButton).slug("hideRecordButton"));
+        items.add(UItem.asCheck(roundedBulletinRow, LocaleController.getString(R.string.RoundedBulletin)).setChecked(NekoConfig.roundedBulletin).slug("roundedBulletin"));
+        items.add(UItem.asCheck(appBarShadowRow, LocaleController.getString(R.string.DisableAppBarShadow)).slug("appBarShadow").setChecked(NekoConfig.disableAppBarShadow));
+        items.add(UItem.asCheck(formatTimeWithSecondsRow, LocaleController.getString(R.string.FormatWithSeconds)).slug("formatTimeWithSeconds").setChecked(NekoConfig.formatTimeWithSeconds));
+        items.add(UItem.asCheck(disableNumberRoundingRow, LocaleController.getString(R.string.DisableNumberRounding), "4.8K -> 4777").slug("disableNumberRounding").setChecked(NekoConfig.disableNumberRounding));
+        items.add(UItem.asCheck(hideBottomNavigationBarRow, LocaleController.getString(R.string.HideBottomNavigationBar)).setChecked(NekoConfig.hideBottomNavigationBar).slug("hideBottomNavigationBar"));
+        items.add(UItem.asCheck(dynamicTabSizeRow, LocaleController.getString(R.string.DynamicTabSize)).slug("dynamicTabSize").setChecked(NekoConfig.dynamicTabSize));
+        items.add(TextSettingsCellFactory.of(mainTabsCustomizeRow, LocaleController.getString(R.string.MainTabsCustomizeTitle), LocaleController.getString(R.string.MainTabsCustomizeHint)).slug("mainTabsCustomize"));
+        items.add(TextSettingsCellFactory.of(tabletModeRow, LocaleController.getString(R.string.TabletMode), switch (NekoConfig.tabletMode) {
+            case NekoConfig.TABLET_AUTO -> LocaleController.getString(R.string.TabletModeAuto);
+            case NekoConfig.TABLET_ENABLE -> LocaleController.getString(R.string.Enable);
+            default -> LocaleController.getString(R.string.Disable);
+        }).slug("tabletMode"));
         items.add(UItem.asCheck(alternativeTransitionRow, LocaleController.getString(R.string.AlternativeTransition)).setChecked(NekoConfig.alternativeTransition).slug("alternativeTransition"));
         if (NekoConfig.alternativeTransition) {
             SeekbarConfig speedConfig = new SeekbarConfig(
@@ -118,19 +131,6 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         }
         items.add(UItem.asHeader(LocaleController.getString(R.string.TextAnimation)));
         items.add(TextSettingsCellFactory.of(textAnimationSettingsRow, LocaleController.getString(R.string.TextAnimation), "›").slug("textAnimationSettings"));
-        items.add(UItem.asShadow(null));
-
-        items.add(UItem.asCheck(appBarShadowRow, LocaleController.getString(R.string.DisableAppBarShadow)).slug("appBarShadow").setChecked(NekoConfig.disableAppBarShadow));
-        items.add(UItem.asCheck(formatTimeWithSecondsRow, LocaleController.getString(R.string.FormatWithSeconds)).slug("formatTimeWithSeconds").setChecked(NekoConfig.formatTimeWithSeconds));
-        items.add(UItem.asCheck(disableNumberRoundingRow, LocaleController.getString(R.string.DisableNumberRounding), "4.8K -> 4777").slug("disableNumberRounding").setChecked(NekoConfig.disableNumberRounding));
-        items.add(UItem.asCheck(hideBottomNavigationBarRow, LocaleController.getString(R.string.HideBottomNavigationBar)).setChecked(NekoConfig.hideBottomNavigationBar).slug("hideBottomNavigationBar"));
-        items.add(UItem.asCheck(dynamicTabSizeRow, LocaleController.getString(R.string.DynamicTabSize)).slug("dynamicTabSize").setChecked(NekoConfig.dynamicTabSize));
-        items.add(TextSettingsCellFactory.of(mainTabsCustomizeRow, LocaleController.getString(R.string.MainTabsCustomizeTitle), LocaleController.getString(R.string.MainTabsCustomizeHint)).slug("mainTabsCustomize"));
-        items.add(TextSettingsCellFactory.of(tabletModeRow, LocaleController.getString(R.string.TabletMode), switch (NekoConfig.tabletMode) {
-            case NekoConfig.TABLET_AUTO -> LocaleController.getString(R.string.TabletModeAuto);
-            case NekoConfig.TABLET_ENABLE -> LocaleController.getString(R.string.Enable);
-            default -> LocaleController.getString(R.string.Disable);
-        }).slug("tabletMode"));
         items.add(UItem.asShadow(null));
 
         items.add(UItem.asHeader(LocaleController.getString(R.string.SavedDialogsTab)));
@@ -301,6 +301,11 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             listView.adapter.update(true);
         } else if (id == alternativeTransitionEaseRow) {
             showEaseDialog();
+        } else if (id == roundedBulletinRow) {
+            NekoConfig.toggleRoundedBulletin();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.roundedBulletin);
+            }
         }
     }
 

@@ -436,4 +436,5 @@
     <string name="BlurSettings">BottomSheet settings</string>
     <string name="BlurPixelation">Pixelation</string>
     <string name="BlurSettingsHeader">Blur</string>
+    <string name="RoundedBulletin">Round bulletin</string>
 </resources>

@@ -214,6 +214,7 @@ public class NekoConfig {
     public static boolean keepUnreadChatsOnTop = false;
     public static boolean keepUnreadArchivedOnTop = false;
     public static boolean shouldNOTTrustMe = false;
+    public static boolean roundedBulletin = false;
 
     public static int userMcc = 0;
 
@@ -370,6 +371,7 @@ public class NekoConfig {
             alternativeTransitionSpeed = preferences.getInt("alternativeTransitionSpeed", 300);
             alternativeTransitionEase = preferences.getString("alternativeTransitionEase", "0.37,0.01,0.1,1");
             removeChatDelay = preferences.getBoolean("removeChatDelay", false);
+            roundedBulletin = preferences.getBoolean("roundedBulletin", false);
 
             LensHelper.checkLensSupportAsync();
             preferences.registerOnSharedPreferenceChangeListener(listener);
@@ -1458,6 +1460,14 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("removeChatDelay", removeChatDelay);
+        editor.apply();
+    }
+
+    public static void toggleRoundedBulletin() {
+        roundedBulletin = !roundedBulletin;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("roundedBulletin", roundedBulletin);
         editor.apply();
     }
 
