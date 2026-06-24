@@ -32,7 +32,7 @@ public class NekoBlurSettingsActivity extends BaseNekoSettingsActivity {
         items.add(UItem.asCheck(replaceDialogsWithSheetRow, LocaleController.getString(R.string.ReplaceDialogsWithSheet)).setChecked(NekoConfig.replaceDialogsWithSheet).slug("replaceDialogsWithSheet"));
         items.add(UItem.asShadow(null));
 
-        items.add(UItem.asHeader(LocaleController.getString(R.string.BlurOverlayRadius)));
+        items.add(UItem.asHeader(LocaleController.getString(R.string.BlurSettingsHeader)));
         if (NekoConfig.blurOverlay) {
             SeekbarConfig radiusConfig = new SeekbarConfig(
                     LocaleController.getString(R.string.BlurOverlayRadius),

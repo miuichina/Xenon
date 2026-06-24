@@ -902,7 +902,7 @@ public class FilterTabsView extends FrameLayout {
     private boolean ignoreLayout;
 
     private final RecyclerListView listView;
-    private final int listViewPaddingH;
+    private int listViewPaddingH;
     private final LinearLayoutManager layoutManager;
     private final ListAdapter adapter;
 
@@ -1201,8 +1201,10 @@ public class FilterTabsView extends FrameLayout {
         });
         ItemTouchHelper itemTouchHelper = new ItemTouchHelper(new TouchHelperCallback());
         itemTouchHelper.attachToRecyclerView(listView);
-        listViewPaddingH = Math.max(0, dp(23.5f - FolderIconHelper.getPaddingTab() / 2f));
-        listView.setPadding(listViewPaddingH, 0, listViewPaddingH, 0);
+        int padLeft = Math.max(0, dp(12) - 1);
+        int padRight = Math.max(0, dp(12) + 2);
+        listViewPaddingH = padLeft;
+        listView.setPadding(padLeft, 0, padRight, 0);
         listView.setClipToPadding(false);
         listView.setDrawSelectorBehind(true);
         adapter = new ListAdapter(context);
