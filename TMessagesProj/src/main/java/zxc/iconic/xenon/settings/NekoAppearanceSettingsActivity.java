@@ -18,7 +18,6 @@ import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.TextCheckCell;
-import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.EditTextBoldCursor;
 import org.telegram.ui.Components.URLSpanNoUnderline;
 import org.telegram.ui.Components.LayoutHelper;
@@ -55,9 +54,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int tabsPositionRow = rowId++;
 
     private final int strokeOnViewsRow = rowId++;
-    private final int blurOverlayRow = rowId++;
-    private final int blurOverlayRadiusRow = rowId++;
-    private final int replaceDialogsWithSheetRow = rowId++;
+    private final int blurSettingsRow = rowId++;
     private final int hideRecordButtonRow = rowId++;
     private final int disableGooeyAvatarAnimationRow = rowId++;
     private final int gooeyAvatarOffsetRow = rowId++;
@@ -190,15 +187,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
 
         items.add(UItem.asHeader(LocaleController.getString(R.string.LiteOptionsBlur2)));
         items.add(UItem.asCheck(strokeOnViewsRow, LocaleController.getString(R.string.StrokeOnViews)).setChecked(NekoConfig.strokeOnViews).slug("strokeOnViews"));
-        items.add(UItem.asCheck(blurOverlayRow, LocaleController.getString(R.string.BlurOverlay)).setChecked(NekoConfig.blurOverlay).slug("blurOverlay"));
-        if (NekoConfig.blurOverlay) {
-            SeekbarConfig blurRadiusConfig = new SeekbarConfig(
-                    LocaleController.getString(R.string.BlurOverlayRadius),
-                    "2", "20", 2, 20, 1,
-                    progress -> NekoConfig.setBlurOverlayRadius(Math.round(progress)));
-            items.add(SeekbarCellFactory.of(blurOverlayRadiusRow, blurRadiusConfig, NekoConfig.blurOverlayRadius).slug("blurOverlayRadius"));
-        }
-        items.add(UItem.asCheck(replaceDialogsWithSheetRow, LocaleController.getString(R.string.ReplaceDialogsWithSheet)).setChecked(NekoConfig.replaceDialogsWithSheet).slug("replaceDialogsWithSheet"));
+        items.add(TextSettingsCellFactory.of(blurSettingsRow, LocaleController.getString(R.string.BlurSettings), "›").slug("blurSettings"));
         items.add(UItem.asShadow(null));
 
     }
@@ -325,28 +314,8 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.strokeOnViews);
             }
-        } else if (id == blurOverlayRow) {
-            NekoConfig.toggleBlurOverlay();
-            item.checked = NekoConfig.blurOverlay;
-            if (view instanceof TextCheckCell) {
-                ((TextCheckCell) view).setChecked(NekoConfig.blurOverlay);
-            }
-            listView.adapter.update(true);
-            if (NekoConfig.blurOverlay && !NekoConfig.replaceDialogsWithSheet) {
-                BulletinFactory.of(this).createSimpleBulletin(R.raw.chats_infotip,
-                        LocaleController.getString(R.string.BlurOverlayBulletinText),
-                        LocaleController.getString(R.string.BlurOverlayBulletinButton),
-                        () -> {
-                            NekoConfig.toggleReplaceDialogsWithSheet();
-                            listView.adapter.update(true);
-                        }).show();
-            }
-        } else if (id == replaceDialogsWithSheetRow) {
-            NekoConfig.toggleReplaceDialogsWithSheet();
-            item.checked = NekoConfig.replaceDialogsWithSheet;
-            if (view instanceof TextCheckCell) {
-                ((TextCheckCell) view).setChecked(NekoConfig.replaceDialogsWithSheet);
-            }
+        } else if (id == blurSettingsRow) {
+            presentFragment(new NekoBlurSettingsActivity());
         } else if (id == disableGooeyAvatarAnimationRow) {
             NekoConfig.toggleDisableGooeyAvatarAnimation();
             if (view instanceof TextCheckCell) {

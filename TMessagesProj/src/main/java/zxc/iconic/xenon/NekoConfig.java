@@ -203,7 +203,13 @@ public class NekoConfig {
 
     public static boolean forceBlurLiquidGlass = false;
     public static boolean blurOverlay = false;
-    public static int blurOverlayRadius = 8;
+    public static int blurOverlayRadius = 10;
+    public static boolean blurOverlayRefresh = false;
+    public static int blurOverlayRefreshInterval = 2;
+    public static int blurAnimationDuration = 500;
+    public static boolean blurSmoothly = false;
+    public static boolean disableBlurBs = false;
+    public static int blurPixelation = 0;
     public static boolean replaceDialogsWithSheet = false;
     public static boolean keepUnreadChatsOnTop = false;
     public static boolean keepUnreadArchivedOnTop = false;
@@ -257,7 +263,13 @@ public class NekoConfig {
             shouldNOTTrustMe = preferences.getBoolean("shouldNOTTrustMe", false);
             forceBlurLiquidGlass = preferences.getBoolean("forceBlurLiquidGlass", false);
             blurOverlay = preferences.getBoolean("blurOverlay", false);
-            blurOverlayRadius = preferences.getInt("blurOverlayRadius", 8);
+            blurOverlayRadius = preferences.getInt("blurOverlayRadius", 10);
+            blurOverlayRefresh = preferences.getBoolean("blurOverlayRefresh", false);
+            blurOverlayRefreshInterval = preferences.getInt("blurOverlayRefreshInterval", 2);
+            blurAnimationDuration = preferences.getInt("blurAnimationDuration", 500);
+            blurSmoothly = preferences.getBoolean("blurSmoothly", false);
+            disableBlurBs = preferences.getBoolean("disableBlurBs", false);
+            blurPixelation = preferences.getInt("blurPixelation", 0);
             replaceDialogsWithSheet = preferences.getBoolean("replaceDialogsWithSheet", false);
             keepUnreadChatsOnTop = preferences.getBoolean("keepUnreadChatsOnTop", false);
             keepUnreadArchivedOnTop = preferences.getBoolean("keepUnreadArchivedOnTop", false);
@@ -1025,6 +1037,54 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putInt("blurOverlayRadius", blurOverlayRadius);
+        editor.apply();
+    }
+
+    public static void toggleBlurOverlayRefresh() {
+        blurOverlayRefresh = !blurOverlayRefresh;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("blurOverlayRefresh", blurOverlayRefresh);
+        editor.apply();
+    }
+
+    public static void setBlurOverlayRefreshInterval(int value) {
+        blurOverlayRefreshInterval = value;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("blurOverlayRefreshInterval", blurOverlayRefreshInterval);
+        editor.apply();
+    }
+
+    public static void toggleBlurSmoothly() {
+        blurSmoothly = !blurSmoothly;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("blurSmoothly", blurSmoothly);
+        editor.apply();
+    }
+
+    public static void toggleDisableBlurBs() {
+        disableBlurBs = !disableBlurBs;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("disableBlurBs", disableBlurBs);
+        editor.apply();
+    }
+
+    public static void setBlurAnimationDuration(int value) {
+        blurAnimationDuration = value;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("blurAnimationDuration", blurAnimationDuration);
+        editor.apply();
+    }
+
+    public static void setBlurPixelation(int value) {
+        blurPixelation = value;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("blurPixelation", blurPixelation);
         editor.apply();
     }
 

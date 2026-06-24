@@ -427,5 +427,12 @@
     <string name="BlurOverlayBulletinText">Enable Replace dialogs with BottomSheet for better experience</string>
     <string name="BlurOverlayBulletinButton">Enable</string>
     <string name="BlurOverlayRadius">Blur radius</string>
+    <string name="BlurOverlayRefresh">Update blur with refresh rate</string>
+    <string name="BlurOverlayRefreshInterval">Blur refresh interval</string>
     <string name="AlternativeTransitionEaseDescription">Experiment with ease on cubic-bezier.com</string>
+    <string name="BlurSmoothly">Blur smoothly</string>
+    <string name="DisableBlurBs">Disable blur(bottomsheet)</string>
+    <string name="BlurAnimationDuration">Animation duration</string>
+    <string name="BlurSettings">BottomSheet settings</string>
+    <string name="BlurPixelation">Pixelation</string>
 </resources>

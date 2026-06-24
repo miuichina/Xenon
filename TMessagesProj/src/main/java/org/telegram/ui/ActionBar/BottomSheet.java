@@ -15,17 +15,18 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
+import android.view.Choreographer;
+import android.app.Activity;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.res.Configuration;
 import android.graphics.Canvas;
 import android.graphics.ColorFilter;
+import android.graphics.RenderEffect;
 import android.graphics.Insets;
 import android.graphics.Paint;
 import android.graphics.PixelFormat;
-import android.graphics.BitmapShader;
-import android.graphics.Matrix;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.graphics.Shader;
@@ -35,6 +36,8 @@ import android.graphics.Region;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -46,6 +49,7 @@ import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowInsets;
+import android.view.PixelCopy;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.animation.Interpolator;
@@ -139,10 +143,9 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
     private Integer selectedPos;
     protected SheetBackDrawable backDrawable = new SheetBackDrawable();
     private Bitmap blurOverlayBitmap;
-    private BitmapShader blurOverlayShader;
-    private Paint blurOverlayPaint;
-    private Matrix blurOverlayMatrix;
     private View blurOverlayView;
+    private Choreographer.FrameCallback blurRefreshCallback;
+    private int blurRefreshFrameCounter;
 
     protected static class SheetBackDrawable extends Drawable {
         private final Paint bgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -1563,56 +1566,162 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.S)
+    private void setupGpuBlur(Activity activity, int radius) {
+        Window window = activity.getWindow();
+        if (window == null) {
+            FileLog.d("XenonBlur: window is null, skipping GPU blur");
+            return;
+        }
+        final View decorView = window.getDecorView();
+        int dw = decorView.getWidth();
+        int dh = decorView.getHeight();
+        if (dw <= 0 || dh <= 0) {
+            FileLog.d("XenonBlur: decorView size is " + dw + "x" + dh + ", skipping GPU blur");
+            return;
+        }
+        int pixelation = zxc.iconic.xenon.NekoConfig.blurPixelation;
+        int downscale = Math.max(1, 1 + pixelation / 5);
+        int bw = Math.max(1, dw / downscale);
+        int bh = Math.max(1, dh / downscale);
+        FileLog.d("XenonBlur: starting GPU blur, radius=" + radius + ", pixelation=" + pixelation + "->" + downscale + ", orig=" + dw + "x" + dh + ", capture=" + bw + "x" + bh);
+
+        final Bitmap bitmap = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888);
+        PixelCopy.request(window, bitmap, copyResult -> {
+            FileLog.d("XenonBlur: PixelCopy result=" + copyResult + " (SUCCESS=" + PixelCopy.SUCCESS + ")");
+            if (copyResult != PixelCopy.SUCCESS || dismissed) {
+                bitmap.recycle();
+                return;
+            }
+            attachBlurView(bitmap, radius, bw, bh);
+            if (zxc.iconic.xenon.NekoConfig.blurOverlayRefresh && !dismissed) {
+                setupGpuBlurRefresh(activity, window, dw, dh);
+            }
+        }, new Handler(Looper.getMainLooper()));
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.S)
+    private void attachBlurView(Bitmap bitmap, int radius, int bw, int bh) {
+        blurOverlayBitmap = bitmap;
+        ImageView imageView = new ImageView(getContext());
+        imageView.setScaleType(ImageView.ScaleType.FIT_XY);
+        imageView.setImageBitmap(bitmap);
+        blurOverlayView = imageView;
+        blurOverlayView.setLayoutParams(new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        boolean disableBlur = zxc.iconic.xenon.NekoConfig.disableBlurBs;
+        float targetBlur = disableBlur ? 0f : radius * 8f;
+        if (zxc.iconic.xenon.NekoConfig.blurSmoothly && !disableBlur) {
+            imageView.setRenderEffect(RenderEffect.createBlurEffect(0f, 0f, Shader.TileMode.CLAMP));
+        } else {
+            imageView.setRenderEffect(RenderEffect.createBlurEffect(
+                    targetBlur, targetBlur, Shader.TileMode.CLAMP
+            ));
+        }
+        if (container != null) {
+            container.post(() -> {
+                if (blurOverlayView != null && container != null && blurOverlayView.getParent() == null) {
+                    if (zxc.iconic.xenon.NekoConfig.blurSmoothly && !disableBlur) {
+                        container.addView(blurOverlayView, 0);
+                        ValueAnimator animator = ValueAnimator.ofFloat(0f, targetBlur);
+                        animator.setDuration(zxc.iconic.xenon.NekoConfig.blurAnimationDuration);
+                        animator.setInterpolator(new CubicBezierInterpolator(0.3f, 0.8f, 0f, 1f));
+                        animator.addUpdateListener(a -> {
+                            if (blurOverlayView != null) {
+                                float val = (float) a.getAnimatedValue();
+                                blurOverlayView.setRenderEffect(RenderEffect.createBlurEffect(
+                                        val, val, Shader.TileMode.CLAMP
+                                ));
+                            }
+                        });
+                        animator.start();
+                    } else {
+                        blurOverlayView.setAlpha(0f);
+                        container.addView(blurOverlayView, 0);
+                        blurOverlayView.animate()
+                                .alpha(1f)
+                                .setDuration(200)
+                                .setInterpolator(CubicBezierInterpolator.DEFAULT)
+                                .start();
+                    }
+                }
+            });
+        }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.S)
+    private void setupGpuBlurRefresh(Activity activity, Window window, int dw, int dh) {
+        blurRefreshCallback = new Choreographer.FrameCallback() {
+            @Override
+            public void doFrame(long frameTimeNanos) {
+                if (dismissed) return;
+                blurRefreshFrameCounter++;
+                int interval = zxc.iconic.xenon.NekoConfig.blurOverlayRefreshInterval;
+                if (blurRefreshFrameCounter % interval != 0) {
+                    Choreographer.getInstance().postFrameCallback(this);
+                    return;
+                }
+                int currentRadius = zxc.iconic.xenon.NekoConfig.blurOverlayRadius;
+                if (currentRadius <= 0) {
+                    Choreographer.getInstance().postFrameCallback(this);
+                    return;
+                }
+                int pixelation = zxc.iconic.xenon.NekoConfig.blurPixelation;
+                int downscale = Math.max(1, 1 + pixelation / 5);
+                int bw = Math.max(1, dw / downscale);
+                int bh = Math.max(1, dh / downscale);
+                Bitmap newBitmap = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888);
+                PixelCopy.request(window, newBitmap, refreshResult -> {
+                    if (refreshResult == PixelCopy.SUCCESS && !dismissed) {
+                        applyBlurUpdate(newBitmap, currentRadius);
+                    } else {
+                        newBitmap.recycle();
+                    }
+                    if (!dismissed && zxc.iconic.xenon.NekoConfig.blurOverlayRefresh) {
+                        Choreographer.getInstance().postFrameCallback(blurRefreshCallback);
+                    }
+                }, new Handler(Looper.getMainLooper()));
+            }
+        };
+        Choreographer.getInstance().postFrameCallback(blurRefreshCallback);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.S)
+    private void applyBlurUpdate(Bitmap newBitmap, int radius) {
+        if (blurOverlayView instanceof ImageView) {
+            ((ImageView) blurOverlayView).setImageBitmap(newBitmap);
+            applyBlurRadius(radius);
+        }
+        if (blurOverlayBitmap != null) {
+            blurOverlayBitmap.recycle();
+        }
+        blurOverlayBitmap = newBitmap;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.S)
+    public void applyBlurRadius(int radius) {
+        if (blurOverlayView != null) {
+            float blur = zxc.iconic.xenon.NekoConfig.disableBlurBs ? 0f : radius * 8f;
+            blurOverlayView.setRenderEffect(RenderEffect.createBlurEffect(
+                    blur, blur, Shader.TileMode.CLAMP
+            ));
+        }
+    }
+
     @Override
     public void show() {
         if (!AndroidUtilities.isSafeToShow(getContext())) return;
         if (zxc.iconic.xenon.NekoConfig.blurOverlay && blurOverlayBitmap == null) {
-            int radius = zxc.iconic.xenon.NekoConfig.blurOverlayRadius;
-            AndroidUtilities.makeGlobalBlurBitmap(bitmap -> {
-                if (bitmap == null || dismissed) {
-                    if (bitmap != null) bitmap.recycle();
-                    return;
+            if (Build.VERSION.SDK_INT >= 31 && attachedFragment == null) {
+                Activity activity = AndroidUtilities.findActivity(getContext());
+                if (activity != null && !activity.isFinishing()) {
+                    setupGpuBlur(activity, zxc.iconic.xenon.NekoConfig.blurOverlayRadius);
+                } else {
+                    FileLog.d("XenonBlur: skip GPU blur — activity=" + activity + " finishing=" + (activity != null && activity.isFinishing()));
                 }
-                blurOverlayBitmap = bitmap;
-                blurOverlayShader = new BitmapShader(bitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
-                blurOverlayMatrix = new Matrix();
-                blurOverlayMatrix.postScale(radius, radius);
-                blurOverlayShader.setLocalMatrix(blurOverlayMatrix);
-                blurOverlayPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-                blurOverlayPaint.setShader(blurOverlayShader);
-                blurOverlayView = new View(getContext()) {
-                    @Override
-                    protected void onDraw(Canvas canvas) {
-                        if (blurOverlayPaint == null) return;
-                        canvas.drawPaint(blurOverlayPaint);
-                    }
-                    @Override
-                    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-                        super.onSizeChanged(w, h, oldw, oldh);
-                        if (blurOverlayMatrix != null && blurOverlayShader != null && blurOverlayBitmap != null) {
-                            blurOverlayMatrix.reset();
-                            blurOverlayMatrix.postScale((float) w / blurOverlayBitmap.getWidth(),
-                                    (float) h / blurOverlayBitmap.getHeight());
-                            blurOverlayShader.setLocalMatrix(blurOverlayMatrix);
-                        }
-                    }
-                };
-                blurOverlayView.setLayoutParams(new FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-                if (container != null) {
-                    container.post(() -> {
-                        if (blurOverlayView != null && container != null && blurOverlayView.getParent() == null) {
-                            blurOverlayView.setAlpha(0f);
-                            container.addView(blurOverlayView, 0);
-                            blurOverlayView.animate()
-                                    .alpha(1f)
-                                    .setDuration(200)
-                                    .setInterpolator(CubicBezierInterpolator.DEFAULT)
-                                    .start();
-                        }
-                    });
-                }
-            }, radius);
+            } else {
+                FileLog.d("XenonBlur: skip GPU blur — SDK=" + Build.VERSION.SDK_INT + " attached=" + (attachedFragment != null));
+            }
         }
         if (attachedFragment != null) {
             onCreateInternal();
@@ -2045,16 +2154,64 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
         }
         dismissed = true;
         if (blurOverlayView != null) {
-            blurOverlayView.animate()
-                    .alpha(0f)
-                    .setDuration(250)
-                    .setInterpolator(CubicBezierInterpolator.EASE_OUT)
-                    .withEndAction(() -> {
+            if (zxc.iconic.xenon.NekoConfig.blurSmoothly && !zxc.iconic.xenon.NekoConfig.disableBlurBs) {
+                float currentBlur = zxc.iconic.xenon.NekoConfig.blurOverlayRadius * 8f;
+                Activity blurActivity = AndroidUtilities.findActivity(getContext());
+                if (blurActivity != null && !blurActivity.isFinishing() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    Window blurWindow = blurActivity.getWindow();
+                    if (blurWindow != null) {
+                        View blurDecor = blurWindow.getDecorView();
+                        int fw = blurDecor.getWidth();
+                        int fh = blurDecor.getHeight();
+                        if (fw > 0 && fh > 0) {
+                            Bitmap fullResBitmap = Bitmap.createBitmap(fw, fh, Bitmap.Config.ARGB_8888);
+                            PixelCopy.request(blurWindow, fullResBitmap, copyResult -> {
+                                if (copyResult == PixelCopy.SUCCESS && blurOverlayView instanceof ImageView && !dismissed) {
+                                    ((ImageView) blurOverlayView).setImageBitmap(fullResBitmap);
+                                } else {
+                                    fullResBitmap.recycle();
+                                }
+                            }, new Handler(Looper.getMainLooper()));
+                        }
+                    }
+                }
+                ValueAnimator reverseBlurAnim = ValueAnimator.ofFloat(currentBlur, 0f);
+                reverseBlurAnim.setDuration(zxc.iconic.xenon.NekoConfig.blurAnimationDuration);
+                reverseBlurAnim.setInterpolator(new CubicBezierInterpolator(0.3f, 0.8f, 0f, 1f));
+                reverseBlurAnim.addUpdateListener(a -> {
+                    if (blurOverlayView != null) {
+                        float val = (float) a.getAnimatedValue();
+                        blurOverlayView.setRenderEffect(RenderEffect.createBlurEffect(
+                                val, val, Shader.TileMode.CLAMP
+                        ));
+                    }
+                });
+                blurOverlayView.animate()
+                        .alpha(0f)
+                        .setDuration(zxc.iconic.xenon.NekoConfig.blurAnimationDuration)
+                        .setInterpolator(new CubicBezierInterpolator(0.3f, 0.8f, 0f, 1f))
+                        .start();
+                reverseBlurAnim.addListener(new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
                         if (blurOverlayView != null && container != null) {
                             container.removeView(blurOverlayView);
                         }
-                    })
-                    .start();
+                    }
+                });
+                reverseBlurAnim.start();
+            } else {
+                blurOverlayView.animate()
+                        .alpha(0f)
+                        .setDuration(250)
+                        .setInterpolator(CubicBezierInterpolator.EASE_OUT)
+                        .withEndAction(() -> {
+                            if (blurOverlayView != null && container != null) {
+                                container.removeView(blurOverlayView);
+                            }
+                        })
+                        .start();
+            }
         }
         if (onHideListener != null) {
             onHideListener.onDismiss(this);
@@ -2305,6 +2462,10 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
     }
 
     public void dismissInternal() {
+        if (blurRefreshCallback != null) {
+            Choreographer.getInstance().removeFrameCallback(blurRefreshCallback);
+            blurRefreshCallback = null;
+        }
         if (blurOverlayView != null) {
             blurOverlayView.animate().cancel();
             if (container != null) {
@@ -2316,9 +2477,6 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
             blurOverlayBitmap = null;
         }
         blurOverlayView = null;
-        blurOverlayShader = null;
-        blurOverlayPaint = null;
-        blurOverlayMatrix = null;
         if (attachedFragment != null) {
             attachedFragment.removeSheet(this);
             AndroidUtilities.removeFromParent(container);

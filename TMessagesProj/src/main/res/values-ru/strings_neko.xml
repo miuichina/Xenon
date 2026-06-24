@@ -419,5 +419,12 @@
     <string name="BlurOverlayBulletinText">Включите «Заменять диалоги на BottomSheet» для лучшего опыта</string>
     <string name="BlurOverlayBulletinButton">Включить</string>
     <string name="BlurOverlayRadius">Радиус размытия</string>
+    <string name="BlurOverlayRefresh">Обновлять blur с частотой дисплея</string>
+    <string name="BlurOverlayRefreshInterval">Интервал обновления blur</string>
     <string name="AlternativeTransitionEaseDescription">Экспериментируйте с ease на cubic-bezier.com</string>
+    <string name="BlurSmoothly">Плавный blur</string>
+    <string name="DisableBlurBs">Отключить blur(bottomsheet)</string>
+    <string name="BlurAnimationDuration">Длительность анимации</string>
+    <string name="BlurSettings">Настройки BottomSheet</string>
+    <string name="BlurPixelation">Пикселизация</string>
 </resources>
