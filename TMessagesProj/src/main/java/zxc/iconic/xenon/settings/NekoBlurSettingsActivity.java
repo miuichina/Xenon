@@ -12,7 +12,6 @@ import org.telegram.ui.ActionBar.BottomSheet;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.TextCheckCell;
 import org.telegram.ui.Components.BulletinFactory;
-import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.UniversalAdapter;
 
@@ -77,29 +76,17 @@ public class NekoBlurSettingsActivity extends BaseNekoSettingsActivity {
     protected void onItemClick(UItem item, View view, int position, float x, float y) {
         var id = item.id;
         if (id == testBottomSheetRow) {
-            BottomSheet sheet = new BottomSheet(getParentActivity(), false, false, null) {};
-            LinearLayout content = new LinearLayout(getParentActivity());
-            content.setOrientation(LinearLayout.VERTICAL);
-            content.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(16), AndroidUtilities.dp(24), AndroidUtilities.dp(8));
-
-            TextView titleView = new TextView(getParentActivity());
-            titleView.setText(LocaleController.getString(R.string.TestBottomSheetTitle));
-            titleView.setTextSize(20);
-            titleView.setTextColor(Theme.getColor(Theme.key_dialogTextBlack));
-            titleView.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
-            titleView.setPadding(0, 0, 0, AndroidUtilities.dp(8));
-            content.addView(titleView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-
-            TextView messageView = new TextView(getParentActivity());
-            messageView.setText(LocaleController.getString(R.string.TestBottomSheetText));
-            messageView.setTextSize(16);
-            messageView.setTextColor(Theme.getColor(Theme.key_dialogTextBlack));
-            messageView.setPadding(0, 0, 0, AndroidUtilities.dp(16));
-            content.addView(messageView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-
-            sheet.setCustomView(content);
-            sheet.setRightButton(LocaleController.getString(R.string.TestBottomSheetClose), () -> sheet.dismiss());
-            sheet.show();
+            BottomSheet.Builder builder = new BottomSheet.Builder(getParentActivity(), false, null);
+            FrameLayout content = new FrameLayout(getParentActivity());
+            TextView textView = new TextView(getParentActivity());
+            textView.setText(LocaleController.getString(R.string.TestBottomSheetText));
+            textView.setTextSize(16);
+            textView.setTextColor(Theme.getColor(Theme.key_dialogTextBlack));
+            textView.setGravity(android.view.Gravity.LEFT | android.view.Gravity.CENTER_VERTICAL);
+            textView.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(16), AndroidUtilities.dp(24), AndroidUtilities.dp(16));
+            content.addView(textView);
+            builder.setCustomView(content);
+            builder.show();
         } else if (id == blurOverlayRow) {
             NekoConfig.toggleBlurOverlay();
             item.checked = NekoConfig.blurOverlay;

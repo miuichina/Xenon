@@ -1764,6 +1764,8 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         containerView.setAlpha(1.0f);
         containerView.setScaleX(1.0f);
         containerView.setScaleY(1.0f);
+        containerView.setOutlineProvider(null);
+        containerView.setClipToOutline(false);
         containerViewBack.setAlpha(1.0f);
         containerViewBack.setScaleX(1.0f);
         containerViewBack.setScaleY(1.0f);
@@ -1858,6 +1860,29 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                 containerViewBack.setTranslationX(0);
                 containerView.setPivotX(containerView.getMeasuredWidth() / 2f);
                 containerView.setPivotY(containerView.getMeasuredHeight() / 2f);
+                final WindowInsets insets = getRootWindowInsets();
+                final float cornerRadius;
+                if (insets != null) {
+                    final RoundedCorner topLeft = insets.getRoundedCorner(RoundedCorner.POSITION_TOP_LEFT);
+                    final RoundedCorner topRight = insets.getRoundedCorner(RoundedCorner.POSITION_TOP_RIGHT);
+                    final RoundedCorner bottomRight = insets.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_RIGHT);
+                    final RoundedCorner bottomLeft = insets.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_LEFT);
+                    cornerRadius = Math.max(
+                        Math.max(topLeft == null ? 0 : topLeft.getRadius(), topRight == null ? 0 : topRight.getRadius()),
+                        Math.max(bottomRight == null ? 0 : bottomRight.getRadius(), bottomLeft == null ? 0 : bottomLeft.getRadius())
+                    );
+                } else {
+                    cornerRadius = dp(28);
+                }
+                if (cornerRadius > 0) {
+                    containerView.setOutlineProvider(new ViewOutlineProvider() {
+                        @Override
+                        public void getOutline(View view, Outline outline) {
+                            outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), cornerRadius);
+                        }
+                    });
+                    containerView.setClipToOutline(true);
+                }
             }
         }
         AndroidUtilities.runOnUIThread(animationRunnable = new Runnable() {
