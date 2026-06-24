@@ -444,4 +444,5 @@
     <string name="TestBottomSheetTitle">hi</string>
     <string name="TestBottomSheetText">:3</string>
     <string name="TestBottomSheetClose">Close</string>
+    <string name="ShowOnlineDotsInChat">Show online dots in chat</string>
 </resources>

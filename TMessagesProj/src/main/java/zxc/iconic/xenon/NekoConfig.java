@@ -170,6 +170,7 @@ public class NekoConfig {
     public static int alternativeTransitionSpeed = 300;
     public static String alternativeTransitionEase = "0.37,0.01,0.1,1";
     public static boolean removeChatDelay = false;
+    public static boolean showOnlineDotsInChat = false;
     private static final String XRAY_DEFAULT_CHECK_URL = "https://www.gstatic.com/generate_204";
 
     public static boolean xrayAppProxyEnabled = false;
@@ -373,6 +374,7 @@ public class NekoConfig {
             alternativeTransitionSpeed = preferences.getInt("alternativeTransitionSpeed", 300);
             alternativeTransitionEase = preferences.getString("alternativeTransitionEase", "0.37,0.01,0.1,1");
             removeChatDelay = preferences.getBoolean("removeChatDelay", false);
+            showOnlineDotsInChat = preferences.getBoolean("showOnlineDotsInChat", false);
             roundedBulletin = preferences.getBoolean("roundedBulletin", false);
 
             LensHelper.checkLensSupportAsync();
@@ -1478,6 +1480,14 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("roundedBulletin", roundedBulletin);
+        editor.apply();
+    }
+
+    public static void toggleShowOnlineDotsInChat() {
+        showOnlineDotsInChat = !showOnlineDotsInChat;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("showOnlineDotsInChat", showOnlineDotsInChat);
         editor.apply();
     }
 

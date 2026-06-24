@@ -436,4 +436,5 @@
     <string name="TestBottomSheetTitle">привет</string>
     <string name="TestBottomSheetText">:3</string>
     <string name="TestBottomSheetClose">Закрыть</string>
+    <string name="ShowOnlineDotsInChat">Показывать точки онлайна в чате</string>
 </resources>
