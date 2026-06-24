@@ -6,6 +6,7 @@ import android.widget.FrameLayout;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.ui.Cells.TextCheckCell;
+import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.UniversalAdapter;
 
@@ -73,6 +74,15 @@ public class NekoBlurSettingsActivity extends BaseNekoSettingsActivity {
                 ((TextCheckCell) view).setChecked(NekoConfig.blurOverlay);
             }
             listView.adapter.update(true);
+            if (NekoConfig.blurOverlay && !NekoConfig.replaceDialogsWithSheet) {
+                BulletinFactory.of(this).createSimpleBulletin(R.raw.chats_infotip,
+                        LocaleController.getString(R.string.BlurOverlayBulletinText),
+                        LocaleController.getString(R.string.BlurOverlayBulletinButton),
+                        () -> {
+                            NekoConfig.toggleReplaceDialogsWithSheet();
+                            listView.adapter.update(true);
+                        }).show();
+            }
         } else if (id == replaceDialogsWithSheetRow) {
             NekoConfig.toggleReplaceDialogsWithSheet();
             item.checked = NekoConfig.replaceDialogsWithSheet;
