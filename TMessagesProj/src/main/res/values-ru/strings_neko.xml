@@ -440,7 +440,4 @@
     <string name="TestBottomSheetText">:3</string>
     <string name="TestBottomSheetClose">Закрыть</string>
     <string name="ShowOnlineDotsInChat">Показывать точки онлайна в чате</string>
-    <string name="EnablePushService">Включить push-сервис</string>
-    <string name="EnablePushServiceDesc">Держать приложение запущенным в фоне с уведомлением, чтобы продолжать получать сообщения (включая удалённые)</string>
-    <string name="PushServiceText">Фоновая служба работает</string>
 </resources>

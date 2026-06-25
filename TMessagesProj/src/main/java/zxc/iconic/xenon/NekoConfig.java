@@ -80,7 +80,6 @@ public class NekoConfig {
     public static boolean autoTranslate = true;
     public static boolean showRPCError = false;
     public static boolean enableSaveDeletedMessages = false;
-    public static boolean enablePushService = false;
     public static float stickerSize = 14.0f;
     public static String translationProvider = Translator.PROVIDER_GOOGLE;
     public static String translationTarget = "app";
@@ -310,7 +309,6 @@ public class NekoConfig {
             disableMarkdownByDefault = preferences.getBoolean("disableMarkdownByDefault", false);
             showRPCError = preferences.getBoolean("showRPCError", false);
             enableSaveDeletedMessages = preferences.getBoolean("enableSaveDeletedMessages", false);
-            enablePushService = preferences.getBoolean("enablePushService", false);
             hideTimeOnSticker = preferences.getBoolean("hideTimeOnSticker", false);
             showOriginal = preferences.getBoolean("showOriginal", true);
             newMarkdownParser = preferences.getBoolean("newMarkdownParser", true);
@@ -816,18 +814,6 @@ public class NekoConfig {
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("enableSaveDeletedMessages", enableSaveDeletedMessages);
         editor.apply();
-    }
-
-    public static void toggleEnablePushService() {
-        enablePushService = !enablePushService;
-        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
-        SharedPreferences.Editor editor = preferences.edit();
-        editor.putBoolean("enablePushService", enablePushService);
-        editor.apply();
-        try {
-            ApplicationLoader.startPushService();
-        } catch (Exception ignore) {
-        }
     }
 
     public static void toggleShowAddToSavedMessages() {

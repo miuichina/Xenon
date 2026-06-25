@@ -801,10 +801,6 @@ public class ChatActivity extends BaseFragment implements
     private CharSequence formwardingNameText;
     private MessageObject forwardingMessage;
     private MessageObject.GroupedMessages forwardingMessageGroup;
-    // When true, the next didSelectDialogs call should re-send the selected
-    // locally-saved deleted messages as brand-new messages (without the
-    // "fwd_id"/author attribution), since the originals no longer exist on the server.
-    private boolean forwardingDeletedMessages;
     private MessageObject.GroupedMessages replyingQuoteGroup;
     public MessageObject replyingTopMessage;
     private ReplyQuote replyingQuote;
@@ -3057,7 +3053,6 @@ public class ChatActivity extends BaseFragment implements
             .add(NotificationCenter.didLoadSendAsPeers)
             .add(NotificationCenter.closeChatActivity)
             .add(NotificationCenter.messagesDeleted)
-            .add(NotificationCenter.messagesDeletedNotification)
             .add(NotificationCenter.historyCleared)
             .add(NotificationCenter.messageReceivedByServer)
             .add(NotificationCenter.messageReceivedByAck)
@@ -5133,8 +5128,7 @@ public class ChatActivity extends BaseFragment implements
                             getMessageType(message) == 1 && (message.getDialogId() == mergeDialogId || message.needDrawBluredPreview()) ||
                             currentEncryptedChat == null && message.getId() < 0 ||
                             currentChat != null && ChatObject.isForum(currentChat) && !allowReplyOnOpenTopic ||
-                            hasTextSelection() ||
-                            message != null && message.isAyuDeleted()
+                            hasTextSelection()
                         ) {
                             slidingViewSetOffset(0);
                             slidingView = null;
@@ -12488,23 +12482,6 @@ public class ChatActivity extends BaseFragment implements
         return false;
     }
 
-    // Returns true if any of the currently selected messages is a locally-saved
-    // deleted message. Used to hide Reply and force NoQuoteForward in the
-    // selection bottom bar and popup menu.
-    private boolean hasSelectedAyuDeletedMessage() {
-        try {
-            for (int i = 0; i < selectedMessagesIds.length; ++i) {
-                for (int j = 0; j < selectedMessagesIds[i].size(); ++j) {
-                    MessageObject msg = selectedMessagesIds[i].valueAt(j);
-                    if (msg != null && msg.isAyuDeleted()) {
-                        return true;
-                    }
-                }
-            }
-        } catch (Exception ignore) {}
-        return false;
-    }
-
     private void share() {
         MessageObject msg = null;
         for (int a = 1; a >= 0; a--) {
@@ -12549,111 +12526,6 @@ public class ChatActivity extends BaseFragment implements
         updatePinnedMessageView(true);
         updateVisibleRows();
         updateSelectedMessageReactions();
-    }
-
-    // Opens the dialog picker for re-sending locally-saved deleted messages.
-    // Sets the forwardingDeletedMessages flag so that didSelectDialogs routes
-    // the chosen messages through sendDeletedMessagesAsNew instead of the
-    // standard forward path (which would fail because the source messages no
-    // longer exist on the server).
-    private void openForwardForDeleted() {
-        forwardingDeletedMessages = true;
-        if (selectionReactionsOverlay != null && selectionReactionsOverlay.isVisible()) {
-            selectionReactionsOverlay.setHiddenByScroll(true);
-        }
-        Bundle args = new Bundle();
-        args.putBoolean("onlySelect", true);
-        args.putInt("dialogsType", DialogsActivity.DIALOGS_TYPE_FORWARD);
-        args.putInt("messagesCount", 1);
-        args.putBoolean("canSelectTopics", true);
-        DialogsActivity fragment = new DialogsActivity(args);
-        fragment.setDelegate(ChatActivity.this);
-        presentFragment(fragment);
-    }
-
-    // Re-sends the content of locally-saved deleted messages as brand-new
-    // messages from the current user. The source messages were deleted on the
-    // server, so we cannot forward them normally — instead we re-send their
-    // text/media by id (the media still exists on the server, decoupled from
-    // the deleted message).
-    private void sendDeletedMessagesAsNew(ArrayList<MessageObject> messages, long did, boolean notify, int scheduleDate, int scheduleRepeatPeriod) {
-        final long monoForumPeerId = getSendMonoForumPeerId();
-        final MessageSuggestionParams suggestionParams = getSendMessageSuggestionParams();
-        for (int i = 0; i < messages.size(); i++) {
-            MessageObject msg = messages.get(i);
-            if (msg == null || msg.messageOwner == null) continue;
-            String caption = msg.messageOwner.message;
-            ArrayList<TLRPC.MessageEntity> entities = msg.messageOwner.entities;
-            TLRPC.MessageMedia media = MessageObject.getMedia(msg.messageOwner);
-            boolean isPhoto = media instanceof TLRPC.TL_messageMediaPhoto && media.photo instanceof TLRPC.TL_photo;
-            boolean isDoc = media instanceof TLRPC.TL_messageMediaDocument && msg.getDocument() != null;
-            boolean hasMedia = isPhoto || isDoc;
-            try {
-                // Prefer sending from the locally cached file (if it was downloaded) — this avoids
-                // relying on a server-side file_reference that may have expired/been invalidated for
-                // a deleted message.
-                File localFile = null;
-                if (hasMedia) {
-                    try {
-                        localFile = FileLoader.getInstance(currentAccount).getPathToMessage(msg.messageOwner);
-                    } catch (Exception ignore) {
-                    }
-                }
-                if (localFile != null && localFile.exists() && localFile.length() > 0) {
-                    String path = localFile.getAbsolutePath();
-                    if (isPhoto) {
-                        SendMessagesHelper.prepareSendingPhoto(
-                                getAccountInstance(), path, null, null, did, null, null, null, null,
-                                entities != null ? new ArrayList<>(entities) : null, null, null, 0, null, null,
-                                notify, scheduleDate, scheduleRepeatPeriod, 0, false,
-                                TextUtils.isEmpty(caption) ? null : caption, null, 0, 0, 0, monoForumPeerId, suggestionParams);
-                    } else {
-                        ArrayList<String> paths = new ArrayList<>();
-                        paths.add(path);
-                        ArrayList<String> originalPaths = new ArrayList<>();
-                        originalPaths.add(path);
-                        SendMessagesHelper.prepareSendingDocuments(
-                                getAccountInstance(), paths, originalPaths, null,
-                                TextUtils.isEmpty(caption) ? null : caption,
-                                entities != null ? new ArrayList<>(entities) : null, null, did,
-                                null, null, null, null, null, notify, scheduleDate, scheduleRepeatPeriod,
-                                null, null, 0, 0, false, 0, monoForumPeerId, suggestionParams);
-                    }
-                } else {
-                    // No local file — fall back to sending by id (works while file_reference is valid).
-                    SendMessagesHelper.SendMessageParams params;
-                    if (isDoc) {
-                        TLRPC.Document document = msg.getDocument();
-                        if (document instanceof TLRPC.TL_document) {
-                            params = SendMessagesHelper.SendMessageParams.of(
-                                    (TLRPC.TL_document) document, null, null, did, null, null,
-                                    TextUtils.isEmpty(caption) ? null : caption, entities,
-                                    null, null, notify, scheduleDate, scheduleRepeatPeriod, 0, null, null, false);
-                            params.monoForumPeer = monoForumPeerId;
-                            params.suggestionParams = suggestionParams;
-                            getSendMessagesHelper().sendMessage(params);
-                        }
-                    } else if (isPhoto) {
-                        params = SendMessagesHelper.SendMessageParams.of(
-                                (TLRPC.TL_photo) media.photo, null, did, null, null,
-                                TextUtils.isEmpty(caption) ? null : caption, entities,
-                                null, null, notify, scheduleDate, scheduleRepeatPeriod, 0, null, false, false);
-                        params.monoForumPeer = monoForumPeerId;
-                        params.suggestionParams = suggestionParams;
-                        getSendMessagesHelper().sendMessage(params);
-                    } else if (!TextUtils.isEmpty(msg.messageOwner.message)) {
-                        params = SendMessagesHelper.SendMessageParams.of(
-                                msg.messageOwner.message, did, null, null, null, true,
-                                entities, null, null, notify, scheduleDate, scheduleRepeatPeriod, null, false);
-                        params.monoForumPeer = monoForumPeerId;
-                        params.suggestionParams = suggestionParams;
-                        getSendMessagesHelper().sendMessage(params);
-                    }
-                }
-            } catch (Exception e) {
-                FileLog.e(e);
-            }
-        }
     }
 
     private void openForward(boolean fromActionBar) {
@@ -19611,27 +19483,14 @@ public class ChatActivity extends BaseFragment implements
 
                 boolean noforwards = isPeerNoForwards() || hasSelectedNoforwardsMessage();
                 if (actionsButtonsLayout != null) {
-                    boolean selectedAyuDeleted = hasSelectedAyuDeletedMessage();
                     actionsButtonsLayout.setForwardButtonDelegate(hasCaption, id -> {
-                        if (selectedAyuDeleted) {
-                            // Deleted messages cannot be forwarded normally — re-send their content
-                            // as new messages instead.
-                            openForwardForDeleted();
-                        } else {
-                            setForwardParams(id == ForwardItem.ID_FORWARD_NOQUOTE, id == ForwardItem.ID_FORWARD_NOCAPTION);
-                            openForward(false);
-                        }
+                        setForwardParams(id == ForwardItem.ID_FORWARD_NOQUOTE, id == ForwardItem.ID_FORWARD_NOCAPTION);
+                        openForward(false);
                     });
-                    String forwardTitle = selectedAyuDeleted
-                            ? LocaleController.getString(R.string.Forward)
-                            : ForwardItem.getLastForwardOptionTitle(hasCaption, true);
-                    Drawable forwardIcon;
-                    if (selectedAyuDeleted) {
-                        forwardIcon = ApplicationLoader.applicationContext.getResources().getDrawable(R.drawable.msg_forward).mutate();
-                    } else {
-                        forwardIcon = ForwardItem.getLastForwardOptionIcon(hasCaption);
-                    }
-                    actionsButtonsLayout.setForwardButtonTextAndIcon(forwardTitle, forwardIcon);
+                    actionsButtonsLayout.setForwardButtonTextAndIcon(
+                            ForwardItem.getLastForwardOptionTitle(hasCaption, true),
+                            ForwardItem.getLastForwardOptionIcon(hasCaption)
+                    );
                 }
                 if (prevCantForwardCount == 0 && cantForwardMessagesCount != 0 || prevCantForwardCount != 0 && cantForwardMessagesCount == 0) {
                     forwardButtonAnimation = new AnimatorSet();
@@ -19768,10 +19627,7 @@ public class ChatActivity extends BaseFragment implements
                             }
                         }
                     }
-                    // Hide the Reply button for locally-saved deleted messages: replying would
-                    // reference a message id that no longer exists on the server.
-                    boolean showReply = newVisibility == View.VISIBLE && !hasSelectedAyuDeletedMessage();
-                    actionsButtonsLayout.showReplyButton(showReply, true);
+                    actionsButtonsLayout.showReplyButton(newVisibility == View.VISIBLE, true);
                 }
 
                 if (actionsButtonsLayout != null) {
@@ -21905,35 +21761,15 @@ public class ChatActivity extends BaseFragment implements
                 }
             }
             checkGroupMessagesOrder();
-            if (NekoConfig.enableSaveDeletedMessages && loadIndex == 0 && messArr != null && !messArr.isEmpty()) {
-                // Re-inject locally saved deleted messages that fall into the loaded range,
-                // so they survive chat re-entry. Mirrors AyuHistoryHook in NagramX.
-                long minId = Integer.MAX_VALUE;
-                long maxId = Integer.MIN_VALUE;
-                for (int a = 0; a < messArr.size(); a++) {
-                    int msgId = messArr.get(a).getId();
-                    if (msgId > 0) {
-                        if (msgId < minId) minId = msgId;
-                        if (msgId > maxId) maxId = msgId;
+            if (NekoConfig.enableSaveDeletedMessages) {
+                var ctrl = zxc.iconic.xenon.deleted.XenonDeletedMessagesController.getInstance();
+                java.util.Set<Integer> savedIds = ctrl.getAllSavedMessageIds(dialog_id, currentAccount);
+                SparseArray<MessageObject> dict = messagesDict[loadIndex];
+                for (int i = 0; i < dict.size(); i++) {
+                    MessageObject obj = dict.valueAt(i);
+                    if (savedIds.contains(obj.getId())) {
+                        obj.messageOwner.ayuDeleted = true;
                     }
-                }
-                if (minId <= maxId) {
-                    var ctrl = zxc.iconic.xenon.deleted.XenonDeletedMessagesController.getInstance();
-                    ctrl.getMessagesForRange(dialog_id, currentAccount, minId, maxId, messArr.size(), saved -> {
-                        if (saved == null || saved.isEmpty() || chatAdapter == null) return;
-                        if (getDialogId() != dialog_id) return;
-                        // skip messages that are already present (e.g. still in memory)
-                        ArrayList<MessageObject> toInject = new ArrayList<>();
-                        for (int i = 0; i < saved.size(); i++) {
-                            MessageObject mo = saved.get(i);
-                            if (messagesDict[0].get(mo.getId()) == null) {
-                                toInject.add(mo);
-                            }
-                        }
-                        if (!toInject.isEmpty()) {
-                            getNotificationCenter().postNotificationName(NotificationCenter.didReceiveNewMessages, dialog_id, toInject, false, 0);
-                        }
-                    });
                 }
             }
             if (createUnreadLoading) {
@@ -22913,10 +22749,7 @@ public class ChatActivity extends BaseFragment implements
                 MessageObject currentMessage = messagesDict[0].get(mid);
                 if (currentMessage != null) {
                     currentMessage.messageOwner.ayuDeleted = true;
-                    // allowInPlace=true re-binds a visible cell immediately via setMessageObject();
-                    // it also avoids the isFrozen/isFiltered early-return of updateRowAtPosition.
-                    chatAdapter.updateRowWithMessageObject(currentMessage, true, false);
-                    chatAdapter.invalidateRowWithMessageObject(currentMessage);
+                    chatAdapter.updateRowWithMessageObject(currentMessage, false, false);
                 }
             }
         } else if (id == NotificationCenter.quickRepliesDeleted) {
@@ -33869,14 +33702,6 @@ public class ChatActivity extends BaseFragment implements
                     selectedObjectGroup = null;
                     return;
                 }
-                if (selectedObject != null && selectedObject.isAyuDeleted()) {
-                    // Deleted messages cannot be forwarded normally — re-send their content
-                    // as new messages instead.
-                    forwardingMessage = selectedObject;
-                    forwardingMessageGroup = selectedObjectGroup;
-                    openForwardForDeleted();
-                    break;
-                }
                 setForwardParams(option == OPTION_FORWARD_NOQUOTE, option == OPTION_FORWARD_NOCAPTION);
                 ForwardItem.setLastForwardOption(option);
                 forwardingMessage = selectedObject;
@@ -35161,54 +34986,6 @@ public class ChatActivity extends BaseFragment implements
                 }
             }
         }
-
-        // --- Xenon: re-send locally-saved deleted messages as new messages.
-        // The original messages no longer exist on the server, so a normal
-        // forward would fail. Instead we re-send their text/media by id.
-        if (forwardingDeletedMessages) {
-            forwardingDeletedMessages = false;
-            if (fragment.resetDelegate) {
-                fragment.setDelegate(null);
-            }
-            if (forwardingMessage != null) {
-                forwardingMessage = null;
-                forwardingMessageGroup = null;
-            } else {
-                for (int a = 1; a >= 0; a--) {
-                    selectedMessagesCanCopyIds[a].clear();
-                    selectedMessagesCanStarIds[a].clear();
-                    selectedMessagesIds[a].clear();
-                }
-                hideActionMode();
-                updatePinnedMessageView(true);
-                updateVisibleRows();
-            }
-            messagePreviewParams = null;
-            hideFieldPanel(false);
-            for (int a = 0; a < dids.size(); a++) {
-                final long did = dids.get(a).dialogId;
-                if (message != null) {
-                    final SendMessagesHelper.SendMessageParams params = SendMessagesHelper.SendMessageParams.of(message.toString(), did, null, null, null, true, null, null, null, notify, scheduleDate, scheduleRepeatPeriod, null, false);
-                    params.monoForumPeer = getSendMonoForumPeerId();
-                    params.suggestionParams = getSendMessageSuggestionParams();
-                    getSendMessagesHelper().sendMessage(params);
-                }
-                sendDeletedMessagesAsNew(fmessages, did, notify, scheduleDate, scheduleRepeatPeriod);
-            }
-            fragment.finishFragment();
-            createUndoView();
-            if (undoView != null) {
-                if (dids.size() == 1) {
-                    if (!BulletinFactory.of(ChatActivity.this).showForwardedBulletinWithTag(dids.get(0).dialogId, fmessages.size())) {
-                        undoView.showWithAction(dids.get(0).dialogId, UndoView.ACTION_FWD_MESSAGES, fmessages.size());
-                    }
-                } else {
-                    undoView.showWithAction(0, UndoView.ACTION_FWD_MESSAGES, fmessages.size(), dids.size(), null, null);
-                }
-            }
-            return true;
-        }
-        // --- end Xenon
 
         if (!fragment.isQuote && (dids.size() > 1 || dids.get(0).dialogId == getUserConfig().getClientUserId() || message != null || scheduleDate != 0 || !notify)) {
             return !AlertsCreator.ensurePaidMessagesMultiConfirmationTopicKeys(currentAccount, dids, fmessages.size() + (TextUtils.isEmpty(message) ? 0 : 1), prices -> {
@@ -46535,12 +46312,6 @@ public class ChatActivity extends BaseFragment implements
 
         boolean allowChatActions = true;
         boolean allowPin;
-        boolean isAyuDeleted = message != null && message.isAyuDeleted();
-        if (isAyuDeleted) {
-            // Hide Reply (and other chat actions) for locally-saved deleted messages,
-            // since the original message no longer exists on the server.
-            allowChatActions = false;
-        }
         if (chatMode == MODE_SAVED || chatMode == MODE_QUICK_REPLIES) {
             allowPin = false;
         } else if (chatMode == MODE_SCHEDULED || (isThreadChat() && !isTopic)) {
@@ -46764,7 +46535,7 @@ public class ChatActivity extends BaseFragment implements
                     options.add(OPTION_VIEW_REPLIES_OR_THREAD);
                     icons.add(R.drawable.msg_viewreplies);
                 }
-                if (!selectedObject.isSponsored() && chatMode != MODE_SCHEDULED && ChatObject.isChannel(currentChat) && !ChatObject.isMonoForum(currentChat) && selectedObject.getDialogId() != mergeDialogId && !selectedObject.isAyuDeleted()) {
+                if (!selectedObject.isSponsored() && chatMode != MODE_SCHEDULED && ChatObject.isChannel(currentChat) && !ChatObject.isMonoForum(currentChat) && selectedObject.getDialogId() != mergeDialogId) {
                     items.add(LocaleController.getString(R.string.CopyLink));
                     options.add(OPTION_COPY_LINK);
                     icons.add(R.drawable.msg_link);
@@ -47032,15 +46803,10 @@ public class ChatActivity extends BaseFragment implements
                     selectedObject.type != MessageObject.TYPE_GIFT_PREMIUM && selectedObject.type != MessageObject.TYPE_GIFT_OFFER && selectedObject.type != MessageObject.TYPE_GIFT_OFFER_REJECTED && selectedObject.type != MessageObject.TYPE_GIFT_PREMIUM_CHANNEL && selectedObject.type != MessageObject.TYPE_SUGGEST_PHOTO && !selectedObject.isWallpaperAction()
                     && !message.isExpiredStory() && message.type != MessageObject.TYPE_STORY_MENTION && message.type != MessageObject.TYPE_GIFT_STARS) {
                     var hasCaption = ForwardItem.hasCaption(selectedObject, selectedObjectGroup);
-                    if (!isAyuDeleted) {
-                        // Regular forward (with author) is hidden for deleted messages because
-                        // the original message no longer exists on the server. NoQuoteForward
-                        // below stays available — it forwards as a new message without attribution.
-                        items.add(ForwardItem.getLastForwardOptionTitle(hasCaption, true));
-                        options.add(ForwardItem.getLastForwardOption(hasCaption));
-                        icons.add(R.drawable.msg_forward);
-                    }
-                    if (isAyuDeleted || NekoConfig.showNoQuoteForward) {
+                    items.add(ForwardItem.getLastForwardOptionTitle(hasCaption, true));
+                    options.add(ForwardItem.getLastForwardOption(hasCaption));
+                    icons.add(R.drawable.msg_forward);
+                    if (NekoConfig.showNoQuoteForward) {
                         items.add(LocaleController.getString(R.string.NoQuoteForwardShort));
                         options.add(OPTION_FORWARD_NOQUOTE);
                         icons.add(R.drawable.msg_forward);
