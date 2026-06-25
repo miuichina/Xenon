@@ -6113,6 +6113,9 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         if (!force && !BuildVars.CHECK_UPDATES) {
             return;
         }
+        if (!force && !NekoConfig.autoCheckUpdate) {
+            return;
+        }
         // Cold-boot gate: only allow one automatic update check per process lifetime.
         // The flag is reset only when the process is killed (e.g. swiped from
         // recents / restarted by the OS), which matches the user-facing notion
