@@ -429,6 +429,7 @@
     <string name="DisableBlurBs">Отключить blur(bottomsheet)</string>
     <string name="BlurAnimationDuration">Длительность анимации</string>
     <string name="BlurSettings">Настройки BottomSheet</string>
+    <string name="BlurPopupInChat">Размытие за всплывающим меню в чате</string>
     <string name="BlurPixelation">Пикселизация</string>
     <string name="BlurSettingsHeader">Блюр</string>
     <string name="SaveDeletedMessages">Удалённые сообщения</string>

@@ -24,6 +24,7 @@ public class NekoBlurSettingsActivity extends BaseNekoSettingsActivity {
     private final int testBottomSheetRow = rowId++;
     private final int blurOverlayRow = rowId++;
     private final int replaceDialogsWithSheetRow = rowId++;
+    private final int blurPopupInChatRow = rowId++;
     private final int blurOverlayRadiusRow = rowId++;
     private final int blurPixelationRow = rowId++;
     private final int blurSmoothlyRow = rowId++;
@@ -38,10 +39,11 @@ public class NekoBlurSettingsActivity extends BaseNekoSettingsActivity {
         items.add(UItem.asShadow(null));
         items.add(UItem.asCheck(blurOverlayRow, LocaleController.getString(R.string.BlurOverlay)).setChecked(NekoConfig.blurOverlay).slug("blurOverlay"));
         items.add(UItem.asCheck(replaceDialogsWithSheetRow, LocaleController.getString(R.string.ReplaceDialogsWithSheet)).setChecked(NekoConfig.replaceDialogsWithSheet).slug("replaceDialogsWithSheet"));
+        items.add(UItem.asCheck(blurPopupInChatRow, LocaleController.getString(R.string.BlurPopupInChat)).setChecked(NekoConfig.blurPopupInChat).slug("blurPopupInChat"));
         items.add(UItem.asShadow(null));
 
         items.add(UItem.asHeader(LocaleController.getString(R.string.BlurSettingsHeader)));
-        if (NekoConfig.blurOverlay) {
+        if (NekoConfig.blurOverlay || NekoConfig.blurPopupInChat) {
             SeekbarConfig radiusConfig = new SeekbarConfig(
                     LocaleController.getString(R.string.BlurOverlayRadius),
                     "2", "20", 2, 20, 1,
@@ -108,6 +110,12 @@ public class NekoBlurSettingsActivity extends BaseNekoSettingsActivity {
             item.checked = NekoConfig.replaceDialogsWithSheet;
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.replaceDialogsWithSheet);
+            }
+        } else if (id == blurPopupInChatRow) {
+            NekoConfig.toggleBlurPopupInChat();
+            item.checked = NekoConfig.blurPopupInChat;
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.blurPopupInChat);
             }
         } else if (id == blurSmoothlyRow) {
             NekoConfig.toggleBlurSmoothly();

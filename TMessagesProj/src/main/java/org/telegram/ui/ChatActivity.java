@@ -23,6 +23,7 @@ import android.animation.LayoutTransition;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
+import androidx.annotation.RequiresApi;
 import android.app.Activity;
 import android.app.DatePickerDialog;
 import android.app.Dialog;
@@ -51,6 +52,7 @@ import android.graphics.PorterDuffColorFilter;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Region;
+import android.graphics.RenderEffect;
 import android.graphics.Shader;
 import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
@@ -60,6 +62,7 @@ import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.os.Vibrator;
@@ -98,6 +101,7 @@ import android.view.ViewTreeObserver;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.PixelCopy;
 import android.view.animation.DecelerateInterpolator;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
@@ -1048,6 +1052,8 @@ public class ChatActivity extends BaseFragment implements
     private int scrimPopupX, scrimPopupY;
     private ActionBarMenuSubItem[] scrimPopupWindowItems;
     private ActionBarMenuSubItem menuDeleteItem;
+    private ImageView popupBlurOverlayView;
+    private Bitmap popupBlurOverlayBitmap;
     private final Runnable updateDeleteItemRunnable = new Runnable() {
         @Override
         public void run() {
@@ -31005,6 +31011,80 @@ public class ChatActivity extends BaseFragment implements
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.S)
+    private void applyPopupBlur(View cellView) {
+        if (!NekoConfig.blurPopupInChat || getParentActivity() == null) return;
+        android.view.Window window = getParentActivity().getWindow();
+        if (window == null) return;
+        View decorView = window.getDecorView();
+        int dw = decorView.getWidth();
+        int dh = decorView.getHeight();
+        if (dw <= 0 || dh <= 0) return;
+        removePopupBlur();
+        int pixelation = NekoConfig.blurPixelation;
+        int downscale = Math.max(1, 1 + pixelation / 5);
+        int bw = Math.max(1, dw / downscale);
+        int bh = Math.max(1, dh / downscale);
+        Bitmap bitmap = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888);
+        popupBlurOverlayBitmap = bitmap;
+        PixelCopy.request(window, bitmap, copyResult -> {
+            if (copyResult != PixelCopy.SUCCESS || popupBlurOverlayBitmap != bitmap) {
+                bitmap.recycle();
+                return;
+            }
+            ImageView imageView = new ImageView(getContext());
+            imageView.setScaleType(ImageView.ScaleType.FIT_XY);
+            imageView.setImageBitmap(bitmap);
+            boolean disableBlur = NekoConfig.disableBlurBs;
+            float targetBlur = disableBlur ? 0f : NekoConfig.blurOverlayRadius * 8f;
+            if (NekoConfig.blurSmoothly) {
+                imageView.setRenderEffect(RenderEffect.createBlurEffect(0f, 0f, Shader.TileMode.CLAMP));
+            } else {
+                imageView.setRenderEffect(RenderEffect.createBlurEffect(
+                    targetBlur, targetBlur, Shader.TileMode.CLAMP
+                ));
+            }
+            imageView.setLayoutParams(new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
+            ));
+            ViewGroup content = (ViewGroup) getParentActivity().findViewById(android.R.id.content);
+            if (content != null) {
+                content.addView(imageView);
+                popupBlurOverlayView = imageView;
+                if (NekoConfig.blurSmoothly) {
+                    ValueAnimator animator = ValueAnimator.ofFloat(0f, targetBlur);
+                    animator.setDuration(NekoConfig.blurAnimationDuration);
+                    animator.setInterpolator(new CubicBezierInterpolator(0.3f, 0.8f, 0f, 1f));
+                    animator.addUpdateListener(a -> {
+                        if (popupBlurOverlayView != null) {
+                            float val = (float) a.getAnimatedValue();
+                            popupBlurOverlayView.setRenderEffect(RenderEffect.createBlurEffect(
+                                val, val, Shader.TileMode.CLAMP
+                            ));
+                        }
+                    });
+                    animator.start();
+                } else {
+                    imageView.setAlpha(0f);
+                    imageView.animate().alpha(1f).setDuration(200).setInterpolator(CubicBezierInterpolator.DEFAULT).start();
+                }
+            }
+        }, new Handler(Looper.getMainLooper()));
+    }
+
+    private void removePopupBlur() {
+        if (popupBlurOverlayView != null) {
+            popupBlurOverlayView.animate().cancel();
+            ViewGroup parent = (ViewGroup) popupBlurOverlayView.getParent();
+            if (parent != null) parent.removeView(popupBlurOverlayView);
+            popupBlurOverlayView = null;
+        }
+        if (popupBlurOverlayBitmap != null) {
+            popupBlurOverlayBitmap.recycle();
+            popupBlurOverlayBitmap = null;
+        }
+    }
+
     private boolean createMenu(View v, boolean single, boolean listView, float x, float y, boolean longpress) {
         return createMenu(v, single, listView, x, y, true, longpress);
     }
@@ -32613,6 +32693,7 @@ public class ChatActivity extends BaseFragment implements
             scrimPopupWindow = new ActionBarPopupWindow(scrimPopupContainerLayout, LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT) {
                 @Override
                 public void dismiss() {
+                    removePopupBlur();
                     super.dismiss();
                     if (scrimPopupWindow != this) {
                         return;
@@ -32637,6 +32718,7 @@ public class ChatActivity extends BaseFragment implements
 
                 @Override
                 public void dismiss(boolean animated) {
+                    removePopupBlur();
                     super.dismiss(animated);
                     if (finalReactionsLayout1 != null) {
                         finalReactionsLayout1.dismissParent(animated);
@@ -32708,6 +32790,7 @@ public class ChatActivity extends BaseFragment implements
                 if (waitForLangDetection.get() || waitForQr.get()) {
                     return;
                 }
+                applyPopupBlur(v);
                 scrimPopupWindow.showAtLocation(chatListView, Gravity.LEFT | Gravity.TOP, finalPopupX, finalPopupY);
                 if (isReactionsAvailableFinal && finalReactionsLayout != null) {
                     finalReactionsLayout.startEnterAnimation(true);
@@ -40920,6 +41003,7 @@ public class ChatActivity extends BaseFragment implements
             scrimPopupWindow = new ActionBarPopupWindow(scrimPopupContainerLayout, LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT) {
                 @Override
                 public void dismiss() {
+                    removePopupBlur();
                     super.dismiss();
                     if (scrimPopupWindow != this) {
                         return;
@@ -40985,6 +41069,7 @@ public class ChatActivity extends BaseFragment implements
             if (scrimPopupContainerLayout.getVisibility() != View.VISIBLE) {
                 scrimViewReactionOffset = 0;
             }
+            applyPopupBlur(cell);
             scrimPopupWindow.showAtLocation(chatListView, Gravity.LEFT | Gravity.TOP, scrimPopupX = popupX, scrimPopupY = popupY);
 
             chatListView.stopScroll();
@@ -46056,6 +46141,7 @@ public class ChatActivity extends BaseFragment implements
             scrimPopupWindow = new ActionBarPopupWindow(scrimPopupContainerLayout, LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT) {
                 @Override
                 public void dismiss() {
+                    removePopupBlur();
                     super.dismiss();
                     if (scrimPopupWindow != this) {
                         return;
@@ -46121,6 +46207,7 @@ public class ChatActivity extends BaseFragment implements
             if (scrimPopupContainerLayout.getVisibility() != View.VISIBLE) {
                 scrimViewReactionOffset = 0;
             }
+            applyPopupBlur(cell);
             scrimPopupWindow.showAtLocation(chatListView, Gravity.LEFT | Gravity.TOP, scrimPopupX = popupX, scrimPopupY = popupY);
 
             chatListView.stopScroll();
