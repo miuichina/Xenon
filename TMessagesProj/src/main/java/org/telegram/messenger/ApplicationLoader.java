@@ -406,6 +406,20 @@ public class ApplicationLoader extends Application {
     }
 
     public static void startPushService() {
+        // --- Xenon: optional foreground "push service" that keeps the app alive
+        // in the background with a non-dismissible notification, so updates (and
+        // deleted messages) keep being received.
+        if (zxc.iconic.xenon.NekoConfig.enablePushService) {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    applicationContext.startForegroundService(new Intent(applicationContext, NotificationsService.class));
+                } else {
+                    applicationContext.startService(new Intent(applicationContext, NotificationsService.class));
+                }
+            } catch (Throwable ignore) {
+            }
+            return;
+        }
         SharedPreferences preferences = MessagesController.getGlobalNotificationsSettings();
         boolean enabled;
         if (preferences.contains("pushService")) {

@@ -2,8 +2,10 @@ package zxc.iconic.xenon.deleted;
 
 import android.content.Context;
 
+import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.FileLog;
+import org.telegram.messenger.MessageObject;
 import org.telegram.messenger.Utilities;
 import org.telegram.tgnet.NativeByteBuffer;
 import org.telegram.tgnet.TLRPC;
@@ -12,6 +14,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -121,6 +124,73 @@ public class XenonDeletedMessagesController {
                 for (File f : files) f.delete();
             }
         }
+    }
+
+    public void getMessagesForRange(long dialogId, int accountId, long startId, long endId, int limit, Utilities.Callback<ArrayList<MessageObject>> callback) {
+        Utilities.globalQueue.postRunnable(() -> {
+            ArrayList<MessageObject> result = new ArrayList<>();
+            try {
+                File dialogDir = new File(storageDir, dialogId + "_" + accountId);
+                if (!dialogDir.exists()) {
+                    finishReinject(result, callback);
+                    return;
+                }
+                File[] files = dialogDir.listFiles();
+                if (files == null) {
+                    finishReinject(result, callback);
+                    return;
+                }
+                long lo = Math.min(startId, endId);
+                long hi = Math.max(startId, endId);
+                List<Integer> matchingIds = new ArrayList<>();
+                for (File f : files) {
+                    String name = f.getName();
+                    if (!name.endsWith(".dat")) continue;
+                    int msgId;
+                    try {
+                        msgId = Integer.parseInt(name.substring(0, name.length() - 4));
+                    } catch (NumberFormatException ignored) {
+                        continue;
+                    }
+                    if (msgId >= lo && msgId <= hi) {
+                        matchingIds.add(msgId);
+                    }
+                }
+                if (matchingIds.isEmpty()) {
+                    finishReinject(result, callback);
+                    return;
+                }
+                Collections.sort(matchingIds);
+                int added = 0;
+                for (int msgId : matchingIds) {
+                    if (limit > 0 && added >= limit) break;
+                    TLRPC.Message message = getMessage(dialogId, msgId, accountId);
+                    if (message == null) continue;
+                    message.ayuDeleted = true;
+                    if (message.dialog_id == 0) {
+                        message.dialog_id = dialogId;
+                    }
+                    try {
+                        MessageObject obj = new MessageObject(accountId, message, true, true);
+                        // ensure the message is rendered as already read
+                        obj.setIsRead();
+                        result.add(obj);
+                        added++;
+                    } catch (Exception e) {
+                        FileLog.e("XenonReinject build MessageObject", e);
+                    }
+                }
+                finishReinject(result, callback);
+            } catch (Exception e) {
+                FileLog.e("XenonReinject", e);
+                finishReinject(result, callback);
+            }
+        });
+    }
+
+    private void finishReinject(ArrayList<MessageObject> result, Utilities.Callback<ArrayList<MessageObject>> callback) {
+        if (callback == null) return;
+        AndroidUtilities.runOnUIThread(() -> callback.run(result));
     }
 
     public Set<Integer> getAllSavedMessageIds(long dialogId, int accountId) {

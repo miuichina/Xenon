@@ -448,4 +448,7 @@
     <string name="TestBottomSheetText">:3</string>
     <string name="TestBottomSheetClose">Close</string>
     <string name="ShowOnlineDotsInChat">Show online dots in chat</string>
+    <string name="EnablePushService">Enable push service</string>
+    <string name="EnablePushServiceDesc">Keep the app running in the background with a notification, so it keeps receiving messages (including deleted ones)</string>
+    <string name="PushServiceText">Background service is running</string>
 </resources>
