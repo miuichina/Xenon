@@ -59,6 +59,7 @@ public class NekoExperimentalSettingsActivity extends BaseNekoSettingsActivity {
     private final int copyReportIdRow = rowId++;
 
     private final int deleteAccountRow = rowId++;
+    private final int buildInfoRow = rowId++;
 
     @Override
     protected void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
@@ -111,6 +112,10 @@ public class NekoExperimentalSettingsActivity extends BaseNekoSettingsActivity {
         items.add(UItem.asShadow(!AnalyticsHelper.isSettingsAvailable() ? null : LocaleController.formatString(R.string.SendAnonymousDataDesc, "Firebase Analytics", "Google")));
 
         items.add(TextSettingsCellFactory.of(deleteAccountRow, LocaleController.getString(R.string.DeleteAccount), "").slug("deleteAccount").red());
+        items.add(UItem.asShadow(null));
+
+        items.add(UItem.asHeader(LocaleController.getString(R.string.Channel)));
+        items.add(TextSettingsCellFactory.of(buildInfoRow, NekoConfig.getChannelName(), "").slug("channelInfo"));
         items.add(UItem.asShadow(null));
     }
 

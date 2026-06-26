@@ -1575,4 +1575,12 @@ public class NekoConfig {
             return 0xff11acfa;
         }
     }
+
+    public static String getChannelLabel() {
+        return " (Main)";
+    }
+
+    public static String getChannelName() {
+        return "Main";
+    }
 }

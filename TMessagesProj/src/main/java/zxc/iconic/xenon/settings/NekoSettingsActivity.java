@@ -274,7 +274,7 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity implements Fa
                         AndroidUtilities.runOnUIThread(() -> {
                             try {
                                 Bulletin b = BulletinFactory.global()
-                                        .createSimpleBulletin(R.raw.ic_download, LocaleController.getString(R.string.DownloadingUpdate), LocaleController.getString(R.string.Cancel), Integer.MAX_VALUE, () -> impl.cancelDownloadingUpdate());
+                                        .createSimpleBulletin(R.raw.ic_download, LocaleController.getString(R.string.DownloadingUpdate) + NekoConfig.getChannelLabel(), LocaleController.getString(R.string.Cancel), Integer.MAX_VALUE, () -> impl.cancelDownloadingUpdate());
                                 if (b.getLayout() instanceof Bulletin.LottieLayout) {
                                     ((Bulletin.LottieLayout) b.getLayout()).setIconPaddingBottom(2);
                                 }
@@ -316,9 +316,9 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity implements Fa
                                         if (total > 0) {
                                             String d = android.text.format.Formatter.formatShortFileSize(activity, downloaded);
                                             String t = android.text.format.Formatter.formatShortFileSize(activity, total);
-                                            text = LocaleController.getString(R.string.DownloadingUpdate) + " " + d + " / " + t;
+                                            text = LocaleController.getString(R.string.DownloadingUpdate) + NekoConfig.getChannelLabel() + " " + d + " / " + t;
                                         } else {
-                                            text = LocaleController.getString(R.string.DownloadingUpdate) + " " + (int)(prog * 100) + "%";
+                                            text = LocaleController.getString(R.string.DownloadingUpdate) + NekoConfig.getChannelLabel() + " " + (int)(prog * 100) + "%";
                                         }
                                         ((Bulletin.LottieLayout) progBulletin[0].getLayout()).textView.setText(text);
                                     } catch (Throwable ignored) {}
@@ -340,7 +340,7 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity implements Fa
                         AndroidUtilities.runOnUIThread(() -> {
                             try {
                                 Bulletin b = BulletinFactory.global()
-                                        .createSimpleBulletin(R.raw.ic_download, LocaleController.getString(R.string.DownloadingUpdate), LocaleController.getString(R.string.Cancel), Integer.MAX_VALUE, () -> impl.cancelDownloadingUpdate());
+                                        .createSimpleBulletin(R.raw.ic_download, LocaleController.getString(R.string.DownloadingUpdate) + NekoConfig.getChannelLabel(), LocaleController.getString(R.string.Cancel), Integer.MAX_VALUE, () -> impl.cancelDownloadingUpdate());
                                 if (b.getLayout() instanceof Bulletin.LottieLayout) {
                                     ((Bulletin.LottieLayout) b.getLayout()).setIconPaddingBottom(2);
                                 }
@@ -382,9 +382,9 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity implements Fa
                                         if (total > 0) {
                                             String d = android.text.format.Formatter.formatShortFileSize(activity, downloaded);
                                             String t = android.text.format.Formatter.formatShortFileSize(activity, total);
-                                            text = LocaleController.getString(R.string.DownloadingUpdate) + " " + d + " / " + t;
+                                            text = LocaleController.getString(R.string.DownloadingUpdate) + NekoConfig.getChannelLabel() + " " + d + " / " + t;
                                         } else {
-                                            text = LocaleController.getString(R.string.DownloadingUpdate) + " " + (int)(prog * 100) + "%";
+                                            text = LocaleController.getString(R.string.DownloadingUpdate) + NekoConfig.getChannelLabel() + " " + (int)(prog * 100) + "%";
                                         }
                                         ((Bulletin.LottieLayout) progBulletin[0].getLayout()).textView.setText(text);
                                     } catch (Throwable ignored) {}
@@ -596,7 +596,7 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity implements Fa
         AndroidUtilities.runOnUIThread(() -> {
             try {
                 Bulletin b = BulletinFactory.global()
-                        .createSimpleBulletin(R.raw.ic_download, LocaleController.getString(R.string.DownloadingUpdate), LocaleController.getString(R.string.Cancel), Integer.MAX_VALUE, () -> impl.cancelDownloadingUpdate());
+                        .createSimpleBulletin(R.raw.ic_download, LocaleController.getString(R.string.DownloadingUpdate) + NekoConfig.getChannelLabel(), LocaleController.getString(R.string.Cancel), Integer.MAX_VALUE, () -> impl.cancelDownloadingUpdate());
                 if (b.getLayout() instanceof Bulletin.LottieLayout) {
                     ((Bulletin.LottieLayout) b.getLayout()).setIconPaddingBottom(2);
                 }
@@ -616,9 +616,9 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity implements Fa
                         if (total > 0) {
                             String d = android.text.format.Formatter.formatShortFileSize(activity, downloaded);
                             String t = android.text.format.Formatter.formatShortFileSize(activity, total);
-                            text = LocaleController.getString(R.string.DownloadingUpdate) + " " + d + " / " + t;
+                            text = LocaleController.getString(R.string.DownloadingUpdate) + NekoConfig.getChannelLabel() + " " + d + " / " + t;
                         } else {
-                            text = LocaleController.getString(R.string.DownloadingUpdate) + " " + (int)(prog * 100) + "%";
+                            text = LocaleController.getString(R.string.DownloadingUpdate) + NekoConfig.getChannelLabel() + " " + (int)(prog * 100) + "%";
                         }
                         ((Bulletin.LottieLayout) progBulletin[0].getLayout()).textView.setText(text);
                     } catch (Throwable ignored) {}
