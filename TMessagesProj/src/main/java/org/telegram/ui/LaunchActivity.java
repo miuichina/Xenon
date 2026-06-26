@@ -450,6 +450,9 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         if (Build.VERSION.SDK_INT >= 24) {
             AndroidUtilities.isInMultiwindow = isInMultiWindowMode();
         }
+        // Boot the plugin engine once on app start so registered hooks (e.g.
+        // onResume, onSendMessage) are live by the time the UI is interactive.
+        zxc.iconic.xenon.plugins.PluginManager.getInstance().reloadAll();
         Theme.createCommonChatResources();
         Theme.createDialogsResources(this);
         if (SharedConfig.passcodeHash.length() != 0 && SharedConfig.appLocked) {
@@ -7230,6 +7233,10 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         //if (refreshRateController != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
         //    refreshRateController.start();
         //}
+
+        // Plugin hook: any plugin that registered via xenon.on("onResume", ...)
+        // gets notified every time the app returns to the foreground.
+        zxc.iconic.xenon.plugins.PluginManager.getInstance().fire("onResume");
     }
 
     public static Runnable whenResumed;

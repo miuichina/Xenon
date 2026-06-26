@@ -448,6 +448,25 @@
     <string name="TestBottomSheetTitle">hi</string>
     <string name="TestBottomSheetText">:3</string>
     <string name="TestBottomSheetClose">Close</string>
+    <string name="Plugins">Plugins</string>
+    <string name="PluginsDesc">Lua scripting engine for automation</string>
+    <string name="PluginsEnable">Enable plugins</string>
+    <string name="PluginsEnableDesc">When disabled, no plugin code executes</string>
+    <string name="PluginsInstall">Install plugin</string>
+    <string name="PluginsInstalled">Installed</string>
+    <string name="PluginsEmpty">No plugins installed.\nTap "Install plugin" to add one.</string>
+    <string name="PluginsEnableFirst">Enable plugins first</string>
+    <string name="PluginsInstallFailed">Failed to install plugin</string>
+    <string name="PluginsInstallSuccess">Plugin installed</string>
+    <string name="PluginsDeleteConfirm">Delete plugin "%s"?</string>
+    <string name="PluginsRemoved">Plugin removed</string>
+    <string name="PluginsNoDescription">No description</string>
+    <string name="PluginsPluginEnabled">Plugin enabled</string>
+    <string name="PluginsPluginNoName">Plugin has no name set!\nAdd `plugin_name = \"...\"` at the top of the plugin file.</string>
+    <string name="PluginsLoadedCount">Plugins loaded: %d</string>
+    <string name="PluginsSettings">Plugin settings</string>
+    <string name="PluginsOpenSettings">Open settings</string>
+    <string name="PluginsUpdate">Update</string>
     <string name="HideCameraInMediaPicker">Hide camera in media picker</string>
     <string name="ShowOnlineDotsInChat">Show online dots in chat</string>
     <string name="SwitchToAyu">Switch to ayu-features (posral)</string>

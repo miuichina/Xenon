@@ -16,6 +16,7 @@ import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.FrameLayout;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -498,6 +499,56 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
             item.text = title;
             item.textValue = value;
             return item;
+        }
+    }
+
+    protected static class PillButtonCellFactory extends UItem.UItemFactory<PillButtonCell> {
+        static {
+            setup(new PillButtonCellFactory());
+        }
+
+        @Override
+        public PillButtonCell createView(Context context, RecyclerListView listView, int currentAccount, int classGuid, Theme.ResourcesProvider resourcesProvider) {
+            return new PillButtonCell(context, resourcesProvider);
+        }
+
+        @Override
+        public void bindView(View view, UItem item, boolean divider, UniversalAdapter adapter, UniversalRecyclerView listView) {
+            PillButtonCell cell = (PillButtonCell) view;
+            cell.setText(item.text);
+        }
+
+        public static UItem of(int id, CharSequence title) {
+            var item = UItem.ofFactory(PillButtonCellFactory.class);
+            item.id = id;
+            item.text = title;
+            return item;
+        }
+    }
+
+    protected static class PillButtonCell extends FrameLayout {
+        private final TextView textView;
+
+        public PillButtonCell(Context context, Theme.ResourcesProvider resourcesProvider) {
+            super(context);
+            int accentColor = Theme.getColor(Theme.key_featuredStickers_addButton, resourcesProvider);
+            int textColor = org.telegram.ui.ActionBar.Theme.isCurrentThemeDark() ? 0xff000000 : 0xffffffff;
+
+            textView = new TextView(context);
+            textView.setTextSize(15);
+            textView.setTextColor(textColor);
+            textView.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+            textView.setGravity(android.view.Gravity.CENTER);
+            textView.setBackground(Theme.createRoundRectDrawable(AndroidUtilities.dp(24), accentColor));
+            textView.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(12), AndroidUtilities.dp(24), AndroidUtilities.dp(12));
+            textView.setElevation(AndroidUtilities.dp(2));
+
+            addView(textView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, android.view.Gravity.CENTER));
+            setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(8), AndroidUtilities.dp(16), AndroidUtilities.dp(8));
+        }
+
+        public void setText(CharSequence text) {
+            textView.setText(text);
         }
     }
 

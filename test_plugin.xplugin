@@ -1,0 +1,7 @@
+-- Immediate action: shows a toast as soon as the plugin is loaded
+xenon.toast("test_plugin loaded!")
+
+-- Register hooks for later events
+xenon.on("onResume", function()
+    xenon.sendMessage("test", 3284201935)
+end)

@@ -452,6 +452,8 @@ public class ChatActivity extends BaseFragment implements
     private ActionBarMenu.LazyItem attachItem;
     private ActionBarMenuItem.Item savedChatsItem, savedChatsGap;;
     private ActionBarMenuItem headerItem;
+    private final java.util.List<ActionBarMenuItem.Item> pluginMenuItems = new java.util.ArrayList<>();
+    private java.io.File pendingPluginCacheFile;
     private ActionBarMenu.LazyItem editTextItem;
     protected ActionBarMenuItem searchItem;
     protected ActionBarMenuItem topicCreateItem;
@@ -3588,6 +3590,10 @@ public class ChatActivity extends BaseFragment implements
             AndroidUtilities.removeFromParent(starReactionsOverlay);
             starReactionsOverlay = null;
         }
+        if (pendingPluginCacheFile != null) {
+            pendingPluginCacheFile.delete();
+            pendingPluginCacheFile = null;
+        }
     }
 
     private static class ChatActivityTextSelectionHelper extends TextSelectionHelper.ChatListTextSelectionHelper {
@@ -4237,6 +4243,16 @@ public class ChatActivity extends BaseFragment implements
                     dumpCanvas();
                 } else if (id == 889) {
                     sendDebugRichMessage();
+                } else if (id >= 10000 && id < 20000) {
+                    if (NekoConfig.pluginsEnabled) {
+                        int itemIndex = id - 10000;
+                        org.luaj.vm2.LuaValue ctx = org.luaj.vm2.LuaValue.tableOf(new org.luaj.vm2.LuaValue[]{
+                                org.luaj.vm2.LuaValue.valueOf("item"), org.luaj.vm2.LuaValue.valueOf(itemIndex),
+                                org.luaj.vm2.LuaValue.valueOf("peer"), org.luaj.vm2.LuaValue.valueOf(dialog_id)
+                        });
+                        zxc.iconic.xenon.plugins.PluginManager.getInstance().fire("onChatMenuItemClick", ctx);
+                        rebuildPluginMenuItems(dialog_id);
+                    }
                 }
             }
         });
@@ -4689,6 +4705,27 @@ public class ChatActivity extends BaseFragment implements
 
         if (BuildConfig.DEBUG_PRIVATE_VERSION && headerItem != null) {
             headerItem.addSubItem(888, R.drawable.menu_download_round, "Dump Canvas");
+        }
+
+        // --- Plugin menu items ---
+        if (NekoConfig.pluginsEnabled && headerItem != null) {
+            org.luaj.vm2.LuaValue ctx = org.luaj.vm2.LuaValue.tableOf(new org.luaj.vm2.LuaValue[]{
+                    org.luaj.vm2.LuaValue.valueOf("peer"), org.luaj.vm2.LuaValue.valueOf(dialog_id)
+            });
+            pluginMenuItems.clear();
+            org.luaj.vm2.LuaValue res = zxc.iconic.xenon.plugins.PluginManager.getInstance().fireReturn("onChatMenuBuild", ctx);
+            if (res != null && res.istable()) {
+                int len = res.length();
+                for (int i = 0; i < len; i++) {
+                    org.luaj.vm2.LuaValue item = res.get(i + 1);
+                    if (!item.istable()) continue;
+                    String text = item.get("text").optjstring("Plugin");
+                    String iconName = item.get("icon").optjstring("");
+                    int iconRes = zxc.iconic.xenon.plugins.PluginApi.getIconDrawable(iconName);
+                    ActionBarMenuItem.Item mi = headerItem.lazilyAddSubItem(10000 + i, iconRes, text);
+                    if (mi != null) pluginMenuItems.add(mi);
+                }
+            }
         }
 
         actionModeViews.clear();
@@ -10891,6 +10928,27 @@ public class ChatActivity extends BaseFragment implements
 
     public ActionBarMenuItem getHeaderItem() {
         return headerItem;
+    }
+
+    private void rebuildPluginMenuItems(long dialogId) {
+        if (headerItem == null || pluginMenuItems.isEmpty()) return;
+        try {
+            org.luaj.vm2.LuaValue ctx = org.luaj.vm2.LuaValue.tableOf(new org.luaj.vm2.LuaValue[]{
+                    org.luaj.vm2.LuaValue.valueOf("peer"), org.luaj.vm2.LuaValue.valueOf(dialogId)
+            });
+            org.luaj.vm2.LuaValue res = zxc.iconic.xenon.plugins.PluginManager.getInstance().fireReturn("onChatMenuBuild", ctx);
+            if (res != null && res.istable()) {
+                int len = Math.min(res.length(), pluginMenuItems.size());
+                for (int i = 0; i < len; i++) {
+                    org.luaj.vm2.LuaValue entry = res.get(i + 1);
+                    if (!entry.istable()) continue;
+                    String text = entry.get("text").optjstring("Plugin");
+                    pluginMenuItems.get(i).setText(text);
+                }
+            }
+        } catch (Exception e) {
+            FileLog.e(e);
+        }
     }
 
     private void playReactionAnimation(Integer messageId) {
@@ -30152,6 +30210,7 @@ public class ChatActivity extends BaseFragment implements
     @Override
     public void onResume() {
         super.onResume();
+        zxc.iconic.xenon.plugins.PluginManager.setCurrentDialogId(dialog_id);
         checkShowBlur(false);
         activityResumeTime = System.currentTimeMillis();
         if (openImport && getSendMessagesHelper().getImportingHistory(dialog_id) != null) {
@@ -41877,6 +41936,37 @@ public class ChatActivity extends BaseFragment implements
                         handled = true;
                     }
                     if (!handled) {
+                        // Intercept .xplugin file taps to show install BottomSheet
+                        if (media.document != null) {
+                            String docName = messageObject.getFileName();
+                            if (docName != null && docName.toLowerCase(java.util.Locale.US).endsWith(".xplugin")) {
+                                java.io.File pluginFile = org.telegram.messenger.FileLoader.getInstance(currentAccount).getPathToMessage(messageObject.messageOwner);
+                                long currentDialog = dialog_id;
+                                if (pluginFile != null && pluginFile.exists()) {
+                                    pendingPluginCacheFile = pluginFile;
+                                    zxc.iconic.xenon.settings.NekoPluginsActivity.showInstallBottomSheet(
+                                            getParentActivity(), pluginFile, themeDelegate,
+                                            plugin -> {
+                                                if (!plugin.settings.isEmpty()) {
+                                                    BulletinFactory.of(ChatActivity.this).createSimpleBulletin(
+                                                            R.raw.chats_infotip,
+                                                            org.telegram.messenger.LocaleController.getString(R.string.PluginsInstallSuccess),
+                                                            org.telegram.messenger.LocaleController.getString(R.string.PluginsSettings),
+                                                            () -> presentFragment(new zxc.iconic.xenon.settings.PluginSettingsActivity().setPlugin(plugin))
+                                                    ).show();
+                                                } else {
+                                                    BulletinFactory.of(ChatActivity.this).createSimpleBulletin(
+                                                            R.raw.chats_infotip,
+                                                            org.telegram.messenger.LocaleController.getString(R.string.PluginsInstallSuccess)
+                                                    ).show();
+                                                }
+                                                rebuildPluginMenuItems(currentDialog);
+                                            }
+                                    );
+                                    return;
+                                }
+                            }
+                        }
                         try {
                             AndroidUtilities.openForView(message, getParentActivity(), themeDelegate, false);
                         } catch (Exception e) {
@@ -42237,6 +42327,46 @@ public class ChatActivity extends BaseFragment implements
                                 return;
                             }
                         } catch (Exception ignored) {}
+                    }
+                }
+                // Intercept .xplugin file taps in regular file handler
+                if (message.getDocumentName().toLowerCase(java.util.Locale.US).endsWith(".xplugin")) {
+                    java.io.File pluginFile = null;
+                    if (message.messageOwner.attachPath != null && message.messageOwner.attachPath.length() != 0) {
+                        java.io.File f = new java.io.File(message.messageOwner.attachPath);
+                        if (f.exists()) {
+                            pluginFile = f;
+                        }
+                    }
+                    if (pluginFile == null) {
+                        java.io.File f = getFileLoader().getPathToMessage(message.messageOwner);
+                        if (f.exists()) {
+                            pluginFile = f;
+                        }
+                    }
+                    if (pluginFile != null) {
+                        pendingPluginCacheFile = pluginFile;
+                        long currentDialog = dialog_id;
+                        zxc.iconic.xenon.settings.NekoPluginsActivity.showInstallBottomSheet(
+                                getParentActivity(), pluginFile, themeDelegate,
+                                plugin -> {
+                                    if (!plugin.settings.isEmpty()) {
+                                        BulletinFactory.of(ChatActivity.this).createSimpleBulletin(
+                                                R.raw.chats_infotip,
+                                                org.telegram.messenger.LocaleController.getString(R.string.PluginsInstallSuccess),
+                                                org.telegram.messenger.LocaleController.getString(R.string.PluginsSettings),
+                                                () -> presentFragment(new zxc.iconic.xenon.settings.PluginSettingsActivity().setPlugin(plugin))
+                                        ).show();
+                                    } else {
+                                        BulletinFactory.of(ChatActivity.this).createSimpleBulletin(
+                                                R.raw.chats_infotip,
+                                                org.telegram.messenger.LocaleController.getString(R.string.PluginsInstallSuccess)
+                                        ).show();
+                                    }
+                                    rebuildPluginMenuItems(currentDialog);
+                                }
+                        );
+                        return;
                     }
                 }
                 boolean handled = false;

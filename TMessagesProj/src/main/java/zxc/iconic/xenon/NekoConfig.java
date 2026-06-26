@@ -161,6 +161,7 @@ public class NekoConfig {
     public static boolean disableTypingIndicator = false;
     public static boolean ghostModeEnabled = false;
     public static boolean bypassBlocking = false;
+    public static boolean pluginsEnabled = false;
     public static boolean hidePhoneNumber = false;
     public static boolean autoInlineBot = false;
     public static boolean removeAds = false;
@@ -353,6 +354,7 @@ public class NekoConfig {
             disableTypingIndicator = preferences.getBoolean("disableTypingIndicator", false);
             ghostModeEnabled = preferences.getBoolean("ghostModeEnabled", false);
             bypassBlocking = preferences.getBoolean("bypassBlocking", false);
+            pluginsEnabled = preferences.getBoolean("pluginsEnabled", false);
             hidePhoneNumber = preferences.getBoolean("hidePhoneNumber", false);
             autoInlineBot = preferences.getBoolean("autoInlineBot", false);
             xrayAppProxyEnabled = preferences.getBoolean("xrayAppProxyEnabled", false);
@@ -688,6 +690,17 @@ public class NekoConfig {
 
     public static void toggleBypassBlocking() {
         setBypassBlocking(!bypassBlocking);
+    }
+
+    public static void togglePluginsEnabled() {
+        pluginsEnabled = !pluginsEnabled;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("pluginsEnabled", pluginsEnabled);
+        editor.apply();
+        // Apply immediately: load/unload the plugin engine so the change is
+        // visible without a restart.
+        zxc.iconic.xenon.plugins.PluginManager.getInstance().onEnabledChanged();
     }
 
     public static void toggleKeepFormatting() {

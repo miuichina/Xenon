@@ -77,6 +77,10 @@ configurations.configureEach {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.aar'])
 
+    // luaj: pure-Java Lua interpreter for the plugin engine. ~200KB, no native
+    // code, runs scripts (plugins) loaded at runtime without recompilation.
+    implementation 'org.luaj:luaj-jse:3.0.1'
+
     implementation 'androidx.activity:activity:1.13.0'
     implementation 'androidx.fragment:fragment:1.8.9'
     implementation 'androidx.core:core:1.19.0'
