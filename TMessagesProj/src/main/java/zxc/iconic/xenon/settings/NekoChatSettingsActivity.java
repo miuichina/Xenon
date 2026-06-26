@@ -80,6 +80,7 @@ public class NekoChatSettingsActivity extends BaseNekoSettingsActivity implement
     private final int autoPauseVideoRow = rowId++;
     private final int preferOriginalQualityRow = rowId++;
     private final int cameraInVideoMessagesRow = rowId++;
+    private final int hideCameraInMediaPickerRow = rowId++;
 
     private final int messageMenuRow = 100;
 
@@ -204,6 +205,7 @@ public class NekoChatSettingsActivity extends BaseNekoSettingsActivity implement
                     LocaleController.getString(R.string.RearCamera);
             default -> LocaleController.getString(R.string.FrontCamera);
         }).slug("cameraInVideoMessages"));
+        items.add(UItem.asCheck(hideCameraInMediaPickerRow, LocaleController.getString(R.string.HideCameraInMediaPicker)).slug("hideCameraInMediaPicker").setChecked(NekoConfig.hideCameraInMediaPicker));
         items.add(UItem.asShadow(null));
 
         items.add(UItem.asHeader(LocaleController.getString(R.string.MessageMenu)));
@@ -251,6 +253,12 @@ public class NekoChatSettingsActivity extends BaseNekoSettingsActivity implement
                 item.textValue = arrayList.get(i);
                 listView.adapter.notifyItemChanged(position, PARTIAL);
             }, resourcesProvider);
+        } else if (id == hideCameraInMediaPickerRow) {
+            NekoConfig.toggleHideCameraInMediaPicker();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.hideCameraInMediaPicker);
+            }
+            showRestartBulletin();
         } else if (id == confirmAVRow) {
             NekoConfig.toggleConfirmAVMessage();
             if (view instanceof TextCheckCell) {

@@ -122,6 +122,7 @@ public class NekoConfig {
     public static boolean useCamera2Api = false;
     public static boolean voiceEnhancements = false;
     public static boolean disableInstantCamera = false;
+    public static boolean hideCameraInMediaPicker = false;
     public static boolean tryToOpenAllLinksInIV = false;
     public static boolean formatTimeWithSeconds = false;
     public static boolean accentAsNotificationColor = false;
@@ -290,6 +291,7 @@ public class NekoConfig {
             useCamera2Api = preferences.getBoolean("useCamera2Api", false);
             voiceEnhancements = preferences.getBoolean("voiceEnhancements", false);
             disableInstantCamera = preferences.getBoolean("disableInstantCamera", false);
+            hideCameraInMediaPicker = preferences.getBoolean("hideCameraInMediaPicker", false);
             tryToOpenAllLinksInIV = preferences.getBoolean("tryToOpenAllLinksInIV", false);
             formatTimeWithSeconds = preferences.getBoolean("formatTimeWithSeconds", false);
             accentAsNotificationColor = preferences.getBoolean("accentAsNotificationColor", false);
@@ -1522,6 +1524,14 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("showOnlineDotsInChat", showOnlineDotsInChat);
+        editor.apply();
+    }
+
+    public static void toggleHideCameraInMediaPicker() {
+        hideCameraInMediaPicker = !hideCameraInMediaPicker;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("hideCameraInMediaPicker", hideCameraInMediaPicker);
         editor.apply();
     }
 
