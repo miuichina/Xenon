@@ -449,4 +449,6 @@
     <string name="TestBottomSheetText">:3</string>
     <string name="TestBottomSheetClose">Close</string>
     <string name="ShowOnlineDotsInChat">Show online dots in chat</string>
+    <string name="SwitchToAyu">Switch to ayu-features (posral)</string>
+    <string name="SwitchToAyuConfirm">Switching to ayu-features means you will download the latest posral build with ayugram features. Continue?</string>
 </resources>

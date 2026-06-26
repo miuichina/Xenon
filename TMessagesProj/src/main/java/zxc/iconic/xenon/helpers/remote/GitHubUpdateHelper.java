@@ -37,6 +37,9 @@ public class GitHubUpdateHelper {
     private static final String TAG = "GitHubUpdateHelper";
     private static final String GITHUB_API_URL =
             "https://api.github.com/repos/sinkclose/Xenon/releases/latest";
+    private static final String GITHUB_API_RELEASES_URL =
+            "https://api.github.com/repos/sinkclose/Xenon/releases?per_page=100";
+    public static final String POSRAL_TAG_PREFIX = "posral-";
     private static final Gson GSON = new Gson();
 
     private GitHubUpdateHelper() {
@@ -139,6 +142,39 @@ public class GitHubUpdateHelper {
     }
 
     /**
+     * Fetches the latest <b>ayu-features</b> (posral) release regardless of the
+     * current build channel. This calls {@link #fetchLatestPrefixedRelease(String)}
+     * with {@link #POSRAL_TAG_PREFIX} and always reports the release as available.
+     *
+     * <p>Intended for the "Switch to ayu-features" button that lets main/stable
+     * users switch to the posral channel.
+     */
+    public static void checkForAyuUpdate(UpdateCallback callback) {
+        new Thread(() -> {
+            try {
+                FileLog.d(TAG + ": checking for ayu-features (posral) update...");
+                GitHubRelease release = fetchLatestPrefixedRelease(POSRAL_TAG_PREFIX);
+                if (release == null || TextUtils.isEmpty(release.tagName)) {
+                    AndroidUtilities.runOnUIThread(callback::onNoUpdate);
+                    return;
+                }
+                String apkUrl = findApkDownloadUrl(release);
+                if (apkUrl == null) {
+                    AndroidUtilities.runOnUIThread(() ->
+                            callback.onError("No arm64 build available"));
+                    return;
+                }
+                AndroidUtilities.runOnUIThread(() -> callback.onUpdateAvailable(release));
+            } catch (Exception e) {
+                FileLog.e(TAG, e);
+                String msg = e.getMessage();
+                AndroidUtilities.runOnUIThread(() ->
+                        callback.onError(msg != null ? msg : "Unknown error"));
+            }
+        }, "XenonAyuUpdateCheck").start();
+    }
+
+    /**
      * Performs the HTTP request and parses JSON response.
      *
      * @return parsed release or null on failure
@@ -170,6 +206,67 @@ public class GitHubUpdateHelper {
             reader.close();
 
             return GSON.fromJson(sb.toString(), GitHubRelease.class);
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
+    /**
+     * Lists recent releases and returns the newest one whose {@code tag_name}
+     * starts with {@code prefix}. Used by the ayu-features (posral) channel,
+     * whose releases are published as GitHub <i>prereleases</i> and therefore
+     * never appear at {@code /releases/latest}. The list endpoint returns
+     * releases sorted by {@code created_at} descending, so the first matching
+     * tag is the newest.
+     *
+     * @param prefix tag prefix to match (case-insensitive), e.g. {@code "posral-"}
+     * @return the newest matching release, or {@code null} if none matched
+     */
+    @Nullable
+    private static GitHubRelease fetchLatestPrefixedRelease(String prefix) throws Exception {
+        HttpURLConnection connection = null;
+        try {
+            URL url = new URL(GITHUB_API_RELEASES_URL);
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("Accept", "application/vnd.github+json");
+            connection.setRequestProperty("User-Agent", "Xenon-Updater/" + BuildConfig.VERSION_NAME);
+            connection.setConnectTimeout(15000);
+            connection.setReadTimeout(15000);
+
+            int code = connection.getResponseCode();
+            if (code != 200) {
+                throw new Exception("GitHub API returned HTTP " + code);
+            }
+
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(connection.getInputStream(), "UTF-8"));
+            StringBuilder sb = new StringBuilder(4096);
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+            reader.close();
+
+            GitHubRelease[] releases = GSON.fromJson(sb.toString(), GitHubRelease[].class);
+            if (releases == null) {
+                return null;
+            }
+            GitHubRelease best = null;
+            for (GitHubRelease release : releases) {
+                if (release != null && release.tagName != null
+                        && release.tagName.toLowerCase().startsWith(prefix)) {
+                    if (best == null) {
+                        best = release;
+                    } else if (release.publishedAt != null && best.publishedAt != null
+                            && release.publishedAt.compareTo(best.publishedAt) > 0) {
+                        best = release;
+                    }
+                }
+            }
+            return best;
         } finally {
             if (connection != null) {
                 connection.disconnect();

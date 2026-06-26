@@ -441,4 +441,6 @@
     <string name="TestBottomSheetText">:3</string>
     <string name="TestBottomSheetClose">Закрыть</string>
     <string name="ShowOnlineDotsInChat">Показывать точки онлайна в чате</string>
+    <string name="SwitchToAyu">Переключиться на ayu-features (posral)</string>
+    <string name="SwitchToAyuConfirm">Переключение на ayu-features означает загрузку последней posral-сборки с функциями ayugram. Продолжить?</string>
 </resources>

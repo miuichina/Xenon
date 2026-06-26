@@ -5,19 +5,27 @@ import android.view.View;
 
 import androidx.core.text.HtmlCompat;
 
+import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.messenger.UserConfig;
 import org.telegram.tgnet.ConnectionsManager;
+import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.Cells.TextCheckCell;
+import org.telegram.ui.Components.Bulletin;
+import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.UniversalAdapter;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Locale;
 
 import zxc.iconic.xenon.NekoConfig;
+import zxc.iconic.xenon.helpers.ApkInstaller;
 import zxc.iconic.xenon.helpers.PopupHelper;
+import zxc.iconic.xenon.helpers.remote.GitHubUpdateHelper;
 import zxc.iconic.xenon.translator.Translator;
 import zxc.iconic.xenon.translator.TranslatorApps;
 
@@ -45,6 +53,7 @@ public class NekoGeneralSettingsActivity extends BaseNekoSettingsActivity {
     private final int openArchiveOnPullRow = rowId++;
     private final int autoCheckUpdateRow = rowId++;
     private final int autoDownloadUpdateRow = rowId++;
+    private final int switchToAyuRow = rowId++;
 
     private CharSequence getTranslationProvider() {
         var providers = Translator.getProviders();
@@ -155,6 +164,9 @@ public class NekoGeneralSettingsActivity extends BaseNekoSettingsActivity {
         items.add(UItem.asHeader(LocaleController.getString(R.string.UpdatesHeader)));
         items.add(UItem.asCheck(autoCheckUpdateRow, LocaleController.getString(R.string.AutoCheckUpdate)).slug("autoCheckUpdate").setChecked(NekoConfig.autoCheckUpdate));
         items.add(UItem.asCheck(autoDownloadUpdateRow, LocaleController.getString(R.string.AutoDownloadUpdate)).slug("autoDownloadUpdate").setChecked(NekoConfig.autoDownloadUpdate));
+        items.add(UItem.asShadow(null));
+
+        items.add(UItem.asButton(switchToAyuRow, R.drawable.msg_download, LocaleController.getString(R.string.SwitchToAyu)).slug("switchToAyu"));
         items.add(UItem.asShadow(null));
     }
 
@@ -308,6 +320,105 @@ public class NekoGeneralSettingsActivity extends BaseNekoSettingsActivity {
                 item.textValue = getTranslatorExternalApp();
                 listView.adapter.notifyItemChanged(position, PARTIAL);
             }, resourcesProvider);
+        } else if (id == switchToAyuRow) {
+            var activity = getParentActivity();
+            if (activity == null) return;
+            AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+            builder.setTitle(LocaleController.getString(R.string.SwitchToAyu));
+            builder.setMessage(LocaleController.getString(R.string.SwitchToAyuConfirm));
+            builder.setPositiveButton(LocaleController.getString(R.string.OK), (dialog, which) -> {
+                var impl = ApplicationLoader.applicationLoaderInstance;
+                if (impl != null && impl.isDownloadingUpdate()) {
+                    BulletinFactory.of(NekoGeneralSettingsActivity.this).createErrorBulletin("Already downloading").show();
+                    return;
+                }
+                var spinner = new AlertDialog(activity, AlertDialog.ALERT_TYPE_SPINNER);
+                spinner.setCanCancel(true);
+                spinner.show();
+                GitHubUpdateHelper.checkForAyuUpdate(new GitHubUpdateHelper.UpdateCallback() {
+                    @Override
+                    public void onUpdateAvailable(GitHubUpdateHelper.GitHubRelease release) {
+                        try { spinner.dismiss(); } catch (Throwable ignored) {}
+                        String apkUrl = GitHubUpdateHelper.findApkDownloadUrl(release);
+                        if (apkUrl == null) {
+                            BulletinFactory.of(NekoGeneralSettingsActivity.this).createErrorBulletin("No arm64 build available").show();
+                            return;
+                        }
+                        String title = release.name != null ? release.name : release.tagName;
+                        var impl = ApplicationLoader.applicationLoaderInstance;
+                        final Bulletin[] progBulletin = new Bulletin[1];
+                        AndroidUtilities.runOnUIThread(() -> {
+                            try {
+                                Bulletin b = BulletinFactory.global()
+                                        .createSimpleBulletin(R.raw.ic_download, LocaleController.getString(R.string.DownloadingUpdate), LocaleController.getString(R.string.Cancel), Integer.MAX_VALUE, () -> impl.cancelDownloadingUpdate());
+                                if (b.getLayout() instanceof Bulletin.LottieLayout) {
+                                    ((Bulletin.LottieLayout) b.getLayout()).setIconPaddingBottom(2);
+                                }
+                                b.show();
+                                progBulletin[0] = b;
+                            } catch (Throwable ignored) {}
+                        }, 100);
+                        impl.downloadUpdate(apkUrl, () -> {
+                            AndroidUtilities.runOnUIThread(() -> {
+                                try { if (progBulletin[0] != null) progBulletin[0].hide(); } catch (Throwable ignored) {}
+                            });
+                            File apkFile = impl.getDownloadedUpdateFile();
+                            if (apkFile != null && apkFile.exists()) {
+                                AndroidUtilities.runOnUIThread(() -> {
+                                    try {
+                                        Bulletin b2 = BulletinFactory.global()
+                                                .createSimpleBulletin(R.raw.ic_download,
+                                                        LocaleController.getString(R.string.UpdateDownloaded),
+                                                        LocaleController.getString(R.string.NekoUpdate),
+                                                        Integer.MAX_VALUE,
+                                                        () -> ApkInstaller.installUpdate(activity, apkFile));
+                                        if (b2.getLayout() instanceof Bulletin.LottieLayout) {
+                                            ((Bulletin.LottieLayout) b2.getLayout()).setIconPaddingBottom(2);
+                                        }
+                                        b2.show();
+                                    } catch (Throwable ignored) {}
+                                });
+                            }
+                        });
+                        AndroidUtilities.runOnUIThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (impl.isDownloadingUpdate() && progBulletin[0] != null) {
+                                    try {
+                                        float prog = impl.getDownloadingUpdateProgress();
+                                        long total = impl.getDownloadTotalSize();
+                                        long downloaded = impl.getDownloadBytesDownloaded();
+                                        String text;
+                                        if (total > 0) {
+                                            String d = android.text.format.Formatter.formatShortFileSize(activity, downloaded);
+                                            String t = android.text.format.Formatter.formatShortFileSize(activity, total);
+                                            text = LocaleController.getString(R.string.DownloadingUpdate) + " " + d + " / " + t;
+                                        } else {
+                                            text = LocaleController.getString(R.string.DownloadingUpdate) + " " + (int)(prog * 100) + "%";
+                                        }
+                                        ((Bulletin.LottieLayout) progBulletin[0].getLayout()).textView.setText(text);
+                                    } catch (Throwable ignored) {}
+                                    AndroidUtilities.runOnUIThread(this, 500);
+                                }
+                            }
+                        }, 500);
+                    }
+
+                    @Override
+                    public void onNoUpdate() {
+                        try { spinner.dismiss(); } catch (Throwable ignored) {}
+                        BulletinFactory.of(NekoGeneralSettingsActivity.this).createErrorBulletin("No ayu-features release found").show();
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        try { spinner.dismiss(); } catch (Throwable ignored) {}
+                        BulletinFactory.of(NekoGeneralSettingsActivity.this).createErrorBulletin(error != null ? error : "Unknown error").show();
+                    }
+                });
+            });
+            builder.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
+            builder.show();
         }
     }
 
