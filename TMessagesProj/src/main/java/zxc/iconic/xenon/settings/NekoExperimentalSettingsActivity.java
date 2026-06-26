@@ -17,6 +17,7 @@ import org.telegram.messenger.Utilities;
 import org.telegram.messenger.browser.Browser;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.tgnet.tl.TL_account;
+import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.TextCheckCell;
@@ -51,6 +52,7 @@ public class NekoExperimentalSettingsActivity extends BaseNekoSettingsActivity {
     private final int contentRestrictionRow = rowId++;
     private final int showRPCErrorRow = rowId++;
     private final int removeChatDelayRow = rowId++;
+    private final int bypassBlockingRow = rowId++;
     private final int xrayProxySettingsRow = rowId++;
 
     private final int sendBugReportRow = rowId++;
@@ -92,6 +94,7 @@ public class NekoExperimentalSettingsActivity extends BaseNekoSettingsActivity {
         }
         items.add(UItem.asCheck(showRPCErrorRow, LocaleController.getString(R.string.ShowRPCError), LocaleController.formatString(R.string.ShowRPCErrorException, "FILE_REFERENCE_EXPIRED")).slug("showRPCError").setChecked(NekoConfig.showRPCError));
         items.add(UItem.asCheck(removeChatDelayRow, LocaleController.getString(R.string.RemoveChatDelay)).slug("removeChatDelay").setChecked(NekoConfig.removeChatDelay));
+        items.add(UItem.asCheck(bypassBlockingRow, LocaleController.getString(R.string.BypassBlocking), LocaleController.getString(R.string.BypassBlockingDesc)).slug("bypassBlocking").setChecked(NekoConfig.bypassBlocking));
         XrayProxyProfileStore.Profile activeProfile = XrayProxyProfileStore.getActiveProfile();
         String xrayStatus = NekoConfig.xrayAppProxyEnabled ? LocaleController.getString(R.string.XrayProxyStatusRunning) : LocaleController.getString(R.string.XrayProxyStatusStopped);
         if (activeProfile != null && !TextUtils.isEmpty(activeProfile.name)) {
@@ -242,6 +245,12 @@ public class NekoExperimentalSettingsActivity extends BaseNekoSettingsActivity {
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.removeChatDelay);
             }
+        } else if (id == bypassBlockingRow) {
+            NekoConfig.toggleBypassBlocking();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.bypassBlocking);
+            }
+            ConnectionsManager.applyBypassOptionsFromConfig();
         } else if (id == downloadSpeedBoostRow) {
             ArrayList<String> arrayList = new ArrayList<>();
             ArrayList<Integer> types = new ArrayList<>();

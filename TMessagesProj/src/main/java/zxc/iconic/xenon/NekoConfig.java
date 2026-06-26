@@ -158,6 +158,7 @@ public class NekoConfig {
     public static boolean telegaDetectorEnabled = false;
     public static boolean disableTypingIndicator = false;
     public static boolean ghostModeEnabled = false;
+    public static boolean bypassBlocking = false;
     public static boolean hidePhoneNumber = false;
     public static boolean autoInlineBot = false;
     public static boolean removeAds = false;
@@ -347,6 +348,7 @@ public class NekoConfig {
             telegaDetectorEnabled = preferences.getBoolean("telegaDetectorEnabled", false);
             disableTypingIndicator = preferences.getBoolean("disableTypingIndicator", false);
             ghostModeEnabled = preferences.getBoolean("ghostModeEnabled", false);
+            bypassBlocking = preferences.getBoolean("bypassBlocking", false);
             hidePhoneNumber = preferences.getBoolean("hidePhoneNumber", false);
             autoInlineBot = preferences.getBoolean("autoInlineBot", false);
             xrayAppProxyEnabled = preferences.getBoolean("xrayAppProxyEnabled", false);
@@ -670,6 +672,18 @@ public class NekoConfig {
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("ghostModeEnabled", ghostModeEnabled);
         editor.apply();
+    }
+
+    public static void setBypassBlocking(boolean enabled) {
+        bypassBlocking = enabled;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("bypassBlocking", bypassBlocking);
+        editor.apply();
+    }
+
+    public static void toggleBypassBlocking() {
+        setBypassBlocking(!bypassBlocking);
     }
 
     public static void toggleKeepFormatting() {

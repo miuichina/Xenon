@@ -3758,6 +3758,23 @@ void ConnectionsManager::setProxySettings(std::string address, uint16_t port, st
     });
 }
 
+void ConnectionsManager::setBypassOptions(int32_t tlsProfile, int32_t clientHelloFragmentation) {
+    // Global per-process setting (static atomics in ConnectionSocket), so it
+    // applies to every account's new connections. Stored and snapshotted in
+    // openConnection(); reconnect to make existing sockets pick it up.
+    ConnectionSocket::setBypassOptions(tlsProfile, clientHelloFragmentation);
+    scheduleTask([&] {
+        for (auto & datacenter : datacenters) {
+            datacenter.second->suspendConnections(true);
+        }
+        Datacenter *datacenter = getDatacenterWithId(DEFAULT_DATACENTER_ID);
+        if (datacenter != nullptr && datacenter->isHandshakingAny()) {
+            datacenter->beginHandshake(HandshakeTypeCurrent, true);
+        }
+        processRequestQueue(0, 0);
+    });
+}
+
 void ConnectionsManager::setLangCode(std::string langCode) {
     scheduleTask([&, langCode] {
         if (currentLangCode == langCode) {

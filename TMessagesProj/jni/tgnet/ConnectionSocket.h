@@ -35,6 +35,10 @@ public:
     void setOverrideProxy(std::string address, uint16_t port, std::string username, std::string password, std::string secret);
     void onHostNameResolved(std::string host, std::string ip, bool ipv6);
 
+    // Apply the "Bypass blocking" TLS profile + ClientHello fragmentation mode
+    // globally. New connections snapshot these in openConnection().
+    static void setBypassOptions(int32_t tlsProfile, int32_t clientHelloFragmentation);
+
 protected:
     int32_t instanceNum;
     void onEvent(uint32_t events);
@@ -72,6 +76,12 @@ private:
 
     std::string currentSecret;
     std::string currentSecretDomain;
+
+    // ZaStoGram "Bypass blocking" subset, per-socket snapshot of the global
+    // bypass options captured in openConnection(). Default values reproduce the
+    // upstream Xenon behaviour (Android-Chrome profile, no fragmentation).
+    int32_t currentProxyTlsProfile = 2; // MT_PROXY_TLS_PROFILE_ANDROID_CHROME
+    int32_t currentClientHelloFragmentation = 0; // MT_PROXY_CLIENT_HELLO_FRAGMENTATION_OFF
 
     bool tlsHashMismatch = false;
     bool tlsBufferSized = true;

@@ -81,6 +81,18 @@ public class ConnectionsManager extends BaseController {
     public final static int ConnectionTypePush = 8;
     public final static int ConnectionTypeDownload2 = ConnectionTypeDownload | (1 << 16);
 
+    // ZaStoGram "Bypass blocking" TLS-profile and ClientHello-fragmentation
+    // constants. Mirror jni/tgnet/MtProxyOptions.h.
+    public final static int MT_PROXY_TLS_PROFILE_AUTO = 0;
+    public final static int MT_PROXY_TLS_PROFILE_FIREFOX = 1;
+    public final static int MT_PROXY_TLS_PROFILE_ANDROID_CHROME = 2;
+    public final static int MT_PROXY_TLS_PROFILE_YANDEX = 3;
+    public final static int MT_PROXY_TLS_PROFILE_FIREFOX_ANDROID = 4;
+    public final static int MT_PROXY_TLS_PROFILE_ANDROID_OKHTTP = 5;
+    public final static int MT_PROXY_TLS_PROFILE_AUTO_ROTATE = 6;
+    public final static int MT_PROXY_CLIENT_HELLO_FRAGMENTATION_OFF = 0;
+    public final static int MT_PROXY_CLIENT_HELLO_FRAGMENTATION_SOFT = 1;
+
     public final static int FileTypePhoto = 0x01000000;
     public final static int FileTypeVideo = 0x02000000;
     public final static int FileTypeAudio = 0x03000000;
@@ -649,6 +661,12 @@ public class ConnectionsManager extends BaseController {
         }
 
         native_init(currentAccount, version, layer, apiId, deviceModel, systemVersion, appVersion, langCode, systemLangCode, configPath, logPath, regId, cFingerprint, installer, packageId, timezoneOffset, userId, userPremium, enablePushConnection, ApplicationLoader.isNetworkOnline(), ApplicationLoader.getCurrentNetworkType(), SharedConfig.measureDevicePerformanceClass());
+        // Apply the persisted "Bypass blocking" masking state to this freshly
+        // initialized account's transport so connections use the right TLS
+        // profile / fragmentation from the very first attempt.
+        int bypassTlsProfile = NekoConfig.bypassBlocking ? MT_PROXY_TLS_PROFILE_FIREFOX_ANDROID : MT_PROXY_TLS_PROFILE_ANDROID_CHROME;
+        int bypassFragmentation = NekoConfig.bypassBlocking ? MT_PROXY_CLIENT_HELLO_FRAGMENTATION_SOFT : MT_PROXY_CLIENT_HELLO_FRAGMENTATION_OFF;
+        native_setBypassOptions(currentAccount, bypassTlsProfile, bypassFragmentation);
         checkConnection();
     }
 
@@ -956,6 +974,25 @@ public class ConnectionsManager extends BaseController {
         }
     }
 
+    /**
+     * Push the current "Bypass blocking" state from NekoConfig into the native
+     * transport. When enabled, ee-FakeTLS connections use the Firefox Android
+     * JA4 profile plus soft ClientHello fragmentation; when disabled they fall
+     * back to the upstream Android-Chrome profile with no fragmentation.
+     * Triggers a reconnect so new sockets pick up the change.
+     */
+    public static void applyBypassOptionsFromConfig() {
+        int tlsProfile = NekoConfig.bypassBlocking
+                ? MT_PROXY_TLS_PROFILE_FIREFOX_ANDROID
+                : MT_PROXY_TLS_PROFILE_ANDROID_CHROME;
+        int fragmentation = NekoConfig.bypassBlocking
+                ? MT_PROXY_CLIENT_HELLO_FRAGMENTATION_SOFT
+                : MT_PROXY_CLIENT_HELLO_FRAGMENTATION_OFF;
+        for (int a = 0; a < UserConfig.MAX_ACCOUNT_COUNT; a++) {
+            native_setBypassOptions(a, tlsProfile, fragmentation);
+        }
+    }
+
     public static native void native_switchBackend(int currentAccount, boolean restart);
     public static native int native_isTestBackend(int currentAccount);
     public static native void native_pauseNetwork(int currentAccount);
@@ -980,6 +1017,7 @@ public class ConnectionsManager extends BaseController {
     public static native void native_setUserId(int currentAccount, long id);
     public static native void native_init(int currentAccount, int version, int layer, int apiId, String deviceModel, String systemVersion, String appVersion, String langCode, String systemLangCode, String configPath, String logPath, String regId, String cFingerprint, String installer, String packageId, int timezoneOffset, long userId, boolean userPremium, boolean enablePushConnection, boolean hasNetwork, int networkType, int performanceClass);
     public static native void native_setProxySettings(int currentAccount, String address, int port, String username, String password, String secret);
+    public static native void native_setBypassOptions(int currentAccount, int tlsProfile, int clientHelloFragmentation);
     public static native void native_setLangCode(int currentAccount, String langCode);
     public static native void native_setRegId(int currentAccount, String regId);
     public static native void native_setSystemLangCode(int currentAccount, String langCode);

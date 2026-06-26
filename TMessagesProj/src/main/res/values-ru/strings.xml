@@ -276,6 +276,8 @@
     <string name="MainTabsSettingsAlwaysEnabled">Эта вкладка всегда включена</string>
 
     <string name="XrayProxyTitle">Xray-прокси приложения</string>
+    <string name="BypassBlocking">Обход блокировок (WIP)</string>
+    <string name="BypassBlockingDesc">Применяет маскировку FakeTLS для MTProxy ee-секретов против DPI (TLS-профиль Firefox Android + фрагментация ClientHello). Для применения перезапустите соединение. Адаптировано с ZaStoGram.</string>
     <string name="XrayProxyLoginQuickTitle">Быстрый прокси Xray</string>
     <string name="XrayProxyLoginQuickHint">Подключите VLESS/VMess/Trojan перед входом, чтобы Telegram работал в ограниченной сети.</string>
     <string name="XrayProxyLoginUriLabel">URI прокси</string>

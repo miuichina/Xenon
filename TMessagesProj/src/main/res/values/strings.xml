@@ -10852,6 +10852,8 @@
     <string name="TranslateCopy">Copy Translation</string>
     <string name="TranslateEntireChat">Translate Entire Chat</string>
     <string name="XrayProxyTitle">Xray App Proxy</string>
+    <string name="BypassBlocking">Bypass blocking (WIP)</string>
+    <string name="BypassBlockingDesc">Applies FakeTLS masking for MTProxy ee-secrets against DPI (Firefox Android TLS profile + ClientHello fragmentation). Restart the connection for it to take effect. Adapted from ZaStoGram</string>
     <string name="XrayProxyLoginQuickTitle">Quick Xray Proxy</string>
     <string name="XrayProxyLoginQuickHint">Connect a local VLESS/VMess/Trojan route before login to reach Telegram in restricted networks.</string>
     <string name="XrayProxyLoginUriLabel">Proxy URI</string>
