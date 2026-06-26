@@ -440,6 +440,9 @@
     <string name="BlurPopupInChat">Blur behind popup in chat</string>
     <string name="BlurPixelation">Pixelation</string>
     <string name="BlurSettingsHeader">Blur</string>
+    <string name="SaveDeletedMessages">Deleted messages</string>
+    <string name="SaveDeletedMessagesDesc">Save messages when they are deleted</string>
+    <string name="DeletedMessage">deleted</string>
     <string name="RoundedBulletin">Round bulletin</string>
     <string name="TestBottomSheet">Test BottomSheet</string>
     <string name="TestBottomSheetTitle">hi</string>

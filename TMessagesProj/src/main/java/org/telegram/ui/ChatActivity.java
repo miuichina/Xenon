@@ -21767,6 +21767,17 @@ public class ChatActivity extends BaseFragment implements
                 }
             }
             checkGroupMessagesOrder();
+            if (NekoConfig.enableSaveDeletedMessages) {
+                var ctrl = zxc.iconic.xenon.deleted.XenonDeletedMessagesController.getInstance();
+                java.util.Set<Integer> savedIds = ctrl.getAllSavedMessageIds(dialog_id, currentAccount);
+                SparseArray<MessageObject> dict = messagesDict[loadIndex];
+                for (int i = 0; i < dict.size(); i++) {
+                    MessageObject obj = dict.valueAt(i);
+                    if (savedIds.contains(obj.getId())) {
+                        obj.messageOwner.ayuDeleted = true;
+                    }
+                }
+            }
             if (createUnreadLoading) {
                 createUnreadMessageAfterId = 0;
             }
@@ -22732,6 +22743,19 @@ public class ChatActivity extends BaseFragment implements
                     finishFragment();
                 } else {
                     removeSelfFromStack();
+                }
+            }
+        } else if (id == NotificationCenter.messagesDeletedNotification) {
+            long dialogId = (Long) args[0];
+            if (getDialogId() != dialogId) return;
+            if (chatAdapter == null) return;
+            ArrayList<Integer> messageIds = (ArrayList<Integer>) args[1];
+            for (int a = 0, N = messageIds.size(); a < N; a++) {
+                int mid = messageIds.get(a);
+                MessageObject currentMessage = messagesDict[0].get(mid);
+                if (currentMessage != null) {
+                    currentMessage.messageOwner.ayuDeleted = true;
+                    chatAdapter.updateRowWithMessageObject(currentMessage, false, false);
                 }
             }
         } else if (id == NotificationCenter.quickRepliesDeleted) {
@@ -26690,6 +26714,9 @@ public class ChatActivity extends BaseFragment implements
         for (int a = 0; a < size; a++) {
             Integer mid = markAsDeletedMessages.get(a);
             MessageObject obj = chatAdapter != null && chatAdapter.isFiltered ? filteredMessagesDict.get(mid) :  messagesDict[loadIndex].get(mid);
+            if (NekoConfig.enableSaveDeletedMessages && obj != null && !zxc.iconic.xenon.deleted.XenonDeletedState.isDeletePermitted(getDialogId(), mid)) {
+                continue;
+            }
             if (selectedObject != null && obj == selectedObject || obj != null && selectedObjectGroup != null && selectedObjectGroup == groupedMessagesMap.get(obj.getGroupId())) {
                 closeMenu();
             }

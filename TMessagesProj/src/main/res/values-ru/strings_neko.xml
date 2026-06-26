@@ -432,6 +432,9 @@
     <string name="BlurPopupInChat">Размытие за всплывающим меню в чате</string>
     <string name="BlurPixelation">Пикселизация</string>
     <string name="BlurSettingsHeader">Блюр</string>
+    <string name="SaveDeletedMessages">Удалённые сообщения</string>
+    <string name="SaveDeletedMessagesDesc">Сохранять сообщения при удалении</string>
+    <string name="DeletedMessage">удалено</string>
     <string name="RoundedBulletin">Скруглённый bulletin</string>
     <string name="TestBottomSheet">Тест BottomSheet</string>
     <string name="TestBottomSheetTitle">привет</string>
