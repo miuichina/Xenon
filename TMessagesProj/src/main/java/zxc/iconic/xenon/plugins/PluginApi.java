@@ -606,86 +606,27 @@ public class PluginApi {
         org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
             try {
                 int account = UserConfig.selectedAccount;
-                MessagesController mc = MessagesController.getInstance(account);
-                long dialogId = resolveDialogId(peerId, mc);
-                if (dialogId != 0) {
+                final MessagesController mc = MessagesController.getInstance(account);
+                // dialogId convention: positive = user, negative = chat/channel.
+                final long dialogId = peerId;
+                if (mc.getInputPeer(dialogId) != null) {
                     doSendMessage(account, mc, dialogId, text, replyToMsgId);
                     return;
                 }
-                loadFromDbAndSend(account, peerId, text, replyToMsgId, mc);
+                // Peer not in memory (common for private chats we haven't
+                // opened this session). Resolve via DB → network, then send.
+                ensurePeerLoaded(account, dialogId, () -> {
+                    if (mc.getInputPeer(dialogId) == null) {
+                        Log.e("XenonPlugin", "sendMessage: could not resolve peer " + dialogId);
+                        return;
+                    }
+                    doSendMessage(account, mc, dialogId, text, replyToMsgId);
+                });
             } catch (Exception e) {
                 FileLog.e("Plugin sendMessage failed", e);
                 Log.e("XenonPlugin", "sendMessage exception: " + e.getMessage());
             }
         });
-    }
-
-    private static long resolveDialogId(long peerId, MessagesController mc) {
-        if (peerId > 0) {
-            TLRPC.User user = mc.getUser(peerId);
-            if (user != null) return peerId;
-            TLRPC.Chat chat = mc.getChat(peerId);
-            if (chat != null) return -peerId;
-        } else {
-            TLRPC.Chat chat = mc.getChat(-peerId);
-            if (chat != null) return peerId;
-        }
-        return 0;
-    }
-
-    private static void loadFromDbAndSend(int account, long peerId, String text, int replyToMsgId, MessagesController mc) {
-        MessagesStorage storage = MessagesStorage.getInstance(account);
-        if (peerId > 0) {
-            TLRPC.User user = storage.getUser(peerId);
-            if (user != null) {
-                mc.putUser(user, true);
-                doSendMessage(account, mc, peerId, text, replyToMsgId);
-                return;
-            }
-            TLRPC.Chat chat = storage.getChat(peerId);
-            if (chat != null) {
-                mc.putChat(chat, true);
-                doSendMessage(account, mc, -peerId, text, replyToMsgId);
-                return;
-            }
-        } else {
-            TLRPC.Chat chat = storage.getChat(-peerId);
-            if (chat != null) {
-                mc.putChat(chat, true);
-                doSendMessage(account, mc, peerId, text, replyToMsgId);
-                return;
-            }
-        }
-        loadPeerAndSend(account, peerId, text, replyToMsgId, mc);
-    }
-
-    private static void loadPeerAndSend(int account, long peerId, String text, int replyToMsgId, MessagesController mc) {
-        if (peerId < 0) {
-            loadChat(account, -peerId, () -> {
-                TLRPC.Chat chat = mc.getChat(-peerId);
-                if (chat != null) {
-                    doSendMessage(account, mc, peerId, text, replyToMsgId);
-                } else {
-                    Log.e("XenonPlugin", "sendMessage: failed to load chat " + (-peerId));
-                }
-            });
-        } else {
-            loadChat(account, peerId, () -> {
-                TLRPC.Chat chat = mc.getChat(peerId);
-                if (chat != null) {
-                    doSendMessage(account, mc, -peerId, text, replyToMsgId);
-                } else {
-                    loadUser(account, peerId, () -> {
-                        TLRPC.User user = mc.getUser(peerId);
-                        if (user != null) {
-                            doSendMessage(account, mc, peerId, text, replyToMsgId);
-                        } else {
-                            Log.e("XenonPlugin", "sendMessage: failed to load peer " + peerId);
-                        }
-                    });
-                }
-            });
-        }
     }
 
     private static void loadChat(int account, long chatId, Runnable callback) {
@@ -756,73 +697,24 @@ public class PluginApi {
         org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
             try {
                 int account = UserConfig.selectedAccount;
-                MessagesController mc = MessagesController.getInstance(account);
-                long dialogId = resolveDialogId(chatId, mc);
-                if (dialogId != 0) {
+                final MessagesController mc = MessagesController.getInstance(account);
+                final long dialogId = chatId;
+                if (mc.getInputPeer(dialogId) != null) {
                     fetchMessageAndSendMedia(account, mc, dialogId, chatId, msgId, replyToMsgId);
                     return;
                 }
-                loadFromDbAndSendMedia(account, chatId, msgId, replyToMsgId, mc);
+                ensurePeerLoaded(account, dialogId, () -> {
+                    if (mc.getInputPeer(dialogId) == null) {
+                        Log.e("XenonPlugin", "sendMedia: could not resolve peer " + dialogId);
+                        return;
+                    }
+                    fetchMessageAndSendMedia(account, mc, dialogId, chatId, msgId, replyToMsgId);
+                });
             } catch (Exception e) {
                 FileLog.e("Plugin sendMedia failed", e);
                 Log.e("XenonPlugin", "sendMedia exception: " + e.getMessage());
             }
         });
-    }
-
-    private static void loadFromDbAndSendMedia(int account, long peerId, int msgId, int replyToMsgId, MessagesController mc) {
-        MessagesStorage storage = MessagesStorage.getInstance(account);
-        if (peerId > 0) {
-            TLRPC.User user = storage.getUser(peerId);
-            if (user != null) {
-                mc.putUser(user, true);
-                fetchMessageAndSendMedia(account, mc, peerId, peerId, msgId, replyToMsgId);
-                return;
-            }
-            TLRPC.Chat chat = storage.getChat(peerId);
-            if (chat != null) {
-                mc.putChat(chat, true);
-                fetchMessageAndSendMedia(account, mc, -peerId, peerId, msgId, replyToMsgId);
-                return;
-            }
-        } else {
-            TLRPC.Chat chat = storage.getChat(-peerId);
-            if (chat != null) {
-                mc.putChat(chat, true);
-                fetchMessageAndSendMedia(account, mc, peerId, peerId, msgId, replyToMsgId);
-                return;
-            }
-        }
-        loadPeerAndSendMedia(account, peerId, msgId, replyToMsgId, mc);
-    }
-
-    private static void loadPeerAndSendMedia(int account, long peerId, int msgId, int replyToMsgId, MessagesController mc) {
-        if (peerId < 0) {
-            loadChat(account, -peerId, () -> {
-                TLRPC.Chat chat = mc.getChat(-peerId);
-                if (chat != null) {
-                    fetchMessageAndSendMedia(account, mc, peerId, peerId, msgId, replyToMsgId);
-                } else {
-                    Log.e("XenonPlugin", "sendMedia: failed to load chat " + (-peerId));
-                }
-            });
-        } else {
-            loadChat(account, peerId, () -> {
-                TLRPC.Chat chat = mc.getChat(peerId);
-                if (chat != null) {
-                    fetchMessageAndSendMedia(account, mc, -peerId, peerId, msgId, replyToMsgId);
-                } else {
-                    loadUser(account, peerId, () -> {
-                        TLRPC.User user = mc.getUser(peerId);
-                        if (user != null) {
-                            fetchMessageAndSendMedia(account, mc, peerId, peerId, msgId, replyToMsgId);
-                        } else {
-                            Log.e("XenonPlugin", "sendMedia: failed to load peer " + peerId);
-                        }
-                    });
-                }
-            });
-        }
     }
 
     private static void fetchMessageAndSendMedia(int account, MessagesController mc, long dialogId, long sourceChatId, int sourceMsgId, int replyToMsgId) {
@@ -1259,26 +1151,39 @@ public class PluginApi {
         }
         boolean isChannel = chat != null && chat instanceof TLRPC.TL_channel;
         if (isChannel) {
-            TLRPC.TL_channels_getMessages req = new TLRPC.TL_channels_getMessages();
-            req.channel = mc.getInputChannel(-chatId);
-            req.id.add(messageId);
-            ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
-                LuaValue result;
-                if (response instanceof TLRPC.messages_Messages) {
-                    result = messagesToLuaTable((TLRPC.messages_Messages) response);
-                } else {
-                    result = LuaValue.NIL;
-                }
-                LuaValue err = error != null ? LuaValue.valueOf(error.text) : LuaValue.NIL;
-                final LuaValue resultFinal = result;
-                final LuaValue errFinal = err;
-                org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
-                    callback.call(resultFinal, errFinal);
+            TLRPC.InputChannel inputChannel = mc.getInputChannel(-chatId);
+            if (inputChannel == null) {
+                // Channel not in memory: load it first so we don't silently
+                // drop the callback with a null InputChannel.
+                loadChat(account, -chatId, () -> {
+                    TLRPC.InputChannel ic = MessagesController.getInstance(account).getInputChannel(-chatId);
+                    if (ic == null) {
+                        failCallback(callback, "chat not loaded");
+                        return;
+                    }
+                    fetchMessagesById(account, true, ic, chatId, messageId, callback);
                 });
-            });
+                return;
+            }
+            fetchMessagesById(account, true, inputChannel, chatId, messageId, callback);
         } else {
-            TLRPC.TL_messages_getMessages req = new TLRPC.TL_messages_getMessages();
-            req.id.add(messageId);
+            fetchMessagesById(account, false, null, chatId, messageId, callback);
+        }
+    }
+
+    private static void fetchMessagesById(int account, boolean isChannel, TLRPC.InputChannel inputChannel, long chatId, int messageId, LuaValue callback) {
+        try {
+            TLObject req;
+            if (isChannel) {
+                TLRPC.TL_channels_getMessages r = new TLRPC.TL_channels_getMessages();
+                r.channel = inputChannel;
+                r.id.add(messageId);
+                req = r;
+            } else {
+                TLRPC.TL_messages_getMessages r = new TLRPC.TL_messages_getMessages();
+                r.id.add(messageId);
+                req = r;
+            }
             ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
                 LuaValue result;
                 if (response instanceof TLRPC.messages_Messages) {
@@ -1290,36 +1195,107 @@ public class PluginApi {
                 final LuaValue resultFinal = result;
                 final LuaValue errFinal = err;
                 org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
-                    callback.call(resultFinal, errFinal);
+                    if (callback.isfunction()) callback.call(resultFinal, errFinal);
                 });
             });
+        } catch (Exception e) {
+            FileLog.e("Plugin getMessageById failed", e);
+            failCallback(callback, e.getMessage());
         }
+    }
+
+    /** Always invoke a Lua callback with (nil, errMsg) on the UI thread. */
+    private static void failCallback(LuaValue callback, String message) {
+        if (callback == null || !callback.isfunction()) return;
+        final String msg = message != null ? message : "unknown error";
+        org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> callback.call(LuaValue.NIL, LuaValue.valueOf(msg)));
     }
 
     private static void getRecentMessages(long chatId, int count, LuaValue callback) {
         int account = UserConfig.selectedAccount;
         MessagesController mc = MessagesController.getInstance(account);
-        TLRPC.TL_messages_getHistory req = new TLRPC.TL_messages_getHistory();
-        req.peer = mc.getInputPeer(chatId);
-        req.limit = count;
-        req.offset_id = 0;
-        req.offset_date = 0;
-        req.add_offset = 0;
-        ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
-            LuaValue result;
-            if (response instanceof TLRPC.messages_Messages) {
-                TLRPC.messages_Messages msgs = (TLRPC.messages_Messages) response;
-                result = messagesToLuaTable(msgs);
-            } else {
-                result = LuaValue.NIL;
+        TLRPC.InputPeer peer = mc.getInputPeer(chatId);
+        if (peer == null) {
+            // Peer not in memory. Try to load it so the request actually goes
+            // out instead of dying on a null peer (which gives the silent
+            // "callback never fires" failure).
+            ensurePeerLoaded(account, chatId, () -> doFetchRecentMessages(account, chatId, count, callback));
+            return;
+        }
+        doFetchRecentMessages(account, chatId, count, callback);
+    }
+
+    private static void doFetchRecentMessages(int account, long chatId, int count, LuaValue callback) {
+        try {
+            MessagesController mc = MessagesController.getInstance(account);
+            TLRPC.InputPeer peer = mc.getInputPeer(chatId);
+            if (peer == null) {
+                failCallback(callback, "peer not available");
+                return;
             }
-            LuaValue err = error != null ? LuaValue.valueOf(error.text) : LuaValue.NIL;
-            final LuaValue resultFinal = result;
-            final LuaValue errFinal = err;
-            org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
-                callback.call(resultFinal, errFinal);
+            TLRPC.TL_messages_getHistory req = new TLRPC.TL_messages_getHistory();
+            req.peer = peer;
+            req.limit = count;
+            req.offset_id = 0;
+            req.offset_date = 0;
+            req.add_offset = 0;
+            ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
+                LuaValue result;
+                if (response instanceof TLRPC.messages_Messages) {
+                    TLRPC.messages_Messages msgs = (TLRPC.messages_Messages) response;
+                    result = messagesToLuaTable(msgs);
+                } else {
+                    result = LuaValue.NIL;
+                }
+                LuaValue err = error != null ? LuaValue.valueOf(error.text) : LuaValue.NIL;
+                final LuaValue resultFinal = result;
+                final LuaValue errFinal = err;
+                org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
+                    if (callback.isfunction()) callback.call(resultFinal, errFinal);
+                });
             });
-        });
+        } catch (Exception e) {
+            FileLog.e("Plugin getRecentMessages failed", e);
+            failCallback(callback, e.getMessage());
+        }
+    }
+
+    /**
+     * Make sure the user/chat for {@code chatId} is cached in the
+     * MessagesController before running {@code then}. Resolves the "silent
+     * ignore" case where getInputPeer returns null and downstream requests
+     * would NPE on the network thread.
+     *
+     * <p>Order of resolution: (1) in-memory cache, (2) local database — which
+     * holds the correct {@code access_hash}, the bit that makes private chats
+     * (positive user ids) actually work, (3) network fetch as a last resort.
+     * Without the DB step, users we've never interacted with in-session would
+     * always resolve to a null InputPeer.
+     */
+    private static void ensurePeerLoaded(int account, long chatId, Runnable then) {
+        MessagesController mc = MessagesController.getInstance(account);
+        if (chatId < 0) {
+            long chatIdAbs = -chatId;
+            if (mc.getChat(chatIdAbs) != null) { then.run(); return; }
+            // DB lookup carries the access_hash needed for channels/supergroups.
+            TLRPC.Chat fromDb = MessagesStorage.getInstance(account).getChatSync(chatIdAbs);
+            if (fromDb != null) {
+                mc.putChat(fromDb, true);
+                then.run();
+                return;
+            }
+            loadChat(account, chatIdAbs, then);
+        } else {
+            if (mc.getUser(chatId) != null) { then.run(); return; }
+            if (mc.getChat(chatId) != null) { then.run(); return; }
+            TLRPC.User fromDb = MessagesStorage.getInstance(account).getUserSync(chatId);
+            if (fromDb != null) {
+                mc.putUser(fromDb, true);
+                then.run();
+                return;
+            }
+            loadUser(account, chatId, then);
+        }
     }
 
     private static long peerToId(TLRPC.Peer peer) {
@@ -1362,56 +1338,75 @@ public class PluginApi {
     private static void getMessagesFromUser(long chatId, int userId, int count, LuaValue callback) {
         int account = UserConfig.selectedAccount;
         MessagesController mc = MessagesController.getInstance(account);
-        TLRPC.TL_messages_getHistory req = new TLRPC.TL_messages_getHistory();
-        req.peer = mc.getInputPeer(chatId);
-        req.limit = count;
-        req.offset_id = 0;
-        req.offset_date = 0;
-        req.add_offset = 0;
-        ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
-            LuaValue result;
-            if (response instanceof TLRPC.messages_Messages) {
-                TLRPC.messages_Messages msgs = (TLRPC.messages_Messages) response;
-                LuaTable filtered = new LuaTable();
-                int idx = 1;
-                for (int i = 0; i < msgs.messages.size(); i++) {
-                    TLRPC.Message msg = msgs.messages.get(i);
-                    long sender = peerToId(msg.from_id);
-                    if (sender == userId) {
-                        LuaTable m = new LuaTable();
-                        m.set("id", msg.id);
-                        m.set("text", msg.message != null ? LuaValue.valueOf(msg.message) : LuaValue.NIL);
-                        m.set("sender_id", LuaValue.valueOf(sender));
-                        m.set("chat_id", LuaValue.valueOf(peerToId(msg.peer_id)));
-                        m.set("date", msg.date);
-                        m.set("out", LuaValue.valueOf(msg.out));
-                        if (msg.reply_to != null) {
-                            m.set("reply_to_msg_id", msg.reply_to.reply_to_msg_id);
-                        }
-                        if (msg.media instanceof TLRPC.TL_messageMediaPhoto) {
-                            m.set("media_type", LuaValue.valueOf("photo"));
-                        } else if (msg.media instanceof TLRPC.TL_messageMediaDocument) {
-                            m.set("media_type", LuaValue.valueOf("document"));
-                            if (((TLRPC.TL_messageMediaDocument) msg.media).document != null) {
-                                m.set("size", LuaValue.valueOf((double) ((TLRPC.TL_messageMediaDocument) msg.media).document.size));
-                            }
-                        } else if (msg.media != null) {
-                            m.set("media_type", LuaValue.valueOf("other"));
-                        }
-                        filtered.set(idx++, m);
-                    }
-                }
-                result = filtered;
-            } else {
-                result = LuaValue.NIL;
+        if (mc.getInputPeer(chatId) == null) {
+            ensurePeerLoaded(account, chatId, () -> doFetchMessagesFromUser(account, chatId, userId, count, callback));
+            return;
+        }
+        doFetchMessagesFromUser(account, chatId, userId, count, callback);
+    }
+
+    private static void doFetchMessagesFromUser(int account, long chatId, int userId, int count, LuaValue callback) {
+        try {
+            MessagesController mc = MessagesController.getInstance(account);
+            TLRPC.InputPeer peer = mc.getInputPeer(chatId);
+            if (peer == null) {
+                failCallback(callback, "peer not available");
+                return;
             }
-            LuaValue err = error != null ? LuaValue.valueOf(error.text) : LuaValue.NIL;
-            final LuaValue resultFinal = result;
-            final LuaValue errFinal = err;
-            org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
-                callback.call(resultFinal, errFinal);
+            TLRPC.TL_messages_getHistory req = new TLRPC.TL_messages_getHistory();
+            req.peer = peer;
+            req.limit = count;
+            req.offset_id = 0;
+            req.offset_date = 0;
+            req.add_offset = 0;
+            ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
+                LuaValue result;
+                if (response instanceof TLRPC.messages_Messages) {
+                    TLRPC.messages_Messages msgs = (TLRPC.messages_Messages) response;
+                    LuaTable filtered = new LuaTable();
+                    int idx = 1;
+                    for (int i = 0; i < msgs.messages.size(); i++) {
+                        TLRPC.Message msg = msgs.messages.get(i);
+                        long sender = peerToId(msg.from_id);
+                        if (sender == userId) {
+                            LuaTable m = new LuaTable();
+                            m.set("id", msg.id);
+                            m.set("text", msg.message != null ? LuaValue.valueOf(msg.message) : LuaValue.NIL);
+                            m.set("sender_id", LuaValue.valueOf(sender));
+                            m.set("chat_id", LuaValue.valueOf(peerToId(msg.peer_id)));
+                            m.set("date", msg.date);
+                            m.set("out", LuaValue.valueOf(msg.out));
+                            if (msg.reply_to != null) {
+                                m.set("reply_to_msg_id", msg.reply_to.reply_to_msg_id);
+                            }
+                            if (msg.media instanceof TLRPC.TL_messageMediaPhoto) {
+                                m.set("media_type", LuaValue.valueOf("photo"));
+                            } else if (msg.media instanceof TLRPC.TL_messageMediaDocument) {
+                                m.set("media_type", LuaValue.valueOf("document"));
+                                if (((TLRPC.TL_messageMediaDocument) msg.media).document != null) {
+                                    m.set("size", LuaValue.valueOf((double) ((TLRPC.TL_messageMediaDocument) msg.media).document.size));
+                                }
+                            } else if (msg.media != null) {
+                                m.set("media_type", LuaValue.valueOf("other"));
+                            }
+                            filtered.set(idx++, m);
+                        }
+                    }
+                    result = filtered;
+                } else {
+                    result = LuaValue.NIL;
+                }
+                LuaValue err = error != null ? LuaValue.valueOf(error.text) : LuaValue.NIL;
+                final LuaValue resultFinal = result;
+                final LuaValue errFinal = err;
+                org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
+                    if (callback.isfunction()) callback.call(resultFinal, errFinal);
+                });
             });
-        });
+        } catch (Exception e) {
+            FileLog.e("Plugin getMessagesFromUser failed", e);
+            failCallback(callback, e.getMessage());
+        }
     }
 
     public static int getIconDrawable(String iconName) {
