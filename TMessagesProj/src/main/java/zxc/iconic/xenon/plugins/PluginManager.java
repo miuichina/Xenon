@@ -9,7 +9,6 @@ import org.luaj.vm2.Globals;
 import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
-import org.luaj.vm2.Varargs;
 import org.luaj.vm2.lib.jse.JsePlatform;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.FileLog;
@@ -247,7 +246,20 @@ public class PluginManager {
                 Log.d(TAG, "reloadAll: skipping disabled plugin " + file.getName());
                 continue;
             }
-            LoadedPlugin plugin = loadFile(file);
+            LoadedPlugin plugin = null;
+            try {
+                plugin = loadFile(file);
+            } catch (Throwable t) {
+                // Catch EVERYTHING — Error (StackOverflowError, OutOfMemoryError),
+                // RuntimeException, anything. One broken plugin's top-level code
+                // must never take the whole app down. Quarantine it and move on.
+                FileLog.e("Plugin " + file.getName() + " crashed during load", t);
+                Log.e(TAG, "reloadAll: plugin " + file.getName() + " threw during load: "
+                        + t.getClass().getSimpleName() + ": " + t.getMessage());
+                quarantineFile(file.getName(), "crashed during load ("
+                        + t.getClass().getSimpleName() + ")");
+                continue;
+            }
             if (plugin != null) {
                 plugins.add(plugin);
                 Log.d(TAG, "reloadAll: loaded plugin " + plugin.displayName);
@@ -501,12 +513,94 @@ public class PluginManager {
                 Log.d(TAG, "fire(" + hookName + "): " + plugin.displayName + " disabled, skipping");
                 continue;
             }
+            // Run on a guarded executor with a timeout, so a plugin that loops
+            // forever (while true do end) can't hang the calling thread (often
+            // the UI thread, e.g. onResume). We can't hard-kill the Lua thread
+            // (Java has no safe Thread.stop), but on timeout we flag the plugin
+            // as misbehaving, disable it, and rebuild — which is enough to keep
+            // the app responsive. Only applies to fire-and-forget hooks;
+            // synchronous result hooks (fireReturn) are left intact.
+            try {
+                invokeHookWithTimeout(plugin, hookName, args);
+            } catch (LuaError e) {
+                FileLog.e("Plugin " + plugin.fileName + " hook " + hookName + " error", e);
+                Log.e(TAG, "fire(" + hookName + "): error in " + plugin.fileName + ": " + e.getMessage());
+            }
+        }
+    }
+
+    /** Background executor used for guarded hook invocation. */
+    private static final java.util.concurrent.ExecutorService hookExecutor =
+            java.util.concurrent.Executors.newCachedThreadPool(r -> {
+                Thread t = new Thread(r, "XenonPluginHook");
+                t.setDaemon(true);
+                return t;
+            });
+
+    private static final long HOOK_TIMEOUT_MS = 5000;
+
+    private void invokeHookWithTimeout(LoadedPlugin plugin, String hookName, LuaValue[] args) {
+        java.util.concurrent.Future<?> future = hookExecutor.submit(() -> {
             try {
                 plugin.invokeHook(hookName, args);
             } catch (LuaError e) {
                 FileLog.e("Plugin " + plugin.fileName + " hook " + hookName + " error", e);
                 Log.e(TAG, "fire(" + hookName + "): error in " + plugin.fileName + ": " + e.getMessage());
             }
+        });
+        try {
+            future.get(HOOK_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
+        } catch (java.util.concurrent.TimeoutException e) {
+            // Plugin is stuck. Cancel (best-effort interrupt) and quarantine it.
+            future.cancel(true);
+            Log.e(TAG, "fire(" + hookName + "): TIMEOUT after " + HOOK_TIMEOUT_MS
+                    + "ms, quarantining " + plugin.fileName);
+            quarantinePlugin(plugin, "hook '" + hookName + "' exceeded timeout");
+        } catch (Exception e) {
+            Log.e(TAG, "fire(" + hookName + "): wait failed: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Disable a misbehaving plugin permanently (until the user re-enables it)
+     * and rebuild the engine so it stops receiving hooks. Used by the hook
+     * timeout guard.
+     */
+    private void quarantinePlugin(LoadedPlugin plugin, String reason) {
+        try {
+            getPrefs().edit().putBoolean("plugin_enabled_" + plugin.fileName, false).apply();
+            FileLog.e("Plugin quarantined: " + plugin.fileName + " — " + reason);
+            org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
+                try {
+                    PluginApi.stopAllForPlugin(plugin.fileName);
+                    reloadAll();
+                    PluginApi.showBulletin("Plugin " + plugin.displayName
+                            + " was disabled: " + reason);
+                } catch (Exception ignored) {
+                }
+            });
+        } catch (Exception ignored) {
+        }
+    }
+
+    /**
+     * Disable a plugin by file name without needing a loaded instance (e.g. when
+     * its top-level code threw during load). Sets the prefs flag so it won't run
+     * again, records a crash log, and notifies the user.
+     */
+    private void quarantineFile(String fileName, String reason) {
+        try {
+            getPrefs().edit().putBoolean("plugin_enabled_" + fileName, false).apply();
+            FileLog.e("Plugin quarantined: " + fileName + " — " + reason);
+            // Surface in the safe-mode crash log so "Copy crash log" has context.
+            org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
+                try {
+                    PluginApi.showBulletin("Plugin " + fileName
+                            + " was disabled: " + reason);
+                } catch (Exception ignored) {
+                }
+            });
+        } catch (Exception ignored) {
         }
     }
 
@@ -596,124 +690,55 @@ public class PluginManager {
     public static String[] parseMetadata(File file) {
         lastParseError = null;
         if (file == null || !file.exists() || !file.getName().endsWith(PLUGIN_EXT)) return null;
+        // SECURITY: parse metadata by SCANNING THE SOURCE TEXT, never by executing
+        // the Lua. Executing (the old approach) meant a malformed or malicious
+        // plugin could crash/hang the app the moment its file is previewed —
+        // before it was even installed. Reading plugin_id / plugin_name /
+        // plugin_description with a regex over the first chunk of the file is
+        // crash-proof and fast, because no interpreter runs.
         try (InputStream in = new FileInputStream(file)) {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             byte[] buf = new byte[8192];
             int n;
-            while ((n = in.read(buf)) > 0) {
+            // Only read up to 64KB; metadata lives at the top of the file.
+            while ((n = in.read(buf)) > 0 && baos.size() < 65536) {
                 baos.write(buf, 0, n);
             }
             String source = new String(baos.toByteArray(), "UTF-8");
-            Globals g = JsePlatform.standardGlobals();
-            // Set up a mock xenon table so plugins that call xenon.on() etc.
-            // at the top level don't crash during metadata parsing.
-            LuaTable mockXenon = new LuaTable();
-            mockXenon.set("on", new org.luaj.vm2.lib.TwoArgFunction() {
-                public LuaValue call(LuaValue name, LuaValue handler) { return LuaValue.NIL; }
-            });
-            mockXenon.set("getSetting", new org.luaj.vm2.lib.TwoArgFunction() {
-                public LuaValue call(LuaValue key, LuaValue def) { return def.isnil() ? LuaValue.NIL : def; }
-            });
-            mockXenon.set("setSetting", new org.luaj.vm2.lib.TwoArgFunction() {
-                public LuaValue call(LuaValue key, LuaValue value) { return LuaValue.NIL; }
-            });
-            mockXenon.set("toast", new org.luaj.vm2.lib.OneArgFunction() {
-                public LuaValue call(LuaValue arg) { return LuaValue.NIL; }
-            });
-            mockXenon.set("bulletin", new org.luaj.vm2.lib.OneArgFunction() {
-                public LuaValue call(LuaValue arg) { return LuaValue.NIL; }
-            });
-            mockXenon.set("finish", new org.luaj.vm2.lib.ZeroArgFunction() {
-                public LuaValue call() { return LuaValue.NIL; }
-            });
-            mockXenon.set("openPluginSettings", new org.luaj.vm2.lib.ZeroArgFunction() {
-                public LuaValue call() { return LuaValue.NIL; }
-            });
-            mockXenon.set("openChatPicker", new org.luaj.vm2.lib.OneArgFunction() {
-                public LuaValue call(LuaValue callback) { return LuaValue.NIL; }
-            });
-            mockXenon.set("refreshSettings", new org.luaj.vm2.lib.ZeroArgFunction() {
-                public LuaValue call() { return LuaValue.NIL; }
-            });
-            mockXenon.set("sendMessage", new org.luaj.vm2.lib.TwoArgFunction() {
-                public LuaValue call(LuaValue text, LuaValue peer) { return LuaValue.NIL; }
-            });
-            mockXenon.set("sendMedia", new org.luaj.vm2.lib.VarArgFunction() {
-                public LuaValue invoke(Varargs args) { return LuaValue.NIL; }
-            });
-            mockXenon.set("setReaction", new org.luaj.vm2.lib.VarArgFunction() {
-                public LuaValue invoke(Varargs args) { return LuaValue.NIL; }
-            });
-            mockXenon.set("readHistory", new org.luaj.vm2.lib.OneArgFunction() {
-                public LuaValue call(LuaValue chatId) { return LuaValue.NIL; }
-            });
-            mockXenon.set("getPeerName", new org.luaj.vm2.lib.OneArgFunction() {
-                public LuaValue call(LuaValue id) { return LuaValue.valueOf("mock"); }
-            });
-            mockXenon.set("getRecentMessages", new org.luaj.vm2.lib.VarArgFunction() {
-                public LuaValue invoke(Varargs args) { return LuaValue.NIL; }
-            });
-            mockXenon.set("getMessageById", new org.luaj.vm2.lib.VarArgFunction() {
-                public LuaValue invoke(Varargs args) { return LuaValue.NIL; }
-            });
-            mockXenon.set("getMessagesFromUser", new org.luaj.vm2.lib.VarArgFunction() {
-                public LuaValue invoke(Varargs args) { return LuaValue.NIL; }
-            });
-            mockXenon.set("setTimeout", new org.luaj.vm2.lib.TwoArgFunction() {
-                public LuaValue call(LuaValue seconds, LuaValue callback) { return LuaValue.valueOf(0); }
-            });
-            mockXenon.set("clearTimeout", new org.luaj.vm2.lib.OneArgFunction() {
-                public LuaValue call(LuaValue id) { return LuaValue.NIL; }
-            });
-            mockXenon.set("startMessageWatcher", new org.luaj.vm2.lib.OneArgFunction() {
-                public LuaValue call(LuaValue config) { return LuaValue.TRUE; }
-            });
-            mockXenon.set("stopMessageWatcher", new org.luaj.vm2.lib.OneArgFunction() {
-                public LuaValue call(LuaValue key) { return LuaValue.NIL; }
-            });
-            mockXenon.set("getOpenChatId", new org.luaj.vm2.lib.ZeroArgFunction() {
-                public LuaValue call() { return LuaValue.valueOf(0); }
-            });
-            mockXenon.set("openActivity", new org.luaj.vm2.lib.OneArgFunction() {
-                public LuaValue call(LuaValue name) { return LuaValue.NIL; }
-            });
-            mockXenon.set("createDialog", new org.luaj.vm2.lib.VarArgFunction() {
-                public LuaValue invoke(Varargs args) { return LuaValue.NIL; }
-            });
-            mockXenon.set("createBottomSheet", new org.luaj.vm2.lib.TwoArgFunction() {
-                public LuaValue call(LuaValue title, LuaValue items) { return LuaValue.NIL; }
-            });
-            mockXenon.set("getIconDrawable", new org.luaj.vm2.lib.OneArgFunction() {
-                public LuaValue call(LuaValue name) { return LuaValue.valueOf(0); }
-            });
-            g.set("xenon", mockXenon);
-            g.load(source, file.getName(), g).call();
-            String name = null;
-            String desc = null;
-            String id = null;
-            LuaValue nv = g.get("plugin_name");
-            if (!nv.isnil()) {
-                String s = nv.tojstring().trim();
-                if (!s.isEmpty()) name = s;
-            }
-            LuaValue dv = g.get("plugin_description");
-            if (!dv.isnil()) {
-                String s = dv.tojstring().trim();
-                if (!s.isEmpty()) desc = s;
-            }
-            LuaValue idv = g.get("plugin_id");
-            if (!idv.isnil()) {
-                String s = idv.tojstring().trim();
-                if (!s.isEmpty()) id = s;
-            }
+            String name = extractStringAssignment(source, "plugin_name");
+            String desc = extractStringAssignment(source, "plugin_description");
+            String id = extractStringAssignment(source, "plugin_id");
             return new String[]{name, desc, id};
-        } catch (Exception e) {
-            FileLog.e(e);
-            String msg = e.getMessage();
+        } catch (Throwable t) {
+            // Catch Throwable (not Exception) — even an OOM while reading must
+            // not crash the app here.
+            FileLog.e(t);
+            String msg = t.getMessage();
             lastParseError = msg != null ? msg : "unknown parse error";
             Log.e(TAG, "parseMetadata: failed for " + file.getName() + ": " + lastParseError);
             return null;
         }
+    }
+
+    /**
+     * Pull a top-level {@code var = "..."} string assignment out of Lua source
+     * without executing it. Matches common forms: single/double quotes, and an
+     * optional "local" prefix. Returns the trimmed string value, or null.
+     */
+    private static String extractStringAssignment(String source, String varName) {
+        if (source == null || varName == null) return null;
+        java.util.regex.Pattern p = java.util.regex.Pattern.compile(
+                "(?:^|\\n)\\s*(?:local\\s+)?" + java.util.regex.Pattern.quote(varName)
+                        + "\\s*=\\s*\"([^\"]*)\"");
+        java.util.regex.Matcher m = p.matcher(source);
+        if (m.find()) {
+            String s = m.group(1);
+            if (s != null) {
+                s = s.trim();
+                if (!s.isEmpty()) return s;
+            }
+        }
+        return null;
     }
 
     /**

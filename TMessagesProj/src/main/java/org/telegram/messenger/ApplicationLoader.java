@@ -308,6 +308,10 @@ public class ApplicationLoader extends Application {
         // Install plugin Safe Mode crash handler as early as possible so it can
         // capture crashes from any thread (including startup).
         zxc.iconic.xenon.plugins.PluginSafeMode.install();
+        // Mark this launch as "in progress". If the process dies before the UI
+        // finishes coming up (crash, ANR, hang, killed), the flag stays set and
+        // the next launch detects the failed boot.
+        zxc.iconic.xenon.plugins.PluginSafeMode.markBootStarted();
 
         AnalyticsHelper.start(this);
         ComponentsHelper.fixComponents(this);

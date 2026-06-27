@@ -49,7 +49,12 @@ public final class PluginSafeMode {
     private static final String PREFS = "xenon_plugins_safemode";
     private static final String KEY_CRASH_FLAG = "pluginCrash";
     private static final String KEY_CRASH_TIME = "pluginCrashTime";
+    private static final String KEY_BOOT_FLAG = "bootIn";        // boot-guard: was set on the last start
+    private static final String KEY_BOOT_TIME = "bootInTime";    // when that start happened
     private static final String CRASH_LOG_NAME = "plugin_crash.txt";
+
+    /** When true, we've already entered this launch — guards against double-handling. */
+    private static volatile boolean bootHandledThisLaunch;
 
     private PluginSafeMode() {
     }
@@ -165,24 +170,84 @@ public final class PluginSafeMode {
     // ------------------------------------------------------------------
 
     /**
-     * Called from {@link org.telegram.ui.LaunchActivity#onResume} (or onCreate)
-     * once the UI is ready. If a crash was recorded since the last successful
-     * launch, this disables plugins and shows the crash sheet. Safe to call
-     * repeatedly; the crash flag is cleared once acknowledged.
+     * Mark the start of a launch as "in progress". Call as early as possible
+     * (e.g. ApplicationLoader.onCreate). The matching {@link #markBootCompleted}
+     * clears it once the UI is up. If the process dies before that — whether by
+     * a Java crash, an ANR, or an infinite loop hanging the UI thread — the flag
+     * stays set, and the next launch knows the previous one never finished.
+     */
+    public static void markBootStarted() {
+        Context ctx = ApplicationLoader.applicationContext;
+        if (ctx == null) return;
+        bootHandledThisLaunch = false;
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean(KEY_BOOT_FLAG, true)
+                .putLong(KEY_BOOT_TIME, System.currentTimeMillis())
+                .apply();
+    }
+
+    /**
+     * Mark this launch as having reached a fully interactive state. Call from
+     * {@link org.telegram.ui.LaunchActivity#onResume} once the UI is ready.
+     * Clears the boot flag so the next start doesn't mistake this one for a
+     * hang/crash.
+     */
+    public static void markBootCompleted() {
+        Context ctx = ApplicationLoader.applicationContext;
+        if (ctx == null) return;
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean(KEY_BOOT_FLAG, false)
+                .apply();
+    }
+
+    /**
+     * Called from {@link org.telegram.ui.LaunchActivity#onResume} once the UI is
+     * ready. Detects two failure modes from the previous launch and reacts:
+     *
+     * <ul>
+     *   <li><b>Java crash</b> — the {@code pluginCrash} flag was set by the
+     *       UncaughtExceptionHandler.</li>
+     *   <li><b>Hang / ANR / killed</b> — the {@code bootIn} flag was never
+     *       cleared, meaning the previous process died before reaching
+     *       {@link #markBootCompleted}. This catches the "stuck on the logo"
+     *       case that a crash handler alone can't see.</li>
+     * </ul>
+     *
+     * On either, plugins are disabled and the crash sheet is shown.
      */
     public static void checkAndHandleCrash(Activity activity) {
         if (activity == null) return;
         Context ctx = ApplicationLoader.applicationContext;
         if (ctx == null) return;
 
+        // Only handle once per launch — onResume can fire multiple times.
+        if (bootHandledThisLaunch) {
+            return;
+        }
+        bootHandledThisLaunch = true;
+
         boolean crashed = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .getBoolean(KEY_CRASH_FLAG, false);
-        if (!crashed) {
+        boolean hung = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getBoolean(KEY_BOOT_FLAG, false);
+
+        if (!crashed && !hung) {
+            // Healthy previous launch — just make sure this one is tracked.
+            markBootStarted();
             return;
         }
 
-        long crashTime = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        // Prefer the explicit crash time; fall back to the boot time for hangs.
+        long when = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .getLong(KEY_CRASH_TIME, 0);
+        if (when == 0) {
+            when = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                    .getLong(KEY_BOOT_TIME, 0);
+        }
+
+        String reason = crashed ? "crash" : "hang";
 
         // Disable plugins immediately so the next start is clean.
         NekoConfig.pluginsEnabled = false;
@@ -190,17 +255,34 @@ public final class PluginSafeMode {
                 .edit().putBoolean("pluginsEnabled", false).apply();
         PluginManager.getInstance().onEnabledChanged();
 
-        // Clear the flag so we don't show this sheet twice.
+        // Clear the flags so we don't show this sheet twice, and reset boot
+        // tracking for THIS launch.
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .edit().putBoolean(KEY_CRASH_FLAG, false).apply();
+                .edit()
+                .putBoolean(KEY_CRASH_FLAG, false)
+                .putBoolean(KEY_BOOT_FLAG, false)
+                .apply();
 
-        // Defer the sheet slightly so the activity is fully resumed.
-        org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> showCrashSheet(activity, crashTime), 800);
+        if (hung && !crashed) {
+            // No Java stack trace for a hang; leave a note in the log so the
+            // "Copy crash log" button has something meaningful.
+            writeCrashLog("Xenon plugin safe-mode report\n"
+                    + "Reason: application did not finish booting (likely an ANR / hang / killed)\n"
+                    + "Boot started at: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
+                        .format(new Date(when)) + "\n"
+                    + "Plugins enabled at that time: " + NekoConfig.pluginsEnabled + "\n");
+        }
+
+        final long crashTime = when;
+        final String crashReason = reason;
+        org.telegram.messenger.AndroidUtilities.runOnUIThread(
+                () -> showCrashSheet(activity, crashTime, crashReason), 800);
     }
 
-    private static void showCrashSheet(Activity activity, long crashTime) {
+    private static void showCrashSheet(Activity activity, long crashTime, String reason) {
         try {
             final String crashLog = readCrashLog();
+            boolean isHang = "hang".equals(reason);
 
             BottomSheet.Builder builder = new BottomSheet.Builder(activity, false, null);
             LinearLayout layout = new LinearLayout(activity);
@@ -210,7 +292,7 @@ public final class PluginSafeMode {
 
             // Title
             TextView title = new TextView(activity);
-            title.setText("Crashed!");
+            title.setText(isHang ? "Failed to start" : "Crashed!");
             title.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 20);
             title.setTypeface(org.telegram.messenger.AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
             title.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
@@ -219,9 +301,15 @@ public final class PluginSafeMode {
 
             // Body
             TextView body = new TextView(activity);
-            body.setText("The client crashed on the previous launch. Plugins have been "
-                    + "disabled to keep things stable. If a plugin caused this, you can "
-                    + "review or remove it. Copy the crash log below if you want to report it.");
+            if (isHang) {
+                body.setText("The client failed to finish starting up last time — it most likely "
+                        + "hung or was killed. Plugins have been disabled to keep things stable. "
+                        + "If a plugin caused this, review or remove it before re-enabling them.");
+            } else {
+                body.setText("The client crashed on the previous launch. Plugins have been "
+                        + "disabled to keep things stable. If a plugin caused this, you can "
+                        + "review or remove it. Copy the crash log below if you want to report it.");
+            }
             body.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
             body.setLineSpacing(org.telegram.messenger.AndroidUtilities.dp(2), 1f);
             body.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText));
@@ -231,8 +319,8 @@ public final class PluginSafeMode {
             // Time line
             if (crashTime > 0) {
                 TextView time = new TextView(activity);
-                time.setText("Crash time: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
-                        .format(new Date(crashTime)));
+                time.setText((isHang ? "Failure time: " : "Crash time: ")
+                        + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(new Date(crashTime)));
                 time.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12);
                 time.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText3));
                 time.setPadding(0, 0, 0, org.telegram.messenger.AndroidUtilities.dp(16));
