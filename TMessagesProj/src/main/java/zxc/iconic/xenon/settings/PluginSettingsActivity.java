@@ -68,12 +68,14 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
             items.add(UItem.asShadow(LocaleController.getString(R.string.PluginsEmpty)));
             return;
         }
-        items.add(UItem.asHeader(LocaleController.getString(R.string.PluginsSettings)));
         for (int i = 0; i < plugin.settings.size(); i++) {
             PluginManager.LoadedPlugin.PluginSetting s = plugin.settings.get(i);
             int rid = rowIdCounter++;
             settingRowIds.add(rid);
             String raw = getPrefs().getString(settingKey(s.key), null);
+            if (s.type == PluginManager.LoadedPlugin.PluginSetting.Type.HEADER && !items.isEmpty()) {
+                items.add(UItem.asShadow(null));
+            }
             switch (s.type) {
                 case TOGGLE: {
                     boolean val;
@@ -119,7 +121,14 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
                     items.add(TextSettingsCellFactory.of(rid, s.name).accent());
                     break;
                 }
+                case HEADER: {
+                    items.add(UItem.asHeader(s.name));
+                    break;
+                }
             }
+        }
+        if (!items.isEmpty()) {
+            items.add(UItem.asShadow(null));
         }
     }
 
@@ -139,6 +148,9 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
                     ((TextCheckCell) view).setChecked(newVal);
                 }
                 updateRows();
+                break;
+            }
+            case HEADER: {
                 break;
             }
             case TEXT: {
@@ -196,7 +208,8 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
     }
 
     private String settingKey(String key) {
-        return key;
+        String prefix = plugin != null ? plugin.fileName : "unknown";
+        return prefix + "_" + key;
     }
 
     static android.content.SharedPreferences getPrefs() {

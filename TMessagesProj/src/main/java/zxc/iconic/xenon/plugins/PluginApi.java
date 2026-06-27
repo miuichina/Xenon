@@ -75,32 +75,40 @@ public class PluginApi {
 
     static volatile String currentPluginFileName;
 
-    private static final Map<Integer, Runnable> timers = new HashMap<>();
+    private static class TimerEntry {
+        Runnable runnable;
+        String pluginFileName;
+        TimerEntry(Runnable r, String pn) { runnable = r; pluginFileName = pn; }
+    }
+
+    private static final Map<Integer, TimerEntry> timers = new HashMap<>();
     private static final Handler timerHandler = new Handler(Looper.getMainLooper());
     private static int nextTimerId = 1;
 
     static int setTimeout(double seconds, LuaValue callback) {
+        String plugin = currentPluginFileName;
         int id = nextTimerId++;
         Runnable runnable = () -> {
-            if (timers.containsKey(id)) {
-                timers.remove(id);
+            TimerEntry entry = timers.remove(id);
+            if (entry != null && isPluginValid(entry.pluginFileName)) {
                 callback.call();
             }
         };
-        timers.put(id, runnable);
+        timers.put(id, new TimerEntry(runnable, plugin));
         timerHandler.postDelayed(runnable, (long) (seconds * 1000));
         return id;
     }
 
     static void clearTimeout(int id) {
-        Runnable runnable = timers.remove(id);
-        if (runnable != null) {
-            timerHandler.removeCallbacks(runnable);
+        TimerEntry entry = timers.remove(id);
+        if (entry != null) {
+            timerHandler.removeCallbacks(entry.runnable);
         }
     }
 
     private static class MessageWatcher {
         String key;
+        String pluginFileName;
         long[] chats;
         int interval;
         int threshold;
@@ -116,6 +124,7 @@ public class PluginApi {
         stopMessageWatcher(key);
         MessageWatcher w = new MessageWatcher();
         w.key = key;
+        w.pluginFileName = currentPluginFileName;
         w.chats = chats;
         w.interval = interval;
         w.threshold = threshold;
@@ -186,6 +195,10 @@ public class PluginApi {
                     saveWatcherIds(w.key, w.lastIds);
                     AndroidUtilities.runOnUIThread(() -> {
                         if (!w.running) return;
+                        if (!isPluginValid(w.pluginFileName)) {
+                            w.running = false;
+                            return;
+                        }
                         boolean triggeredAny = idx[0] > 1;
                         Log.d("XenonPlugin", "runWatcherCheck: key=" + w.key + " done. triggered=" + triggeredAny + " triggeredCount=" + (idx[0] - 1));
                         if (triggeredAny && w.callback != null && !w.callback.isnil()) {
@@ -222,6 +235,43 @@ public class PluginApi {
             sb.append(e.getKey()).append(':').append(e.getValue());
         }
         setSetting("mw_" + key + "_ids", sb.toString());
+    }
+
+    private static boolean isPluginValid(String pluginFileName) {
+        if (pluginFileName == null || pluginFileName.isEmpty()) return true;
+        PluginManager pm = PluginManager.getInstance();
+        if (!pm.isEnabled()) return false;
+        PluginManager.LoadedPlugin p = pm.findPlugin(pluginFileName);
+        return p != null && p.isEnabled();
+    }
+
+    static void stopAllForPlugin(String pluginFileName) {
+        if (pluginFileName == null) return;
+        timers.entrySet().removeIf(e -> {
+            if (pluginFileName.equals(e.getValue().pluginFileName)) {
+                timerHandler.removeCallbacks(e.getValue().runnable);
+                return true;
+            }
+            return false;
+        });
+        watchers.values().removeIf(w -> {
+            if (pluginFileName.equals(w.pluginFileName)) {
+                w.running = false;
+                if (w.timerId > 0) {
+                    TimerEntry te = timers.remove(w.timerId);
+                    if (te != null) timerHandler.removeCallbacks(te.runnable);
+                }
+                return true;
+            }
+            return false;
+        });
+    }
+
+    static void stopAll() {
+        timers.values().forEach(e -> timerHandler.removeCallbacks(e.runnable));
+        timers.clear();
+        watchers.values().forEach(w -> w.running = false);
+        watchers.clear();
     }
 
     static void setCurrentPluginFileName(String name) {
@@ -268,6 +318,29 @@ public class PluginApi {
                     Log.d("XenonPlugin", "xenon.sendMedia called: chatId=" + chatId + " msgId=" + msgId + " replyTo=" + replyTo);
                     sendMedia(chatId, msgId, replyTo);
                 }
+                return LuaValue.NIL;
+            }
+        });
+        api.set("setReaction", new VarArgFunction() {
+            @Override
+            public LuaValue invoke(Varargs args) {
+                Varargs uargs = args.subargs(1);
+                if (uargs.narg() >= 3) {
+                    long chatId = (long) uargs.arg(1).todouble();
+                    int msgId = (int) uargs.arg(2).todouble();
+                    String reaction = uargs.arg(3).optjstring("");
+                    Log.d("XenonPlugin", "xenon.setReaction: chatId=" + chatId + " msgId=" + msgId + " reaction=" + reaction);
+                    setReaction(chatId, msgId, reaction);
+                }
+                return LuaValue.NIL;
+            }
+        });
+        api.set("readHistory", new OneArgFunction() {
+            @Override
+            public LuaValue call(LuaValue chatId) {
+                long cid = (long) chatId.todouble();
+                Log.d("XenonPlugin", "xenon.readHistory: chatId=" + cid);
+                readHistory(cid);
                 return LuaValue.NIL;
             }
         });
@@ -336,10 +409,12 @@ public class PluginApi {
                 return LuaValue.NIL;
             }
         });
+        final String capturedPluginForSettings = currentPluginFileName;
         api.set("getSetting", new TwoArgFunction() {
             @Override
             public LuaValue call(LuaValue key, LuaValue def) {
-                String val = getSetting(key.checkjstring(), def.isnil() ? null : def.tojstring());
+                String namespaced = (capturedPluginForSettings != null ? capturedPluginForSettings + "_" : "") + key.checkjstring();
+                String val = getSetting(namespaced, def.isnil() ? null : def.tojstring());
                 if (val == null) return LuaValue.NIL;
                 return LuaValue.valueOf(val);
             }
@@ -347,7 +422,8 @@ public class PluginApi {
         api.set("setSetting", new TwoArgFunction() {
             @Override
             public LuaValue call(LuaValue key, LuaValue value) {
-                setSetting(key.checkjstring(), value.tojstring());
+                String namespaced = (capturedPluginForSettings != null ? capturedPluginForSettings + "_" : "") + key.checkjstring();
+                setSetting(namespaced, value.tojstring());
                 return LuaValue.NIL;
             }
         });
@@ -409,11 +485,15 @@ public class PluginApi {
                 return LuaValue.NIL;
             }
         });
-        api.set("openChatPicker", new OneArgFunction() {
+        api.set("openChatPicker", new VarArgFunction() {
             @Override
-            public LuaValue call(LuaValue callback) {
+            public LuaValue invoke(Varargs args) {
+                Varargs uargs = args.subargs(1);
+                int n = uargs.narg();
+                LuaValue callback = uargs.arg(1);
+                String filter = n >= 2 ? uargs.arg(2).tojstring() : null;
                 if (callback.isfunction()) {
-                    openChatPicker(callback);
+                    openChatPicker(callback, filter);
                 }
                 return LuaValue.NIL;
             }
@@ -775,6 +855,68 @@ public class PluginApi {
         });
     }
 
+    static void setReaction(long chatId, int msgId, String reaction) {
+        AndroidUtilities.runOnUIThread(() -> {
+            try {
+                int account = UserConfig.selectedAccount;
+                MessagesController mc = MessagesController.getInstance(account);
+                TLRPC.TL_messages_sendReaction req = new TLRPC.TL_messages_sendReaction();
+                req.peer = mc.getInputPeer(chatId);
+                if (req.peer == null) {
+                    Log.e("XenonPlugin", "setReaction: failed to get input peer");
+                    return;
+                }
+                req.msg_id = msgId;
+                if (reaction != null && !reaction.isEmpty()) {
+                    TLRPC.TL_reactionEmoji r = new TLRPC.TL_reactionEmoji();
+                    r.emoticon = reaction;
+                    req.reaction.add(r);
+                    req.flags |= 1;
+                }
+                ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
+                    if (error != null) {
+                        FileLog.e("Plugin setReaction error: " + error.text);
+                        Log.e("XenonPlugin", "setReaction error: " + error.text);
+                    } else if (response instanceof TLRPC.Updates) {
+                        mc.processUpdates((TLRPC.Updates) response, false);
+                    }
+                });
+            } catch (Exception e) {
+                FileLog.e("Plugin setReaction failed", e);
+                Log.e("XenonPlugin", "setReaction exception: " + e.getMessage());
+            }
+        });
+    }
+
+    static void readHistory(long chatId) {
+        AndroidUtilities.runOnUIThread(() -> {
+            try {
+                int account = UserConfig.selectedAccount;
+                MessagesController mc = MessagesController.getInstance(account);
+                TLRPC.InputPeer peer = mc.getInputPeer(chatId);
+                if (peer == null) {
+                    Log.e("XenonPlugin", "readHistory: failed to get input peer for " + chatId);
+                    return;
+                }
+                int maxId = Integer.MAX_VALUE;
+                TLRPC.TL_messages_readHistory req = new TLRPC.TL_messages_readHistory();
+                req.peer = peer;
+                req.max_id = maxId;
+                Log.d("XenonPlugin", "readHistory: sending for chatId=" + chatId + " peer=" + peer);
+                ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
+                    if (error != null) {
+                        Log.e("XenonPlugin", "readHistory error: " + error.text + " (code=" + error.code + ")");
+                    } else {
+                        Log.d("XenonPlugin", "readHistory success: " + response);
+                    }
+                });
+            } catch (Exception e) {
+                FileLog.e("Plugin readHistory failed", e);
+                Log.e("XenonPlugin", "readHistory exception: " + e.getMessage());
+            }
+        });
+    }
+
     static String getCachedPeerName(long chatId) {
         int account = UserConfig.selectedAccount;
         MessagesController mc = MessagesController.getInstance(account);
@@ -1006,11 +1148,11 @@ public class PluginApi {
         });
     }
 
-    private static void openChatPicker(LuaValue callback) {
+    private static void openChatPicker(LuaValue callback, String filter) {
         org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
             try {
                 Activity a = PluginManager.getCurrentActivity();
-                Log.d("XenonPlugin", "openChatPicker: activity=" + a);
+                Log.d("XenonPlugin", "openChatPicker: activity=" + a + " filter=" + filter);
                 if (!(a instanceof org.telegram.ui.LaunchActivity)) {
                     Log.d("XenonPlugin", "openChatPicker: activity not LaunchActivity, returning");
                     return;
@@ -1020,6 +1162,15 @@ public class PluginApi {
                 args.putBoolean("onlySelect", true);
                 args.putBoolean("checkCanWrite", false);
                 args.putBoolean("allowSwitchAccount", false);
+                int dialogsType = org.telegram.ui.DialogsActivity.DIALOGS_TYPE_DEFAULT;
+                if ("users".equals(filter)) {
+                    dialogsType = org.telegram.ui.DialogsActivity.DIALOGS_TYPE_USERS_ONLY;
+                } else if ("channels".equals(filter)) {
+                    dialogsType = org.telegram.ui.DialogsActivity.DIALOGS_TYPE_CHANNELS_ONLY;
+                } else if ("groups".equals(filter)) {
+                    dialogsType = org.telegram.ui.DialogsActivity.DIALOGS_TYPE_GROUPS_ONLY;
+                }
+                args.putInt("dialogsType", dialogsType);
                 DialogsActivity fragment = new DialogsActivity(args);
                 fragment.setDelegate((fragment1, dids, message, param, notify, scheduleDate, scheduleRepeatPeriod, topicsFragment) -> {
                     if (dids != null && !dids.isEmpty()) {
@@ -1132,6 +1283,9 @@ public class PluginApi {
             m.set("chat_id", LuaValue.valueOf(peerToId(msg.peer_id)));
             m.set("date", msg.date);
             m.set("out", LuaValue.valueOf(msg.out));
+            if (msg.reply_to != null) {
+                m.set("reply_to_msg_id", msg.reply_to.reply_to_msg_id);
+            }
             if (msg.media instanceof TLRPC.TL_messageMediaPhoto) {
                 m.set("media_type", LuaValue.valueOf("photo"));
             } else if (msg.media instanceof TLRPC.TL_messageMediaDocument) {
@@ -1173,6 +1327,9 @@ public class PluginApi {
                         m.set("chat_id", LuaValue.valueOf(peerToId(msg.peer_id)));
                         m.set("date", msg.date);
                         m.set("out", LuaValue.valueOf(msg.out));
+                        if (msg.reply_to != null) {
+                            m.set("reply_to_msg_id", msg.reply_to.reply_to_msg_id);
+                        }
                         if (msg.media instanceof TLRPC.TL_messageMediaPhoto) {
                             m.set("media_type", LuaValue.valueOf("photo"));
                         } else if (msg.media instanceof TLRPC.TL_messageMediaDocument) {

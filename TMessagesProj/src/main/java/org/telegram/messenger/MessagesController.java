@@ -18010,6 +18010,29 @@ public class MessagesController extends BaseController implements NotificationCe
                 if (message instanceof TLRPC.TL_messageEmpty) {
                     continue;
                 }
+                if (NekoConfig.pluginsEnabled) {
+                    final long fPeerUserId = message.peer_id.user_id;
+                    final long fPeerChannelId = message.peer_id.channel_id;
+                    final long fPeerChatId = message.peer_id.chat_id;
+                    final int fMsgId = message.id;
+                    final String fText = message.message;
+                    final int fReplyTo = message.reply_to != null ? message.reply_to.reply_to_msg_id : 0;
+                    final boolean fOut = message.out;
+                    org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
+                        long dialogId = 0;
+                        if (fPeerUserId != 0) dialogId = fPeerUserId;
+                        else if (fPeerChannelId != 0) dialogId = -fPeerChannelId;
+                        else if (fPeerChatId != 0) dialogId = -fPeerChatId;
+                        org.luaj.vm2.LuaValue ctx = org.luaj.vm2.LuaValue.tableOf(new org.luaj.vm2.LuaValue[]{
+                                org.luaj.vm2.LuaValue.valueOf("chatId"), org.luaj.vm2.LuaValue.valueOf(dialogId),
+                                org.luaj.vm2.LuaValue.valueOf("msgId"), org.luaj.vm2.LuaValue.valueOf(fMsgId),
+                                org.luaj.vm2.LuaValue.valueOf("text"), fText != null ? org.luaj.vm2.LuaValue.valueOf(fText) : org.luaj.vm2.LuaValue.NIL,
+                                org.luaj.vm2.LuaValue.valueOf("reply_to_msg_id"), org.luaj.vm2.LuaValue.valueOf(fReplyTo),
+                                org.luaj.vm2.LuaValue.valueOf("out"), org.luaj.vm2.LuaValue.valueOf(fOut)
+                        });
+                        zxc.iconic.xenon.plugins.PluginManager.getInstance().fire("onNewMessage", ctx);
+                    });
+                }
                 if (newMessageCallback != null && newMessageCallback.onMessageReceived(message)) {
                     newMessageCallback = null;
                 }

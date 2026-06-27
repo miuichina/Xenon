@@ -160,7 +160,8 @@ public class PluginManager {
         if (isEnabled()) {
             reloadAll();
         } else {
-            Log.d(TAG, "onEnabledChanged: clearing plugins");
+            Log.d(TAG, "onEnabledChanged: stopping all plugin code");
+            PluginApi.stopAll();
             plugins.clear();
         }
     }
@@ -171,6 +172,7 @@ public class PluginManager {
      * user adds/removes a plugin). No-op when plugins are disabled.
      */
     public void reloadAll() {
+        PluginApi.stopAll();
         plugins.clear();
         if (!isEnabled()) {
             Log.d(TAG, "reloadAll: plugins disabled, skipping");
@@ -263,6 +265,7 @@ public class PluginManager {
         for (int i = 0; i < plugins.size(); i++) {
             LoadedPlugin p = plugins.get(i);
             if (pluginId.equals(p.pluginId)) {
+                PluginApi.stopAllForPlugin(p.fileName);
                 plugins.remove(i);
                 File oldFile = new File(getPluginsDir(), p.fileName);
                 if (oldFile.exists()) oldFile.delete();
@@ -277,6 +280,7 @@ public class PluginManager {
      * underlying {@code .xplugin} file.
      */
     public boolean remove(String fileName) {
+        PluginApi.stopAllForPlugin(fileName);
         boolean removed = false;
         for (int i = 0; i < plugins.size(); i++) {
             LoadedPlugin p = plugins.get(i);
@@ -577,6 +581,12 @@ public class PluginManager {
             mockXenon.set("sendMedia", new org.luaj.vm2.lib.VarArgFunction() {
                 public LuaValue invoke(Varargs args) { return LuaValue.NIL; }
             });
+            mockXenon.set("setReaction", new org.luaj.vm2.lib.VarArgFunction() {
+                public LuaValue invoke(Varargs args) { return LuaValue.NIL; }
+            });
+            mockXenon.set("readHistory", new org.luaj.vm2.lib.OneArgFunction() {
+                public LuaValue call(LuaValue chatId) { return LuaValue.NIL; }
+            });
             mockXenon.set("getPeerName", new org.luaj.vm2.lib.OneArgFunction() {
                 public LuaValue call(LuaValue id) { return LuaValue.valueOf("mock"); }
             });
@@ -675,7 +685,7 @@ public class PluginManager {
         }
 
         public static class PluginSetting {
-            public enum Type { TOGGLE, SEEKBAR, TEXT, BUTTON }
+            public enum Type { TOGGLE, SEEKBAR, TEXT, BUTTON, HEADER }
             public final Type type;
             public final String key;
             public final String name;
@@ -744,6 +754,10 @@ public class PluginManager {
                             case "button": {
                                 LuaValue action = entry.get("action");
                                 setting = new PluginSetting(PluginSetting.Type.BUTTON, skey, sname, false, 0, null, 0, 0, 0, null, action != null && !action.isnil() ? action : null);
+                                break;
+                            }
+                            case "header": {
+                                setting = new PluginSetting(PluginSetting.Type.HEADER, skey, sname, false, 0, null, 0, 0, 0, null, null);
                                 break;
                             }
                         }
