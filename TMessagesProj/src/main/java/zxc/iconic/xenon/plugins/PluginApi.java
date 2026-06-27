@@ -177,18 +177,18 @@ public class PluginApi {
             ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
                 if (response instanceof TLRPC.messages_Messages) {
                     TLRPC.messages_Messages msgs = (TLRPC.messages_Messages) response;
-                    if (!msgs.messages.isEmpty()) {
-                        int latestId = msgs.messages.get(0).id;
-                        Integer saved = w.lastIds.get(cid);
-                        int prevId = saved != null ? saved : 0;
-                        if (latestId - prevId >= w.threshold) {
-                            LuaTable entry = new LuaTable();
-                            entry.set("chatId", cid);
-                            entry.set("new_count", latestId - prevId);
-                            triggered.set(idx[0]++, entry);
+                        if (!msgs.messages.isEmpty()) {
+                            int latestId = msgs.messages.get(0).id;
+                            Integer saved = w.lastIds.get(cid);
+                            int prevId = saved != null ? saved : 0;
+                            if (latestId - prevId >= w.threshold) {
+                                w.lastIds.put(cid, latestId);
+                                LuaTable entry = new LuaTable();
+                                entry.set("chatId", cid);
+                                entry.set("new_count", latestId - prevId);
+                                triggered.set(idx[0]++, entry);
+                            }
                         }
-                        w.lastIds.put(cid, latestId);
-                    }
                 }
                 done[0]++;
                 if (done[0] == total) {
@@ -413,8 +413,18 @@ public class PluginApi {
         api.set("getSetting", new TwoArgFunction() {
             @Override
             public LuaValue call(LuaValue key, LuaValue def) {
-                String namespaced = (capturedPluginForSettings != null ? capturedPluginForSettings + "_" : "") + key.checkjstring();
-                String val = getSetting(namespaced, def.isnil() ? null : def.tojstring());
+                String rawKey = key.checkjstring();
+                String namespacedKey = (capturedPluginForSettings != null ? capturedPluginForSettings + "_" : "") + rawKey;
+                String defStr = def.isnil() ? null : def.tojstring();
+                String val = getSetting(namespacedKey, null);
+                if (val == null) {
+                    val = getSetting(rawKey, null);
+                    if (val != null) {
+                        setSetting(namespacedKey, val);
+                    } else {
+                        val = defStr;
+                    }
+                }
                 if (val == null) return LuaValue.NIL;
                 return LuaValue.valueOf(val);
             }
