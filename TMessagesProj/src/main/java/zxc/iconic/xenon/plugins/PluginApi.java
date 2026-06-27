@@ -133,7 +133,41 @@ public class PluginApi {
         w.running = true;
         watchers.put(key, w);
         Log.d("XenonPlugin", "startMessageWatcher: key=" + key + " chats=" + chats.length + " interval=" + interval + " threshold=" + threshold + " savedIds=" + w.lastIds.size());
-        scheduleWatcher(w);
+        initWatcherBaseline(w);
+    }
+
+    private static void initWatcherBaseline(MessageWatcher w) {
+        int total = w.chats.length;
+        int[] done = {0};
+        if (total == 0) return;
+        for (long chatId : w.chats) {
+            int account = UserConfig.selectedAccount;
+            MessagesController mc = MessagesController.getInstance(account);
+            TLRPC.InputPeer peer = mc.getInputPeer(chatId);
+            if (peer == null) { done[0]++; continue; }
+            TLRPC.TL_messages_getHistory req = new TLRPC.TL_messages_getHistory();
+            req.peer = peer;
+            req.limit = 20;
+            req.offset_id = 0;
+            req.offset_date = 0;
+            req.add_offset = 0;
+            long cid = chatId;
+            ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
+                if (response instanceof TLRPC.messages_Messages) {
+                    TLRPC.messages_Messages msgs = (TLRPC.messages_Messages) response;
+                    int latestAnyId = msgs.messages.isEmpty() ? 0 : msgs.messages.get(0).id;
+                    w.lastIds.put(cid, latestAnyId);
+                }
+                saveWatcherIds(w.key, w.lastIds);
+                done[0]++;
+                if (done[0] == total) {
+                    scheduleWatcher(w);
+                }
+            });
+        }
+        if (done[0] == total) {
+            scheduleWatcher(w);
+        }
     }
 
     static void stopMessageWatcher(String key) {
@@ -169,7 +203,7 @@ public class PluginApi {
             MessagesController mc = MessagesController.getInstance(account);
             TLRPC.TL_messages_getHistory req = new TLRPC.TL_messages_getHistory();
             req.peer = mc.getInputPeer(chatId);
-            req.limit = 1;
+            req.limit = 20;
             req.offset_id = 0;
             req.offset_date = 0;
             req.add_offset = 0;
@@ -178,16 +212,30 @@ public class PluginApi {
                 if (response instanceof TLRPC.messages_Messages) {
                     TLRPC.messages_Messages msgs = (TLRPC.messages_Messages) response;
                         if (!msgs.messages.isEmpty()) {
-                            int latestId = msgs.messages.get(0).id;
+                            int latestAnyId = msgs.messages.get(0).id;
                             Integer saved = w.lastIds.get(cid);
-                            int prevId = saved != null ? saved : 0;
-                            if (latestId - prevId >= w.threshold) {
-                                w.lastIds.put(cid, latestId);
-                                LuaTable entry = new LuaTable();
-                                entry.set("chatId", cid);
-                                entry.set("new_count", latestId - prevId);
-                                triggered.set(idx[0]++, entry);
+                            if (saved == null) {
+                                Log.d("XenonPlugin", "watcher: " + w.key + " chat=" + cid + " init baseline=" + latestAnyId);
+                                w.lastIds.put(cid, latestAnyId);
+                            } else {
+                                int prevId = saved;
+                                int incomingCount = 0;
+                                for (TLRPC.Message m : msgs.messages) {
+                                    if (!m.out && m.id > prevId) {
+                                        incomingCount++;
+                                    }
+                                }
+                                Log.d("XenonPlugin", "watcher: " + w.key + " chat=" + cid + " prev=" + prevId + " latestAny=" + latestAnyId + " incomingCount=" + incomingCount + " threshold=" + w.threshold);
+                                if (incomingCount >= w.threshold) {
+                                    LuaTable entry = new LuaTable();
+                                    entry.set("chatId", cid);
+                                    entry.set("new_count", incomingCount);
+                                    triggered.set(idx[0]++, entry);
+                                }
+                                w.lastIds.put(cid, latestAnyId);
                             }
+                        } else if (!w.lastIds.containsKey(cid)) {
+                            w.lastIds.put(cid, 0);
                         }
                 }
                 done[0]++;
