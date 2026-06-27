@@ -26,6 +26,27 @@ import zxc.iconic.xenon.plugins.PluginManager;
 
 public class PluginSettingsActivity extends BaseNekoSettingsActivity {
 
+    private static PluginSettingsActivity currentInstance;
+
+    public static void refreshCurrent() {
+        if (currentInstance != null) {
+            currentInstance.updateRows();
+        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        currentInstance = this;
+        PluginManager.setCurrentActivity(getParentActivity());
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        if (currentInstance == this) currentInstance = null;
+    }
+
     private PluginManager.LoadedPlugin plugin;
     private int rowIdCounter;
     private final List<Integer> settingRowIds = new ArrayList<>();
@@ -39,6 +60,10 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
     protected void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
         rowIdCounter = rowId;
         settingRowIds.clear();
+        if (plugin != null) {
+            plugin.invokeHook("onSettingsOpen", new LuaValue[0]);
+            plugin.refreshSettingsFromGlobals();
+        }
         if (plugin == null || plugin.settings.isEmpty()) {
             items.add(UItem.asShadow(LocaleController.getString(R.string.PluginsEmpty)));
             return;
@@ -113,6 +138,7 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
                 if (view instanceof TextCheckCell) {
                     ((TextCheckCell) view).setChecked(newVal);
                 }
+                updateRows();
                 break;
             }
             case TEXT: {
@@ -129,6 +155,8 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
                 }
                 if (PluginManager.checkRequestFinishFragment()) {
                     finishFragment();
+                } else {
+                    updateRows();
                 }
                 break;
             }

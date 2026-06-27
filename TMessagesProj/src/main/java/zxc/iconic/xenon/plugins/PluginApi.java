@@ -3,6 +3,8 @@ package zxc.iconic.xenon.plugins;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Handler;
+import android.os.Looper;
 import android.content.SharedPreferences;
 import android.util.Log;
 import android.view.View;
@@ -19,6 +21,7 @@ import org.telegram.ui.ActionBar.BottomSheet;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.LayoutHelper;
 import org.luaj.vm2.LuaValue;
+import org.luaj.vm2.Varargs;
 import org.luaj.vm2.lib.OneArgFunction;
 import org.luaj.vm2.lib.TwoArgFunction;
 import org.luaj.vm2.lib.ZeroArgFunction;
@@ -26,12 +29,20 @@ import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.MessagesStorage;
+import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.Utilities;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.telegram.tgnet.ConnectionsManager;
+import org.telegram.tgnet.TLObject;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.Components.BulletinFactory;
+import org.telegram.ui.DialogsActivity;
 
 /**
  * Builds the Lua-side API exposed to plugins as the global {@code xenon} table.
@@ -64,6 +75,155 @@ public class PluginApi {
 
     static volatile String currentPluginFileName;
 
+    private static final Map<Integer, Runnable> timers = new HashMap<>();
+    private static final Handler timerHandler = new Handler(Looper.getMainLooper());
+    private static int nextTimerId = 1;
+
+    static int setTimeout(double seconds, LuaValue callback) {
+        int id = nextTimerId++;
+        Runnable runnable = () -> {
+            if (timers.containsKey(id)) {
+                timers.remove(id);
+                callback.call();
+            }
+        };
+        timers.put(id, runnable);
+        timerHandler.postDelayed(runnable, (long) (seconds * 1000));
+        return id;
+    }
+
+    static void clearTimeout(int id) {
+        Runnable runnable = timers.remove(id);
+        if (runnable != null) {
+            timerHandler.removeCallbacks(runnable);
+        }
+    }
+
+    private static class MessageWatcher {
+        String key;
+        long[] chats;
+        int interval;
+        int threshold;
+        LuaValue callback;
+        int timerId;
+        Map<Long, Integer> lastIds = new HashMap<>();
+        boolean running;
+    }
+
+    private static final Map<String, MessageWatcher> watchers = new ConcurrentHashMap<>();
+
+    static void startMessageWatcher(String key, long[] chats, int interval, int threshold, LuaValue callback) {
+        stopMessageWatcher(key);
+        MessageWatcher w = new MessageWatcher();
+        w.key = key;
+        w.chats = chats;
+        w.interval = interval;
+        w.threshold = threshold;
+        w.callback = callback;
+        w.lastIds = loadWatcherIds(key);
+        w.running = true;
+        watchers.put(key, w);
+        Log.d("XenonPlugin", "startMessageWatcher: key=" + key + " chats=" + chats.length + " interval=" + interval + " threshold=" + threshold + " savedIds=" + w.lastIds.size());
+        scheduleWatcher(w);
+    }
+
+    static void stopMessageWatcher(String key) {
+        MessageWatcher w = watchers.remove(key);
+        if (w != null) {
+            w.running = false;
+            if (w.timerId > 0) {
+                clearTimeout(w.timerId);
+            }
+        }
+    }
+
+    private static void scheduleWatcher(MessageWatcher w) {
+        if (!w.running) return;
+        w.timerId = setTimeout(w.interval, new ZeroArgFunction() {
+            @Override
+            public LuaValue call() {
+                runWatcherCheck(w);
+                return LuaValue.NIL;
+            }
+        });
+    }
+
+    private static void runWatcherCheck(MessageWatcher w) {
+        if (!w.running || w.chats.length == 0) return;
+        Log.d("XenonPlugin", "runWatcherCheck: key=" + w.key + " total=" + w.chats.length);
+        int total = w.chats.length;
+        int[] done = {0};
+        LuaTable triggered = new LuaTable();
+        int[] idx = {1};
+        for (long chatId : w.chats) {
+            int account = UserConfig.selectedAccount;
+            MessagesController mc = MessagesController.getInstance(account);
+            TLRPC.TL_messages_getHistory req = new TLRPC.TL_messages_getHistory();
+            req.peer = mc.getInputPeer(chatId);
+            req.limit = 1;
+            req.offset_id = 0;
+            req.offset_date = 0;
+            req.add_offset = 0;
+            long cid = chatId;
+            ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
+                if (response instanceof TLRPC.messages_Messages) {
+                    TLRPC.messages_Messages msgs = (TLRPC.messages_Messages) response;
+                    if (!msgs.messages.isEmpty()) {
+                        int latestId = msgs.messages.get(0).id;
+                        Integer saved = w.lastIds.get(cid);
+                        int prevId = saved != null ? saved : 0;
+                        if (latestId - prevId >= w.threshold) {
+                            LuaTable entry = new LuaTable();
+                            entry.set("chatId", cid);
+                            entry.set("new_count", latestId - prevId);
+                            triggered.set(idx[0]++, entry);
+                        }
+                        w.lastIds.put(cid, latestId);
+                    }
+                }
+                done[0]++;
+                if (done[0] == total) {
+                    saveWatcherIds(w.key, w.lastIds);
+                    AndroidUtilities.runOnUIThread(() -> {
+                        if (!w.running) return;
+                        boolean triggeredAny = idx[0] > 1;
+                        Log.d("XenonPlugin", "runWatcherCheck: key=" + w.key + " done. triggered=" + triggeredAny + " triggeredCount=" + (idx[0] - 1));
+                        if (triggeredAny && w.callback != null && !w.callback.isnil()) {
+                            w.callback.call(triggered);
+                        }
+                        scheduleWatcher(w);
+                    });
+                }
+            });
+        }
+    }
+
+    private static Map<Long, Integer> loadWatcherIds(String key) {
+        Map<Long, Integer> map = new HashMap<>();
+        String raw = getSetting("mw_" + key + "_ids", "");
+        if (raw.isEmpty()) return map;
+        for (String part : raw.split(",")) {
+            int sep = part.indexOf(':');
+            if (sep > 0) {
+                try {
+                    long cid = Long.parseLong(part.substring(0, sep));
+                    int mid = Integer.parseInt(part.substring(sep + 1));
+                    map.put(cid, mid);
+                } catch (NumberFormatException ignored) {}
+            }
+        }
+        return map;
+    }
+
+    private static void saveWatcherIds(String key, Map<Long, Integer> ids) {
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<Long, Integer> e : ids.entrySet()) {
+            if (sb.length() > 0) sb.append(',');
+            sb.append(e.getKey()).append(':').append(e.getValue());
+        }
+        setSetting("mw_" + key + "_ids", sb.toString());
+    }
+
     static void setCurrentPluginFileName(String name) {
         currentPluginFileName = name;
     }
@@ -82,11 +242,81 @@ public class PluginApi {
                 return LuaValue.NIL;
             }
         });
-        api.set("sendMessage", new TwoArgFunction() {
+        api.set("sendMessage", new VarArgFunction() {
             @Override
-            public LuaValue call(LuaValue text, LuaValue peer) {
-                Log.d("XenonPlugin", "xenon.sendMessage called: text=" + text.tojstring() + " peer=" + peer.tolong());
-                sendMessage(text.checkjstring(), peer.checklong());
+            public LuaValue invoke(Varargs args) {
+                Varargs uargs = args.subargs(1);
+                int n = uargs.narg();
+                if (n >= 2) {
+                    String text = uargs.arg(1).checkjstring();
+                    long peer = uargs.arg(2).checklong();
+                    int replyTo = n >= 3 && uargs.arg(3).isnumber() ? (int) uargs.arg(3).todouble() : 0;
+                    Log.d("XenonPlugin", "xenon.sendMessage called: text=" + text + " peer=" + peer + " replyTo=" + replyTo);
+                    sendMessage(text, peer, replyTo);
+                }
+                return LuaValue.NIL;
+            }
+        });
+        api.set("sendMedia", new VarArgFunction() {
+            @Override
+            public LuaValue invoke(Varargs args) {
+                Varargs uargs = args.subargs(1);
+                if (uargs.narg() >= 2) {
+                    long chatId = (long) uargs.arg(1).todouble();
+                    int msgId = (int) uargs.arg(2).todouble();
+                    int replyTo = uargs.narg() >= 3 && uargs.arg(3).isnumber() ? (int) uargs.arg(3).todouble() : 0;
+                    Log.d("XenonPlugin", "xenon.sendMedia called: chatId=" + chatId + " msgId=" + msgId + " replyTo=" + replyTo);
+                    sendMedia(chatId, msgId, replyTo);
+                }
+                return LuaValue.NIL;
+            }
+        });
+        api.set("setTimeout", new VarArgFunction() {
+            @Override
+            public LuaValue invoke(Varargs args) {
+                Varargs uargs = args.subargs(1);
+                if (uargs.narg() >= 2 && uargs.arg(2).isfunction()) {
+                    double seconds = uargs.arg(1).todouble();
+                    LuaValue callback = uargs.arg(2);
+                    int id = setTimeout(seconds, callback);
+                    return LuaValue.valueOf(id);
+                }
+                return LuaValue.NIL;
+            }
+        });
+        api.set("clearTimeout", new OneArgFunction() {
+            @Override
+            public LuaValue call(LuaValue id) {
+                clearTimeout((int) id.todouble());
+                return LuaValue.NIL;
+            }
+        });
+        api.set("startMessageWatcher", new OneArgFunction() {
+            @Override
+            public LuaValue call(LuaValue config) {
+                if (!config.istable()) return LuaValue.NIL;
+                LuaTable t = (LuaTable) config;
+                String key = t.get("key").optjstring("");
+                if (key.isEmpty()) return LuaValue.NIL;
+                LuaValue chatsVal = t.get("chats");
+                if (!chatsVal.istable()) return LuaValue.NIL;
+                LuaTable chatsTable = (LuaTable) chatsVal;
+                long[] chats = new long[chatsTable.length()];
+                for (int i = 1; i <= chatsTable.length(); i++) {
+                    chats[i - 1] = (long) chatsTable.get(i).todouble();
+                }
+                int interval = Math.max(5, (int) t.get("interval").optdouble(60));
+                int threshold = Math.max(1, (int) t.get("threshold").optdouble(3));
+                LuaValue callback = t.get("callback");
+                if (!callback.isfunction()) return LuaValue.NIL;
+                startMessageWatcher(key, chats, interval, threshold, callback);
+                return LuaValue.TRUE;
+            }
+        });
+        api.set("stopMessageWatcher", new OneArgFunction() {
+            @Override
+            public LuaValue call(LuaValue key) {
+                stopMessageWatcher(key.optjstring(""));
                 return LuaValue.NIL;
             }
         });
@@ -121,6 +351,14 @@ public class PluginApi {
                 return LuaValue.NIL;
             }
         });
+        api.set("getPeerName", new OneArgFunction() {
+            @Override
+            public LuaValue call(LuaValue chatId) {
+                long id = (long) chatId.todouble();
+                String name = getCachedPeerName(id);
+                return name != null ? LuaValue.valueOf(name) : LuaValue.NIL;
+            }
+        });
         api.set("getOpenChatId", new ZeroArgFunction() {
             @Override
             public LuaValue call() {
@@ -147,10 +385,12 @@ public class PluginApi {
         });
         api.set("createDialog", new VarArgFunction() {
             @Override
-            public LuaValue invoke(LuaValue[] args) {
-                String title = args.length > 0 ? args[0].optjstring("") : "";
-                String message = args.length > 1 ? args[1].optjstring("") : "";
-                LuaValue buttons = args.length > 2 ? args[2] : LuaValue.NIL;
+            public LuaValue invoke(Varargs args) {
+                Varargs uargs = args.subargs(1);
+                int n = uargs.narg();
+                String title = n > 0 ? uargs.arg(1).optjstring("") : "";
+                String message = n > 1 ? uargs.arg(2).optjstring("") : "";
+                LuaValue buttons = n > 2 ? uargs.arg(3) : LuaValue.NIL;
                 createDialog(title, message, buttons);
                 return LuaValue.NIL;
             }
@@ -169,21 +409,72 @@ public class PluginApi {
                 return LuaValue.NIL;
             }
         });
+        api.set("openChatPicker", new OneArgFunction() {
+            @Override
+            public LuaValue call(LuaValue callback) {
+                if (callback.isfunction()) {
+                    openChatPicker(callback);
+                }
+                return LuaValue.NIL;
+            }
+        });
+        api.set("refreshSettings", new ZeroArgFunction() {
+            @Override
+            public LuaValue call() {
+                org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
+                    zxc.iconic.xenon.settings.PluginSettingsActivity.refreshCurrent();
+                });
+                return LuaValue.NIL;
+            }
+        });
+        api.set("getMessageById", new VarArgFunction() {
+            @Override
+            public LuaValue invoke(Varargs args) {
+                Varargs uargs = args.subargs(1);
+                int n = uargs.narg();
+                if (n >= 3 && uargs.arg(1).isnumber() && uargs.arg(2).isnumber() && uargs.arg(3).isfunction()) {
+                    getMessageById((long) uargs.arg(1).todouble(), (int) uargs.arg(2).todouble(), uargs.arg(3));
+                }
+                return LuaValue.NIL;
+            }
+        });
+        api.set("getRecentMessages", new VarArgFunction() {
+            @Override
+            public LuaValue invoke(Varargs args) {
+                Varargs uargs = args.subargs(1);
+                int n = uargs.narg();
+                if (n >= 3 && uargs.arg(1).isnumber() && uargs.arg(2).isnumber() && uargs.arg(3).isfunction()) {
+                    getRecentMessages((long) uargs.arg(1).todouble(), (int) uargs.arg(2).todouble(), uargs.arg(3));
+                }
+                return LuaValue.NIL;
+            }
+        });
+        api.set("getMessagesFromUser", new VarArgFunction() {
+            @Override
+            public LuaValue invoke(Varargs args) {
+                Varargs uargs = args.subargs(1);
+                int n = uargs.narg();
+                if (n >= 4 && uargs.arg(1).isnumber() && uargs.arg(2).isnumber() && uargs.arg(3).isnumber() && uargs.arg(4).isfunction()) {
+                    getMessagesFromUser((long) uargs.arg(1).todouble(), (int) uargs.arg(2).todouble(), (int) uargs.arg(3).todouble(), uargs.arg(4));
+                }
+                return LuaValue.NIL;
+            }
+        });
         Log.d("XenonPlugin", "createApiTable: hooks table created, identityHash=" + System.identityHashCode(hooks));
         return new LuaTable[]{api, hooks};
     }
 
-    static void sendMessage(final String text, final long peerId) {
+    static void sendMessage(final String text, final long peerId, final int replyToMsgId) {
         org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
             try {
                 int account = UserConfig.selectedAccount;
                 MessagesController mc = MessagesController.getInstance(account);
                 long dialogId = resolveDialogId(peerId, mc);
                 if (dialogId != 0) {
-                    doSendMessage(account, mc, dialogId, text);
+                    doSendMessage(account, mc, dialogId, text, replyToMsgId);
                     return;
                 }
-                loadFromDbAndSend(account, peerId, text, mc);
+                loadFromDbAndSend(account, peerId, text, replyToMsgId, mc);
             } catch (Exception e) {
                 FileLog.e("Plugin sendMessage failed", e);
                 Log.e("XenonPlugin", "sendMessage exception: " + e.getMessage());
@@ -204,38 +495,38 @@ public class PluginApi {
         return 0;
     }
 
-    private static void loadFromDbAndSend(int account, long peerId, String text, MessagesController mc) {
+    private static void loadFromDbAndSend(int account, long peerId, String text, int replyToMsgId, MessagesController mc) {
         MessagesStorage storage = MessagesStorage.getInstance(account);
         if (peerId > 0) {
             TLRPC.User user = storage.getUser(peerId);
             if (user != null) {
                 mc.putUser(user, true);
-                doSendMessage(account, mc, peerId, text);
+                doSendMessage(account, mc, peerId, text, replyToMsgId);
                 return;
             }
             TLRPC.Chat chat = storage.getChat(peerId);
             if (chat != null) {
                 mc.putChat(chat, true);
-                doSendMessage(account, mc, -peerId, text);
+                doSendMessage(account, mc, -peerId, text, replyToMsgId);
                 return;
             }
         } else {
             TLRPC.Chat chat = storage.getChat(-peerId);
             if (chat != null) {
                 mc.putChat(chat, true);
-                doSendMessage(account, mc, peerId, text);
+                doSendMessage(account, mc, peerId, text, replyToMsgId);
                 return;
             }
         }
-        loadPeerAndSend(account, peerId, text, mc);
+        loadPeerAndSend(account, peerId, text, replyToMsgId, mc);
     }
 
-    private static void loadPeerAndSend(int account, long peerId, String text, MessagesController mc) {
+    private static void loadPeerAndSend(int account, long peerId, String text, int replyToMsgId, MessagesController mc) {
         if (peerId < 0) {
             loadChat(account, -peerId, () -> {
                 TLRPC.Chat chat = mc.getChat(-peerId);
                 if (chat != null) {
-                    doSendMessage(account, mc, peerId, text);
+                    doSendMessage(account, mc, peerId, text, replyToMsgId);
                 } else {
                     Log.e("XenonPlugin", "sendMessage: failed to load chat " + (-peerId));
                 }
@@ -244,12 +535,12 @@ public class PluginApi {
             loadChat(account, peerId, () -> {
                 TLRPC.Chat chat = mc.getChat(peerId);
                 if (chat != null) {
-                    doSendMessage(account, mc, -peerId, text);
+                    doSendMessage(account, mc, -peerId, text, replyToMsgId);
                 } else {
                     loadUser(account, peerId, () -> {
                         TLRPC.User user = mc.getUser(peerId);
                         if (user != null) {
-                            doSendMessage(account, mc, peerId, text);
+                            doSendMessage(account, mc, peerId, text, replyToMsgId);
                         } else {
                             Log.e("XenonPlugin", "sendMessage: failed to load peer " + peerId);
                         }
@@ -296,7 +587,7 @@ public class PluginApi {
         });
     }
 
-    private static void doSendMessage(int account, MessagesController mc, long dialogId, String text) {
+    private static void doSendMessage(int account, MessagesController mc, long dialogId, String text, int replyToMsgId) {
         TLRPC.InputPeer inputPeer = mc.getInputPeer(dialogId);
         if (inputPeer == null) {
             Log.e("XenonPlugin", "doSendMessage: getInputPeer returned null for dialogId=" + dialogId);
@@ -307,6 +598,12 @@ public class PluginApi {
         req.message = text;
         req.random_id = Utilities.random.nextLong();
         req.clear_draft = true;
+        if (replyToMsgId > 0) {
+            TLRPC.TL_inputReplyToMessage replyTo = new TLRPC.TL_inputReplyToMessage();
+            replyTo.reply_to_msg_id = replyToMsgId;
+            req.reply_to = replyTo;
+            req.flags |= 1;
+        }
         ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
             if (error != null) {
                 FileLog.e("Plugin sendMessage error: " + error.text);
@@ -315,6 +612,192 @@ public class PluginApi {
                 mc.processUpdates((TLRPC.Updates) response, false);
             }
         });
+    }
+
+    static void sendMedia(final long chatId, final int msgId, final int replyToMsgId) {
+        org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
+            try {
+                int account = UserConfig.selectedAccount;
+                MessagesController mc = MessagesController.getInstance(account);
+                long dialogId = resolveDialogId(chatId, mc);
+                if (dialogId != 0) {
+                    fetchMessageAndSendMedia(account, mc, dialogId, chatId, msgId, replyToMsgId);
+                    return;
+                }
+                loadFromDbAndSendMedia(account, chatId, msgId, replyToMsgId, mc);
+            } catch (Exception e) {
+                FileLog.e("Plugin sendMedia failed", e);
+                Log.e("XenonPlugin", "sendMedia exception: " + e.getMessage());
+            }
+        });
+    }
+
+    private static void loadFromDbAndSendMedia(int account, long peerId, int msgId, int replyToMsgId, MessagesController mc) {
+        MessagesStorage storage = MessagesStorage.getInstance(account);
+        if (peerId > 0) {
+            TLRPC.User user = storage.getUser(peerId);
+            if (user != null) {
+                mc.putUser(user, true);
+                fetchMessageAndSendMedia(account, mc, peerId, peerId, msgId, replyToMsgId);
+                return;
+            }
+            TLRPC.Chat chat = storage.getChat(peerId);
+            if (chat != null) {
+                mc.putChat(chat, true);
+                fetchMessageAndSendMedia(account, mc, -peerId, peerId, msgId, replyToMsgId);
+                return;
+            }
+        } else {
+            TLRPC.Chat chat = storage.getChat(-peerId);
+            if (chat != null) {
+                mc.putChat(chat, true);
+                fetchMessageAndSendMedia(account, mc, peerId, peerId, msgId, replyToMsgId);
+                return;
+            }
+        }
+        loadPeerAndSendMedia(account, peerId, msgId, replyToMsgId, mc);
+    }
+
+    private static void loadPeerAndSendMedia(int account, long peerId, int msgId, int replyToMsgId, MessagesController mc) {
+        if (peerId < 0) {
+            loadChat(account, -peerId, () -> {
+                TLRPC.Chat chat = mc.getChat(-peerId);
+                if (chat != null) {
+                    fetchMessageAndSendMedia(account, mc, peerId, peerId, msgId, replyToMsgId);
+                } else {
+                    Log.e("XenonPlugin", "sendMedia: failed to load chat " + (-peerId));
+                }
+            });
+        } else {
+            loadChat(account, peerId, () -> {
+                TLRPC.Chat chat = mc.getChat(peerId);
+                if (chat != null) {
+                    fetchMessageAndSendMedia(account, mc, -peerId, peerId, msgId, replyToMsgId);
+                } else {
+                    loadUser(account, peerId, () -> {
+                        TLRPC.User user = mc.getUser(peerId);
+                        if (user != null) {
+                            fetchMessageAndSendMedia(account, mc, peerId, peerId, msgId, replyToMsgId);
+                        } else {
+                            Log.e("XenonPlugin", "sendMedia: failed to load peer " + peerId);
+                        }
+                    });
+                }
+            });
+        }
+    }
+
+    private static void fetchMessageAndSendMedia(int account, MessagesController mc, long dialogId, long sourceChatId, int sourceMsgId, int replyToMsgId) {
+        TLRPC.Chat chat = null;
+        if (sourceChatId < 0) {
+            chat = mc.getChat(-sourceChatId);
+        }
+        boolean isChannel = chat != null && chat instanceof TLRPC.TL_channel;
+        TLObject req;
+        if (isChannel) {
+            TLRPC.TL_channels_getMessages r = new TLRPC.TL_channels_getMessages();
+            r.channel = mc.getInputChannel(-sourceChatId);
+            r.id.add(sourceMsgId);
+            req = r;
+        } else {
+            TLRPC.TL_messages_getMessages r = new TLRPC.TL_messages_getMessages();
+            r.id.add(sourceMsgId);
+            req = r;
+        }
+        ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
+            if (error == null && response instanceof TLRPC.messages_Messages) {
+                TLRPC.messages_Messages msgs = (TLRPC.messages_Messages) response;
+                if (!msgs.messages.isEmpty()) {
+                    TLRPC.Message msg = msgs.messages.get(0);
+                    if (msg.media != null) {
+                        doSendMedia(account, mc, dialogId, msg, replyToMsgId);
+                        return;
+                    }
+                }
+            }
+            Log.e("XenonPlugin", "sendMedia: failed to fetch source message " + sourceMsgId);
+        });
+    }
+
+    private static void doSendMedia(int account, MessagesController mc, long dialogId, TLRPC.Message msg, int replyToMsgId) {
+        TLRPC.InputPeer inputPeer = mc.getInputPeer(dialogId);
+        if (inputPeer == null) {
+            Log.e("XenonPlugin", "doSendMedia: getInputPeer returned null for dialogId=" + dialogId);
+            return;
+        }
+        TLRPC.InputMedia inputMedia = null;
+        if (msg.media instanceof TLRPC.TL_messageMediaPhoto) {
+            TLRPC.TL_messageMediaPhoto photoMedia = (TLRPC.TL_messageMediaPhoto) msg.media;
+            if (photoMedia.photo != null && !(photoMedia.photo instanceof TLRPC.TL_photoEmpty)) {
+                TLRPC.TL_inputMediaPhoto media = new TLRPC.TL_inputMediaPhoto();
+                TLRPC.TL_inputPhoto inputPhoto = new TLRPC.TL_inputPhoto();
+                inputPhoto.id = photoMedia.photo.id;
+                inputPhoto.access_hash = photoMedia.photo.access_hash;
+                inputPhoto.file_reference = photoMedia.photo.file_reference;
+                media.id = inputPhoto;
+                inputMedia = media;
+            }
+        } else if (msg.media instanceof TLRPC.TL_messageMediaDocument) {
+            TLRPC.TL_messageMediaDocument docMedia = (TLRPC.TL_messageMediaDocument) msg.media;
+            if (docMedia.document != null) {
+                TLRPC.TL_inputMediaDocument media = new TLRPC.TL_inputMediaDocument();
+                TLRPC.TL_inputDocument inputDoc = new TLRPC.TL_inputDocument();
+                inputDoc.id = docMedia.document.id;
+                inputDoc.access_hash = docMedia.document.access_hash;
+                inputDoc.file_reference = docMedia.document.file_reference;
+                media.id = inputDoc;
+                inputMedia = media;
+            }
+        }
+        if (inputMedia == null) {
+            Log.e("XenonPlugin", "doSendMedia: unsupported media type or empty media");
+            return;
+        }
+        TLRPC.TL_messages_sendMedia req = new TLRPC.TL_messages_sendMedia();
+        req.peer = inputPeer;
+        req.media = inputMedia;
+        req.message = msg.message != null ? msg.message : "";
+        req.random_id = Utilities.random.nextLong();
+        req.clear_draft = true;
+        if (replyToMsgId > 0) {
+            TLRPC.TL_inputReplyToMessage replyTo = new TLRPC.TL_inputReplyToMessage();
+            replyTo.reply_to_msg_id = replyToMsgId;
+            req.reply_to = replyTo;
+            req.flags |= 1;
+        }
+        ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
+            if (error != null) {
+                FileLog.e("Plugin sendMedia error: " + error.text);
+                Log.e("XenonPlugin", "sendMedia error: " + error.text);
+            } else if (response instanceof TLRPC.Updates) {
+                mc.processUpdates((TLRPC.Updates) response, false);
+            }
+        });
+    }
+
+    static String getCachedPeerName(long chatId) {
+        int account = UserConfig.selectedAccount;
+        MessagesController mc = MessagesController.getInstance(account);
+        if (chatId < 0) {
+            TLRPC.Chat chat = mc.getChat(-chatId);
+            if (chat != null) {
+                return chat.title;
+            }
+        } else {
+            TLRPC.User user = mc.getUser(chatId);
+            if (user != null) {
+                String name = user.first_name;
+                if (user.last_name != null && !user.last_name.isEmpty()) {
+                    name += " " + user.last_name;
+                }
+                return name;
+            }
+            TLRPC.Chat chat = mc.getChat(chatId);
+            if (chat != null) {
+                return chat.title;
+            }
+        }
+        return null;
     }
 
     static void openActivity(final String name) {
@@ -520,6 +1003,199 @@ public class PluginApi {
             } catch (Exception e) {
                 FileLog.e(e);
             }
+        });
+    }
+
+    private static void openChatPicker(LuaValue callback) {
+        org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
+            try {
+                Activity a = PluginManager.getCurrentActivity();
+                Log.d("XenonPlugin", "openChatPicker: activity=" + a);
+                if (!(a instanceof org.telegram.ui.LaunchActivity)) {
+                    Log.d("XenonPlugin", "openChatPicker: activity not LaunchActivity, returning");
+                    return;
+                }
+                org.telegram.ui.LaunchActivity launch = (org.telegram.ui.LaunchActivity) a;
+                android.os.Bundle args = new android.os.Bundle();
+                args.putBoolean("onlySelect", true);
+                args.putBoolean("checkCanWrite", false);
+                args.putBoolean("allowSwitchAccount", false);
+                DialogsActivity fragment = new DialogsActivity(args);
+                fragment.setDelegate((fragment1, dids, message, param, notify, scheduleDate, scheduleRepeatPeriod, topicsFragment) -> {
+                    if (dids != null && !dids.isEmpty()) {
+                        long dialogId = dids.get(0).dialogId;
+                        if (callback.isfunction()) {
+                            callback.call(LuaValue.valueOf(dialogId));
+                        }
+                    }
+                    fragment1.finishFragment();
+                    return true;
+                });
+                Log.d("XenonPlugin", "openChatPicker: presenting fragment");
+                launch.presentFragment(fragment);
+                Log.d("XenonPlugin", "openChatPicker: fragment presented");
+            } catch (Exception e) {
+                FileLog.e("openChatPicker exception", e);
+                Log.e("XenonPlugin", "openChatPicker exception: " + e.getMessage());
+            }
+        });
+    }
+
+    private static void getMessageById(long chatId, int messageId, LuaValue callback) {
+        int account = UserConfig.selectedAccount;
+        MessagesController mc = MessagesController.getInstance(account);
+        TLRPC.Chat chat = null;
+        if (chatId < 0) {
+            chat = mc.getChat(-chatId);
+        }
+        boolean isChannel = chat != null && chat instanceof TLRPC.TL_channel;
+        if (isChannel) {
+            TLRPC.TL_channels_getMessages req = new TLRPC.TL_channels_getMessages();
+            req.channel = mc.getInputChannel(-chatId);
+            req.id.add(messageId);
+            ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
+                LuaValue result;
+                if (response instanceof TLRPC.messages_Messages) {
+                    result = messagesToLuaTable((TLRPC.messages_Messages) response);
+                } else {
+                    result = LuaValue.NIL;
+                }
+                LuaValue err = error != null ? LuaValue.valueOf(error.text) : LuaValue.NIL;
+                final LuaValue resultFinal = result;
+                final LuaValue errFinal = err;
+                org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
+                    callback.call(resultFinal, errFinal);
+                });
+            });
+        } else {
+            TLRPC.TL_messages_getMessages req = new TLRPC.TL_messages_getMessages();
+            req.id.add(messageId);
+            ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
+                LuaValue result;
+                if (response instanceof TLRPC.messages_Messages) {
+                    result = messagesToLuaTable((TLRPC.messages_Messages) response);
+                } else {
+                    result = LuaValue.NIL;
+                }
+                LuaValue err = error != null ? LuaValue.valueOf(error.text) : LuaValue.NIL;
+                final LuaValue resultFinal = result;
+                final LuaValue errFinal = err;
+                org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
+                    callback.call(resultFinal, errFinal);
+                });
+            });
+        }
+    }
+
+    private static void getRecentMessages(long chatId, int count, LuaValue callback) {
+        int account = UserConfig.selectedAccount;
+        MessagesController mc = MessagesController.getInstance(account);
+        TLRPC.TL_messages_getHistory req = new TLRPC.TL_messages_getHistory();
+        req.peer = mc.getInputPeer(chatId);
+        req.limit = count;
+        req.offset_id = 0;
+        req.offset_date = 0;
+        req.add_offset = 0;
+        ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
+            LuaValue result;
+            if (response instanceof TLRPC.messages_Messages) {
+                TLRPC.messages_Messages msgs = (TLRPC.messages_Messages) response;
+                result = messagesToLuaTable(msgs);
+            } else {
+                result = LuaValue.NIL;
+            }
+            LuaValue err = error != null ? LuaValue.valueOf(error.text) : LuaValue.NIL;
+            final LuaValue resultFinal = result;
+            final LuaValue errFinal = err;
+            org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
+                callback.call(resultFinal, errFinal);
+            });
+        });
+    }
+
+    private static long peerToId(TLRPC.Peer peer) {
+        if (peer == null) return 0;
+        if (peer.user_id != 0) return peer.user_id;
+        if (peer.channel_id != 0) return -peer.channel_id;
+        if (peer.chat_id != 0) return -peer.chat_id;
+        return 0;
+    }
+
+    private static LuaValue messagesToLuaTable(TLRPC.messages_Messages msgs) {
+        LuaTable t = new LuaTable();
+        for (int i = 0; i < msgs.messages.size(); i++) {
+            TLRPC.Message msg = msgs.messages.get(i);
+            LuaTable m = new LuaTable();
+            m.set("id", msg.id);
+            m.set("text", msg.message != null ? LuaValue.valueOf(msg.message) : LuaValue.NIL);
+            m.set("sender_id", LuaValue.valueOf(peerToId(msg.from_id)));
+            m.set("chat_id", LuaValue.valueOf(peerToId(msg.peer_id)));
+            m.set("date", msg.date);
+            m.set("out", LuaValue.valueOf(msg.out));
+            if (msg.media instanceof TLRPC.TL_messageMediaPhoto) {
+                m.set("media_type", LuaValue.valueOf("photo"));
+            } else if (msg.media instanceof TLRPC.TL_messageMediaDocument) {
+                m.set("media_type", LuaValue.valueOf("document"));
+                if (((TLRPC.TL_messageMediaDocument) msg.media).document != null) {
+                    m.set("size", LuaValue.valueOf((double) ((TLRPC.TL_messageMediaDocument) msg.media).document.size));
+                }
+            } else if (msg.media != null) {
+                m.set("media_type", LuaValue.valueOf("other"));
+            }
+            t.set(i + 1, m);
+        }
+        return t;
+    }
+
+    private static void getMessagesFromUser(long chatId, int userId, int count, LuaValue callback) {
+        int account = UserConfig.selectedAccount;
+        MessagesController mc = MessagesController.getInstance(account);
+        TLRPC.TL_messages_getHistory req = new TLRPC.TL_messages_getHistory();
+        req.peer = mc.getInputPeer(chatId);
+        req.limit = count;
+        req.offset_id = 0;
+        req.offset_date = 0;
+        req.add_offset = 0;
+        ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
+            LuaValue result;
+            if (response instanceof TLRPC.messages_Messages) {
+                TLRPC.messages_Messages msgs = (TLRPC.messages_Messages) response;
+                LuaTable filtered = new LuaTable();
+                int idx = 1;
+                for (int i = 0; i < msgs.messages.size(); i++) {
+                    TLRPC.Message msg = msgs.messages.get(i);
+                    long sender = peerToId(msg.from_id);
+                    if (sender == userId) {
+                        LuaTable m = new LuaTable();
+                        m.set("id", msg.id);
+                        m.set("text", msg.message != null ? LuaValue.valueOf(msg.message) : LuaValue.NIL);
+                        m.set("sender_id", LuaValue.valueOf(sender));
+                        m.set("chat_id", LuaValue.valueOf(peerToId(msg.peer_id)));
+                        m.set("date", msg.date);
+                        m.set("out", LuaValue.valueOf(msg.out));
+                        if (msg.media instanceof TLRPC.TL_messageMediaPhoto) {
+                            m.set("media_type", LuaValue.valueOf("photo"));
+                        } else if (msg.media instanceof TLRPC.TL_messageMediaDocument) {
+                            m.set("media_type", LuaValue.valueOf("document"));
+                            if (((TLRPC.TL_messageMediaDocument) msg.media).document != null) {
+                                m.set("size", LuaValue.valueOf((double) ((TLRPC.TL_messageMediaDocument) msg.media).document.size));
+                            }
+                        } else if (msg.media != null) {
+                            m.set("media_type", LuaValue.valueOf("other"));
+                        }
+                        filtered.set(idx++, m);
+                    }
+                }
+                result = filtered;
+            } else {
+                result = LuaValue.NIL;
+            }
+            LuaValue err = error != null ? LuaValue.valueOf(error.text) : LuaValue.NIL;
+            final LuaValue resultFinal = result;
+            final LuaValue errFinal = err;
+            org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
+                callback.call(resultFinal, errFinal);
+            });
         });
     }
 

@@ -9,6 +9,7 @@ import org.luaj.vm2.Globals;
 import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
+import org.luaj.vm2.Varargs;
 import org.luaj.vm2.lib.jse.JsePlatform;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.FileLog;
@@ -209,7 +210,12 @@ public class PluginManager {
         // Reject plugins without plugin_id
         String[] meta = parseMetadata(source);
         if (meta == null || meta.length < 3 || meta[2] == null || meta[2].isEmpty()) {
-            Log.e(TAG, "installFrom: plugin must have a plugin_id (format: something_something)");
+            String err = lastParseError;
+            if (err != null) {
+                Log.e(TAG, "installFrom: plugin rejected: " + err);
+            } else {
+                Log.e(TAG, "installFrom: plugin must have a plugin_id (format: something_something)");
+            }
             return null;
         }
         File dest = new File(getPluginsDir(), source.getName());
@@ -517,7 +523,14 @@ public class PluginManager {
      * keeping the plugin loaded. Returns an array of three strings: [name, description, pluginId],
      * or null if parsing fails.
      */
+    private static String lastParseError;
+
+    public static String getLastParseError() {
+        return lastParseError;
+    }
+
     public static String[] parseMetadata(File file) {
+        lastParseError = null;
         if (file == null || !file.exists() || !file.getName().endsWith(PLUGIN_EXT)) return null;
         try (InputStream in = new FileInputStream(file)) {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -535,7 +548,7 @@ public class PluginManager {
                 public LuaValue call(LuaValue name, LuaValue handler) { return LuaValue.NIL; }
             });
             mockXenon.set("getSetting", new org.luaj.vm2.lib.TwoArgFunction() {
-                public LuaValue call(LuaValue key, LuaValue def) { return LuaValue.NIL; }
+                public LuaValue call(LuaValue key, LuaValue def) { return def.isnil() ? LuaValue.NIL : def; }
             });
             mockXenon.set("setSetting", new org.luaj.vm2.lib.TwoArgFunction() {
                 public LuaValue call(LuaValue key, LuaValue value) { return LuaValue.NIL; }
@@ -551,6 +564,57 @@ public class PluginManager {
             });
             mockXenon.set("openPluginSettings", new org.luaj.vm2.lib.ZeroArgFunction() {
                 public LuaValue call() { return LuaValue.NIL; }
+            });
+            mockXenon.set("openChatPicker", new org.luaj.vm2.lib.OneArgFunction() {
+                public LuaValue call(LuaValue callback) { return LuaValue.NIL; }
+            });
+            mockXenon.set("refreshSettings", new org.luaj.vm2.lib.ZeroArgFunction() {
+                public LuaValue call() { return LuaValue.NIL; }
+            });
+            mockXenon.set("sendMessage", new org.luaj.vm2.lib.TwoArgFunction() {
+                public LuaValue call(LuaValue text, LuaValue peer) { return LuaValue.NIL; }
+            });
+            mockXenon.set("sendMedia", new org.luaj.vm2.lib.VarArgFunction() {
+                public LuaValue invoke(Varargs args) { return LuaValue.NIL; }
+            });
+            mockXenon.set("getPeerName", new org.luaj.vm2.lib.OneArgFunction() {
+                public LuaValue call(LuaValue id) { return LuaValue.valueOf("mock"); }
+            });
+            mockXenon.set("getRecentMessages", new org.luaj.vm2.lib.VarArgFunction() {
+                public LuaValue invoke(Varargs args) { return LuaValue.NIL; }
+            });
+            mockXenon.set("getMessageById", new org.luaj.vm2.lib.VarArgFunction() {
+                public LuaValue invoke(Varargs args) { return LuaValue.NIL; }
+            });
+            mockXenon.set("getMessagesFromUser", new org.luaj.vm2.lib.VarArgFunction() {
+                public LuaValue invoke(Varargs args) { return LuaValue.NIL; }
+            });
+            mockXenon.set("setTimeout", new org.luaj.vm2.lib.TwoArgFunction() {
+                public LuaValue call(LuaValue seconds, LuaValue callback) { return LuaValue.valueOf(0); }
+            });
+            mockXenon.set("clearTimeout", new org.luaj.vm2.lib.OneArgFunction() {
+                public LuaValue call(LuaValue id) { return LuaValue.NIL; }
+            });
+            mockXenon.set("startMessageWatcher", new org.luaj.vm2.lib.OneArgFunction() {
+                public LuaValue call(LuaValue config) { return LuaValue.TRUE; }
+            });
+            mockXenon.set("stopMessageWatcher", new org.luaj.vm2.lib.OneArgFunction() {
+                public LuaValue call(LuaValue key) { return LuaValue.NIL; }
+            });
+            mockXenon.set("getOpenChatId", new org.luaj.vm2.lib.ZeroArgFunction() {
+                public LuaValue call() { return LuaValue.valueOf(0); }
+            });
+            mockXenon.set("openActivity", new org.luaj.vm2.lib.OneArgFunction() {
+                public LuaValue call(LuaValue name) { return LuaValue.NIL; }
+            });
+            mockXenon.set("createDialog", new org.luaj.vm2.lib.VarArgFunction() {
+                public LuaValue invoke(Varargs args) { return LuaValue.NIL; }
+            });
+            mockXenon.set("createBottomSheet", new org.luaj.vm2.lib.TwoArgFunction() {
+                public LuaValue call(LuaValue title, LuaValue items) { return LuaValue.NIL; }
+            });
+            mockXenon.set("getIconDrawable", new org.luaj.vm2.lib.OneArgFunction() {
+                public LuaValue call(LuaValue name) { return LuaValue.valueOf(0); }
             });
             g.set("xenon", mockXenon);
             g.load(source, file.getName(), g).call();
@@ -575,7 +639,9 @@ public class PluginManager {
             return new String[]{name, desc, id};
         } catch (Exception e) {
             FileLog.e(e);
-            Log.e(TAG, "parseMetadata: failed for " + file.getName() + ": " + e.getMessage());
+            String msg = e.getMessage();
+            lastParseError = msg != null ? msg : "unknown parse error";
+            Log.e(TAG, "parseMetadata: failed for " + file.getName() + ": " + lastParseError);
             return null;
         }
     }
@@ -636,7 +702,62 @@ public class PluginManager {
             PluginManager.getPrefs().edit().putBoolean("plugin_enabled_" + fileName, enabled).apply();
         }
 
-        void invokeHook(String hookName, LuaValue[] args) {
+        public void refreshSettingsFromGlobals() {
+            this.settings.clear();
+            LuaValue settingsVal = globals.get("plugin_settings");
+            if (settingsVal.istable()) {
+                for (int i = 1; i <= settingsVal.length(); i++) {
+                    LuaValue entry = settingsVal.get(i);
+                    if (!entry.istable()) continue;
+                    try {
+                        LuaValue typeVal = entry.get("type");
+                        LuaValue keyVal = entry.get("key");
+                        LuaValue nameEntry = entry.get("name");
+                        if (typeVal.isnil() || keyVal.isnil() || nameEntry.isnil()) continue;
+                        String type = typeVal.tojstring();
+                        String skey = keyVal.tojstring();
+                        String sname = nameEntry.tojstring();
+                        PluginSetting setting = null;
+                        switch (type) {
+                            case "toggle": {
+                                boolean def = entry.get("default").toboolean();
+                                setting = new PluginSetting(PluginSetting.Type.TOGGLE, skey, sname, def, 0, null, 0, 0, 0, null, null);
+                                break;
+                            }
+                            case "seekbar": {
+                                int min = (int) entry.get("min").checkdouble();
+                                int max = (int) entry.get("max").checkdouble();
+                                int step = (int) entry.get("step").checkdouble();
+                                if (step <= 0) step = 1;
+                                int def = entry.get("default").isnil() ? min : (int) entry.get("default").checkdouble();
+                                setting = new PluginSetting(PluginSetting.Type.SEEKBAR, skey, sname, false, def, null, min, max, step, null, null);
+                                break;
+                            }
+                            case "text": {
+                                LuaValue defVal = entry.get("default");
+                                String def = defVal.isnil() ? "" : defVal.tojstring();
+                                LuaValue hintVal = entry.get("hint");
+                                String hint = hintVal.isnil() ? "" : hintVal.tojstring();
+                                setting = new PluginSetting(PluginSetting.Type.TEXT, skey, sname, false, 0, def, 0, 0, 0, hint, null);
+                                break;
+                            }
+                            case "button": {
+                                LuaValue action = entry.get("action");
+                                setting = new PluginSetting(PluginSetting.Type.BUTTON, skey, sname, false, 0, null, 0, 0, 0, null, action != null && !action.isnil() ? action : null);
+                                break;
+                            }
+                        }
+                        if (setting != null) {
+                            this.settings.add(setting);
+                        }
+                    } catch (Exception e) {
+                        FileLog.e(e);
+                    }
+                }
+            }
+        }
+
+        public void invokeHook(String hookName, LuaValue[] args) {
             LuaValue handler = hooks.get(hookName);
             if (handler.isnil()) {
                 Log.d(TAG, displayName + ": no handler for hook '" + hookName + "' (hooks table has " + hooks.keys().length + " entries)");
