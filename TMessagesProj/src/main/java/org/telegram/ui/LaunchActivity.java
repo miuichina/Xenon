@@ -7234,6 +7234,10 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         //    refreshRateController.start();
         //}
 
+        // Plugin Safe Mode: if the previous launch crashed, disable plugins
+        // and show the crash sheet before anything else plugin-related runs.
+        zxc.iconic.xenon.plugins.PluginSafeMode.checkAndHandleCrash(this);
+
         // Plugin hook: any plugin that registered via xenon.on("onResume", ...)
         // gets notified every time the app returns to the foreground.
         zxc.iconic.xenon.plugins.PluginManager.getInstance().fire("onResume");

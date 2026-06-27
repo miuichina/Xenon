@@ -1,0 +1,328 @@
+plugin_id = "message_roulette_1"
+plugin_name = "Message Roulette"
+plugin_description = "Picks a random message (text/media) from each saved chat and sends its text as a reply to another random message."
+
+local function get_setting(key, default)
+    local val = xenon.getSetting(key, tostring(default))
+    if type(default) == "boolean" then
+        return val == "true"
+    elseif type(default) == "number" then
+        return tonumber(val) or default
+    end
+    return val
+end
+
+local function save_setting(key, val)
+    xenon.setSetting(key, tostring(val))
+end
+
+local function get_chat_entries()
+    local raw = get_setting("saved_chats", "")
+    if raw == "" then return {} end
+    local entries = {}
+    for part in raw:gmatch("[^,]+") do
+        local sep = part:find("||")
+        local id, name
+        if sep then
+            id = tonumber(part:sub(1, sep - 1))
+            name = part:sub(sep + 2)
+        else
+            id = tonumber(part)
+            name = tostring(id)
+        end
+        if id then entries[#entries + 1] = {id = id, name = name} end
+    end
+    return entries
+end
+
+local function save_chat_entries(entries)
+    local parts = {}
+    for _, e in ipairs(entries) do
+        parts[#parts + 1] = tostring(e.id) .. "||" .. e.name
+    end
+    save_setting("saved_chats", table.concat(parts, ","))
+end
+
+local function get_chat_ids()
+    local entries = get_chat_entries()
+    local ids = {}
+    for _, e in ipairs(entries) do
+        ids[#ids + 1] = e.id
+    end
+    return ids
+end
+
+local function remove_chat_id(target)
+    local entries = get_chat_entries()
+    local new_entries = {}
+    for _, e in ipairs(entries) do
+        if e.id ~= target then new_entries[#new_entries + 1] = e end
+    end
+    save_chat_entries(new_entries)
+end
+
+local function do_random_send(targetIds)
+    local count = get_setting("lookback", 10)
+    local ids = targetIds or get_chat_ids()
+    if #ids == 0 then
+        xenon.bulletin("No chats added yet!")
+        return
+    end
+    local total = #ids
+    local done = 0
+    for _, chatId in ipairs(ids) do
+        local cid = chatId
+        xenon.getRecentMessages(cid, count, function(messages)
+            local all_msgs = {}
+            local sendable = {}
+            for i = 1, #messages do
+                local m = messages[i]
+                all_msgs[#all_msgs + 1] = m
+                local has_text = m.text and m.text ~= ""
+                local has_media = m.media_type and m.media_type ~= ""
+                local oversized = m.size and m.size > 10 * 1024 * 1024
+                if has_text or (has_media and not oversized) then
+                    sendable[#sendable + 1] = m
+                end
+            end
+            if #sendable >= 1 and #all_msgs >= 2 then
+                local a = sendable[math.random(#sendable)]
+                local b
+                repeat
+                    b = all_msgs[math.random(#all_msgs)]
+                until b.id ~= a.id
+                if a.media_type then
+                    xenon.sendMedia(cid, a.id, b.id)
+                else
+                    xenon.sendMessage(a.text, cid, b.id)
+                end
+            elseif #sendable == 1 and #all_msgs == 1 then
+                local a = sendable[1]
+                if a.media_type then
+                    xenon.sendMedia(cid, a.id, a.id)
+                else
+                    xenon.sendMessage(a.text, cid, a.id)
+                end
+            end
+            done = done + 1
+            if done == total then
+                xenon.bulletin("Roulette done for " .. total .. " chat(s)!")
+            end
+        end)
+    end
+end
+
+local function restart_watcher()
+    xenon.stopMessageWatcher("roulette_watcher")
+    if get_setting("auto_send", false) then
+        local ids = get_chat_ids()
+        if #ids == 0 then return end
+        xenon.startMessageWatcher({
+            key = "roulette_watcher",
+            chats = ids,
+            interval = get_setting("auto_interval", 60),
+            threshold = 3,
+            callback = function(chats)
+                local triggeredIds = {}
+                for i = 1, #chats do
+                    triggeredIds[#triggeredIds + 1] = chats[i].chatId
+                end
+                if #triggeredIds > 0 then
+                    do_random_send(triggeredIds)
+                end
+            end
+        })
+    end
+end
+
+local add_chat_action
+
+local reactions = {"🔥", "❤️", "😂", "😱", "👌", "🤝", "😁", "💀", "🏳️", "🎃", "🤗", "😎", "🥰", "😈", "🤡", "👀", "🎉", "🦀", "🤯", "👋", "👎"}
+
+local function rebuild_settings()
+    local settings = {
+        {type = "header", key = "hdr_roulette", name = "ROULETTE"},
+        {type = "seekbar", key = "lookback", name = "Last messages to check", min = 1, max = 50, step = 1, default = 10},
+        {type = "toggle", key = "auto_send", name = "Auto-send on activity", default = false},
+        {type = "seekbar", key = "auto_interval", name = "Interval (seconds)", min = 5, max = 1800, step = 5, default = 60},
+        {type = "button", key = "roulette_btn", name = "Get and send random message", action = do_random_send},
+
+        {type = "header", key = "hdr_reply", name = "REPLY"},
+        {type = "toggle", key = "instant_reply", name = "Reply to replies", default = true},
+        {type = "seekbar", key = "reply_chance", name = "Reply chance (%)", min = 0, max = 100, step = 5, default = 75},
+        {type = "toggle", key = "instant_react", name = "React to replies", default = true},
+        {type = "toggle", key = "debug", name = "Debug (show toast logs)", default = false},
+
+        {type = "header", key = "hdr_chats", name = "SAVED CHATS"},
+        {type = "button", key = "add_chat_btn", name = "Add chat", action = add_chat_action},
+    }
+    local entries = get_chat_entries()
+    if #entries > 0 then
+        for _, e in ipairs(entries) do
+            local cid = e.id
+            local cname = e.name
+            settings[#settings + 1] = {
+                type = "button",
+                key = "chat_" .. tostring(cid),
+                name = cname,
+                action = function()
+                    remove_chat_id(cid)
+                    rebuild_settings()
+                    xenon.refreshSettings()
+                end
+            }
+        end
+    else
+        settings[#settings + 1] = {type = "text", key = "chat_empty", name = "No chats added yet"}
+    end
+    plugin_settings = settings
+end
+
+local function add_chat_with_name(chatId)
+    local name = xenon.getPeerName(chatId)
+    if not name then name = tostring(chatId) end
+    local entries = get_chat_entries()
+    for _, e in ipairs(entries) do
+        if e.id == chatId then
+            xenon.bulletin("Chat already added!")
+            return
+        end
+    end
+    entries[#entries + 1] = {id = chatId, name = name}
+    save_chat_entries(entries)
+    rebuild_settings()
+    xenon.refreshSettings()
+    xenon.bulletin("Chat added!")
+end
+
+add_chat_action = function()
+    xenon.openChatPicker(function(chatId)
+        add_chat_with_name(chatId)
+    end)
+end
+
+local function add_current_chat()
+    local chatId = xenon.getOpenChatId()
+    if chatId == 0 then
+        xenon.bulletin("Open a chat first!")
+        return
+    end
+    add_chat_with_name(chatId)
+end
+
+xenon.on("onSettingsOpen", function()
+    rebuild_settings()
+    restart_watcher()
+end)
+
+xenon.on("onChatMenuBuild", function(ctx)
+    local ids = get_chat_ids()
+    local items = {}
+    items[#items + 1] = {text = "Random reply (" .. #ids .. ")", icon = "send"}
+    items[#items + 1] = {text = "Add current chat", icon = "add"}
+    items[#items + 1] = {text = "Open settings", icon = "settings"}
+    return items
+end)
+
+xenon.on("onChatMenuItemClick", function(ctx)
+    if ctx.item == 0 then
+        do_random_send()
+    elseif ctx.item == 1 then
+        add_current_chat()
+    elseif ctx.item == 2 then
+        xenon.openPluginSettings()
+    end
+end)
+
+local function dlog(msg)
+    if get_setting("debug", false) then
+        xenon.toast(tostring(msg))
+    end
+end
+
+-- Pick a random sendable message from a history table (text or small media).
+local function pick_sendable(all)
+    local sendable = {}
+    for i = 1, #all do
+        local m = all[i]
+        local has_text = m.text and m.text ~= ""
+        local has_media = m.media_type and m.media_type ~= ""
+        local oversized = m.size and m.size > 10 * 1024 * 1024
+        if has_text or (has_media and not oversized) then
+            sendable[#sendable + 1] = m
+        end
+    end
+    if #sendable == 0 then return nil end
+    return sendable[math.random(#sendable)]
+end
+
+-- Send a random message from history as a reply to msgId.
+local function reply_with_random(chatId, msgId)
+    local lookback = get_setting("lookback", 10)
+    dlog("reply_with_random chat=" .. chatId .. " msg=" .. msgId .. " lookback=" .. lookback)
+    xenon.getRecentMessages(chatId, lookback, function(all, err)
+        if err then dlog("getRecentMessages error: " .. tostring(err)); return end
+        if not all or #all == 0 then dlog("no messages to pick from"); return end
+        local pick = pick_sendable(all)
+        if not pick then dlog("no sendable message found"); return end
+        dlog("picked msg " .. pick.id .. (pick.media_type and (" media=" .. pick.media_type) or " text"))
+        if pick.media_type then
+            xenon.sendMedia(chatId, pick.id, msgId)
+        else
+            xenon.sendMessage(pick.text, chatId, msgId)
+        end
+    end)
+end
+
+xenon.on("onNewMessage", function(ctx)
+    -- Skip outgoing messages we authored.
+    if ctx.out then return end
+
+    -- This plugin only works in groups/channels (negative ids). Private chats
+    -- (DMs) are intentionally ignored — the reply detection there is unreliable
+    -- with this engine.
+    if ctx.chatId >= 0 then return end
+
+    local reply_on_reply = get_setting("instant_reply", true)
+    local react_on_reply = get_setting("instant_react", true)
+    if not reply_on_reply and not react_on_reply then return end
+
+    -- Only react in chats the user added to the list.
+    local ids = get_chat_ids()
+    if #ids == 0 then return end
+    local found = false
+    for _, id in ipairs(ids) do
+        if id == ctx.chatId then found = true; break end
+    end
+    if not found then return end
+
+    dlog("onNewMessage chat=" .. ctx.chatId .. " msg=" .. ctx.msgId .. " reply_to=" .. tostring(ctx.reply_to_msg_id))
+
+    -- No reply target: not a reply-to-me, do nothing (this plugin only reacts
+    -- to direct replies to our own messages).
+    if ctx.reply_to_msg_id == nil or ctx.reply_to_msg_id == 0 then
+        return
+    end
+
+    -- Group/channel: verify the replied-to message is ours via channels.getMessages
+    -- (reliable for any msg-id, unlike messages.getMessages).
+    xenon.getMessageById(ctx.chatId, ctx.reply_to_msg_id, function(orig, err)
+        if err then dlog("getMessageById error: " .. tostring(err)); return end
+        if not orig or not orig[1] then dlog("replied message not found"); return end
+        if not orig[1].out then dlog("replied message is not ours"); return end
+
+        dlog("reply-to-me detected! reacting + replying")
+        -- Always react (independent of reply_chance; this is a direct reply).
+        if react_on_reply then
+            xenon.setReaction(ctx.chatId, ctx.msgId, reactions[math.random(#reactions)])
+        end
+        -- Always reply to a reply-to-me (chance only applied to random
+        -- non-reply messages, which we don't handle here).
+        if reply_on_reply then
+            reply_with_random(ctx.chatId, ctx.msgId)
+        end
+    end)
+end)
+
+rebuild_settings()
+restart_watcher()

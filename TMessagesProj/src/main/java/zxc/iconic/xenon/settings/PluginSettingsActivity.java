@@ -1,21 +1,14 @@
 package zxc.iconic.xenon.settings;
 
-import android.content.Context;
 import android.view.View;
-import android.widget.LinearLayout;
-import android.widget.TextView;
 
 import org.luaj.vm2.LuaValue;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
-import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.TextCheckCell;
-import org.telegram.ui.Components.BulletinFactory;
-import org.telegram.ui.Components.EditTextBoldCursor;
-import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.UniversalAdapter;
 
@@ -108,13 +101,14 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
                     break;
                 }
                 case TEXT: {
-                    String curr = raw != null ? raw : s.defaultString;
-                    if (curr == null) curr = "";
-                    if (curr.isEmpty()) {
-                        items.add(TextSettingsCellFactory.of(rid, s.name));
-                    } else {
-                        items.add(TextSettingsCellFactory.of(rid, s.name, curr));
-                    }
+                    // Static, non-interactive label. name is the text; if a
+                    // default value is set, show it as a subtitle.
+                    String subtitle = s.defaultString != null && !s.defaultString.isEmpty() ? s.defaultString : null;
+                    UItem textItem = subtitle != null
+                            ? TextSettingsCellFactory.of(rid, s.name, subtitle)
+                            : TextSettingsCellFactory.of(rid, s.name);
+                    textItem.setEnabled(false);
+                    items.add(textItem);
                     break;
                 }
                 case BUTTON: {
@@ -154,7 +148,7 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
                 break;
             }
             case TEXT: {
-                showTextEditDialog(s);
+                // Static label — not interactive.
                 break;
             }
             case BUTTON: {
@@ -173,38 +167,6 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
                 break;
             }
         }
-    }
-
-    private void showTextEditDialog(PluginManager.LoadedPlugin.PluginSetting s) {
-        Context ctx = getParentActivity();
-        if (ctx == null) return;
-        AlertDialog.Builder builder = new AlertDialog.Builder(ctx, resourcesProvider);
-        builder.setTitle(s.name);
-        LinearLayout container = new LinearLayout(ctx);
-        container.setOrientation(LinearLayout.VERTICAL);
-        container.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(16), AndroidUtilities.dp(24), 0);
-        EditTextBoldCursor editText = new EditTextBoldCursor(ctx);
-        editText.setTextSize(16);
-        editText.setTextColor(Theme.getColor(Theme.key_dialogTextBlack, resourcesProvider));
-        String curr = getPrefs().getString(settingKey(s.key), s.defaultString);
-        if (curr == null) curr = "";
-        editText.setText(curr);
-        editText.setSelection(editText.getText().length());
-        if (s.hint != null && !s.hint.isEmpty()) {
-            editText.setHint(s.hint);
-            editText.setHintTextColor(Theme.getColor(Theme.key_dialogTextGray, resourcesProvider));
-        }
-        container.addView(editText, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        builder.setView(container);
-        builder.setPositiveButton(LocaleController.getString("OK", R.string.OK), (dialog, which) -> {
-            String val = editText.getText().toString();
-            getPrefs().edit().putString(settingKey(s.key), val).apply();
-            updateRows();
-        });
-        builder.setNegativeButton(LocaleController.getString("Cancel", R.string.Cancel), null);
-        AlertDialog dialog = builder.show();
-        editText.requestFocus();
-        AndroidUtilities.showKeyboard(editText);
     }
 
     private String settingKey(String key) {

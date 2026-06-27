@@ -305,6 +305,10 @@ public class ApplicationLoader extends Application {
 
         super.onCreate();
 
+        // Install plugin Safe Mode crash handler as early as possible so it can
+        // capture crashes from any thread (including startup).
+        zxc.iconic.xenon.plugins.PluginSafeMode.install();
+
         AnalyticsHelper.start(this);
         ComponentsHelper.fixComponents(this);
 

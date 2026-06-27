@@ -42,7 +42,7 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
     private final int pluginsHeaderRow = rowId++;
     private int nextPluginRow = rowId;
 
-    private final Map<Integer, PluginManager.LoadedPlugin> pluginRows = new HashMap<>();
+    private final Map<Integer, PluginManager.PluginInfo> pluginRows = new HashMap<>();
     private boolean firstLoad = true;
 
     @Override
@@ -50,34 +50,43 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
         items.add(UItem.asHeader(LocaleController.getString(R.string.Plugins)));
         items.add(UItem.asCheck(enableRow, LocaleController.getString(R.string.PluginsEnable),
                 LocaleController.getString(R.string.PluginsEnableDesc)).setChecked(NekoConfig.pluginsEnabled));
-        items.add(UItem.asShadow(LocaleController.getString(R.string.PluginsEnableDesc)));
+        items.add(UItem.asShadow(null));
 
         items.add(TextSettingsCellFactory.of(installRow, LocaleController.getString(R.string.PluginsInstall)).accent());
         items.add(UItem.asShadow(null));
 
-        List<PluginManager.LoadedPlugin> plugins = PluginManager.getInstance().getPlugins();
-        if (plugins.isEmpty()) {
+        // Plugin list is always shown — parsed from disk, independent of whether
+        // the engine is enabled. The user can toggle/remove plugins before
+        // turning the engine back on.
+        List<PluginManager.PluginInfo> infos = PluginManager.getInstance().getAllPluginInfos();
+        if (infos.isEmpty()) {
             items.add(UItem.asShadow(LocaleController.getString(R.string.PluginsEmpty)));
         } else {
             items.add(UItem.asHeader(LocaleController.getString(R.string.PluginsInstalled)));
             pluginRows.clear();
             nextPluginRow = rowId;
             int unnamedCount = 0;
-            for (PluginManager.LoadedPlugin plugin : plugins) {
+            for (PluginManager.PluginInfo info : infos) {
                 int rid = nextPluginRow++;
-                pluginRows.put(rid, plugin);
-                String title = plugin.name != null ? plugin.name : plugin.displayName + " ⚠";
-                String desc = plugin.description != null
-                        ? plugin.description
+                pluginRows.put(rid, info);
+                String title = info.name != null ? info.name : info.fileName + " ⚠";
+                String desc = info.description != null
+                        ? info.description
                         : LocaleController.getString(R.string.PluginsNoDescription);
-                items.add(UItem.asCheck(rid, title, desc).setChecked(plugin.isEnabled()));
-                if (plugin.name == null) unnamedCount++;
+                // Reflect the stored toggle (plugin_enabled_<fileName>) so the
+                // check is accurate even with the engine off, and stays fully
+                // clickable so the user can pick which plugins run after
+                // re-enabling the engine.
+                boolean enabled = PluginSettingsActivity.getPrefs()
+                        .getBoolean("plugin_enabled_" + info.fileName, true);
+                items.add(UItem.asCheck(rid, title, desc).setChecked(enabled));
+                if (info.name == null) unnamedCount++;
             }
             items.add(UItem.asShadow(null));
 
             if (firstLoad) {
                 firstLoad = false;
-                int count = plugins.size();
+                int count = infos.size();
                 int unnamed = unnamedCount;
                 AndroidUtilities.runOnUIThread(() -> {
                     if (isFinishing()) return;
@@ -106,19 +115,16 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
             }
             updateRows();
         } else if (id == installRow) {
-            if (!NekoConfig.pluginsEnabled) {
-                BulletinFactory.of(this).createErrorBulletin(
-                        LocaleController.getString(R.string.PluginsEnableFirst)).show();
-                return;
-            }
+            // Allow installing plugins regardless of the engine state. They'll
+            // activate once the engine is enabled.
             launchFilePicker();
         } else if (pluginRows.containsKey(id)) {
-            PluginManager.LoadedPlugin plugin = pluginRows.get(id);
-            showPluginBottomSheet(plugin);
+            PluginManager.PluginInfo info = pluginRows.get(id);
+            showPluginBottomSheet(info);
         }
     }
 
-    private void showPluginBottomSheet(PluginManager.LoadedPlugin plugin) {
+    private void showPluginBottomSheet(PluginManager.PluginInfo info) {
         Activity activity = getParentActivity();
         if (activity == null) return;
 
@@ -129,7 +135,7 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
 
         final BottomSheet[] sheetRef = new BottomSheet[1];
 
-        String titleText = plugin.name != null ? plugin.name : plugin.displayName;
+        String titleText = info.name != null ? info.name : info.fileName;
         TextView titleView = new TextView(activity);
         titleView.setText(titleText);
         titleView.setTextSize(18);
@@ -138,12 +144,12 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
         titleView.setPadding(0, 0, 0, AndroidUtilities.dp(8));
         layout.addView(titleView);
 
-        if (plugin.description != null || plugin.name == null) {
+        if (info.description != null || info.name == null) {
             TextView descView = new TextView(activity);
-            String descText = plugin.description != null
-                    ? plugin.description
+            String descText = info.description != null
+                    ? info.description
                     : LocaleController.getString(R.string.PluginsNoDescription);
-            if (plugin.name == null) {
+            if (info.name == null) {
                 descText = LocaleController.getString(R.string.PluginsPluginNoName);
             }
             descView.setText(descText);
@@ -159,40 +165,51 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
                 FrameLayout.LayoutParams.MATCH_PARENT, AndroidUtilities.dp(1)));
         layout.addView(separator);
 
+        // Toggle writes directly to prefs, so it works even with the engine off.
+        final boolean[] enabled = { PluginSettingsActivity.getPrefs().getBoolean("plugin_enabled_" + info.fileName, true) };
         TextCheckCell toggleCell = new TextCheckCell(activity);
         toggleCell.setTextAndCheck(LocaleController.getString(R.string.PluginsPluginEnabled),
-                plugin.isEnabled(), false);
+                enabled[0], false);
         toggleCell.setOnClickListener(v -> {
-            boolean newState = !plugin.isEnabled();
-            plugin.setEnabled(newState);
-            toggleCell.setChecked(newState);
+            enabled[0] = !enabled[0];
+            PluginSettingsActivity.getPrefs().edit()
+                    .putBoolean("plugin_enabled_" + info.fileName, enabled[0]).apply();
+            toggleCell.setChecked(enabled[0]);
+            // If the engine is on, apply the change live.
+            if (NekoConfig.pluginsEnabled) {
+                PluginManager.getInstance().reloadAll();
+            }
             updateRows();
         });
         layout.addView(toggleCell);
 
-        if (!plugin.settings.isEmpty()) {
-            int accentColorPill = Theme.getColor(Theme.key_featuredStickers_addButton, resourcesProvider);
-            double luminance = (0.299 * android.graphics.Color.red(accentColorPill) + 0.587 * android.graphics.Color.green(accentColorPill) + 0.114 * android.graphics.Color.blue(accentColorPill)) / 255.0;
-            int pillTextColor = luminance > 0.5 ? 0xff000000 : 0xffffffff;
+        // Settings button: only meaningful for an active plugin (needs Globals).
+        if (NekoConfig.pluginsEnabled) {
+            PluginManager.LoadedPlugin loaded = PluginManager.getInstance().findPlugin(info.fileName);
+            if (loaded != null && !loaded.settings.isEmpty()) {
+                int accentColorPill = Theme.getColor(Theme.key_featuredStickers_addButton, resourcesProvider);
+                double luminance = (0.299 * android.graphics.Color.red(accentColorPill) + 0.587 * android.graphics.Color.green(accentColorPill) + 0.114 * android.graphics.Color.blue(accentColorPill)) / 255.0;
+                int pillTextColor = luminance > 0.5 ? 0xff000000 : 0xffffffff;
 
-            android.widget.FrameLayout settingsWrap = new android.widget.FrameLayout(activity);
-            settingsWrap.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(8), AndroidUtilities.dp(16), AndroidUtilities.dp(4));
+                android.widget.FrameLayout settingsWrap = new android.widget.FrameLayout(activity);
+                settingsWrap.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(8), AndroidUtilities.dp(16), AndroidUtilities.dp(4));
 
-            TextView settingsBtn = new TextView(activity);
-            settingsBtn.setText(LocaleController.getString(R.string.PluginsOpenSettings));
-            settingsBtn.setTextColor(pillTextColor);
-            settingsBtn.setTextSize(15);
-            settingsBtn.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
-            settingsBtn.setGravity(android.view.Gravity.CENTER);
-            settingsBtn.setBackground(Theme.createRoundRectDrawable(AndroidUtilities.dp(24), accentColorPill));
-            settingsBtn.setPadding(0, AndroidUtilities.dp(12), 0, AndroidUtilities.dp(12));
-            settingsBtn.setElevation(AndroidUtilities.dp(2));
-            settingsBtn.setOnClickListener(v -> {
-                sheetRef[0].dismiss();
-                presentFragment(new PluginSettingsActivity().setPlugin(plugin));
-            });
-            settingsWrap.addView(settingsBtn, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 48));
-            layout.addView(settingsWrap);
+                TextView settingsBtn = new TextView(activity);
+                settingsBtn.setText(LocaleController.getString(R.string.PluginsOpenSettings));
+                settingsBtn.setTextColor(pillTextColor);
+                settingsBtn.setTextSize(15);
+                settingsBtn.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+                settingsBtn.setGravity(android.view.Gravity.CENTER);
+                settingsBtn.setBackground(Theme.createRoundRectDrawable(AndroidUtilities.dp(24), accentColorPill));
+                settingsBtn.setPadding(0, AndroidUtilities.dp(12), 0, AndroidUtilities.dp(12));
+                settingsBtn.setElevation(AndroidUtilities.dp(2));
+                settingsBtn.setOnClickListener(v -> {
+                    sheetRef[0].dismiss();
+                    presentFragment(new PluginSettingsActivity().setPlugin(loaded));
+                });
+                settingsWrap.addView(settingsBtn, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 48));
+                layout.addView(settingsWrap);
+            }
         }
 
         android.widget.FrameLayout deleteWrap = new android.widget.FrameLayout(activity);
@@ -209,7 +226,7 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
         deleteBtn.setPadding(0, AndroidUtilities.dp(12), 0, AndroidUtilities.dp(12));
         deleteBtn.setElevation(AndroidUtilities.dp(2));
         deleteBtn.setOnClickListener(v -> {
-            PluginManager.getInstance().remove(plugin.fileName);
+            PluginManager.getInstance().remove(info.fileName);
             BulletinFactory.of(this).createSimpleBulletin(R.raw.chats_infotip,
                     LocaleController.getString(R.string.PluginsRemoved)).show();
             sheetRef[0].dismiss();

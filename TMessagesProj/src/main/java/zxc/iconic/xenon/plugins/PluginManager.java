@@ -125,6 +125,59 @@ public class PluginManager {
         return Collections.unmodifiableList(new ArrayList<>(plugins));
     }
 
+    /**
+     * Lightweight metadata for every {@code .xplugin} file on disk, regardless
+     * of whether the engine is enabled or the plugin is active. Used by the UI
+     * so the plugins list is always visible (even with the engine off), letting
+     * the user toggle/remove plugins before re-enabling the engine.
+     */
+    public static class PluginInfo {
+        public final String fileName;
+        public final String name;
+        public final String description;
+        public final String pluginId;
+        public final boolean active;
+
+        public PluginInfo(String fileName, String name, String description, String pluginId, boolean active) {
+            this.fileName = fileName;
+            this.name = name;
+            this.description = description;
+            this.pluginId = pluginId;
+            this.active = active;
+        }
+    }
+
+    /**
+     * All installed plugins as {@link PluginInfo}, parsed from disk without
+     * executing any Lua. Works whether or not the engine is enabled, because the
+     * user must be able to manage plugins while the engine is off.
+     */
+    public List<PluginInfo> getAllPluginInfos() {
+        File dir = getPluginsDir();
+        File[] files = dir.listFiles((d, name) -> name.endsWith(PLUGIN_EXT));
+        List<PluginInfo> result = new ArrayList<>();
+        if (files == null) return result;
+        for (File file : files) {
+            String[] meta = parseMetadata(file);
+            String name = meta != null && meta[0] != null ? meta[0] : null;
+            String desc = meta != null && meta[1] != null ? meta[1] : null;
+            String id = meta != null && meta[2] != null ? meta[2] : null;
+            boolean active = false;
+            // A plugin is "active" only if the engine is on, it's enabled in
+            // prefs, and it actually loaded.
+            if (isEnabled()) {
+                for (LoadedPlugin p : plugins) {
+                    if (p.fileName.equals(file.getName())) {
+                        active = p.isEnabled();
+                        break;
+                    }
+                }
+            }
+            result.add(new PluginInfo(file.getName(), name, desc, id, active));
+        }
+        return result;
+    }
+
     public LoadedPlugin findPlugin(String fileName) {
         ensureLoaded();
         for (LoadedPlugin p : plugins) {
@@ -187,6 +240,13 @@ public class PluginManager {
         }
         Log.d(TAG, "reloadAll: found " + files.length + " plugin file(s)");
         for (File file : files) {
+            // Skip plugins the user has toggled off. We still show them in the
+            // UI (via getAllPluginInfos, which reads the file without executing),
+            // but their Lua code doesn't run and their hooks aren't registered.
+            if (!getPrefs().getBoolean("plugin_enabled_" + file.getName(), true)) {
+                Log.d(TAG, "reloadAll: skipping disabled plugin " + file.getName());
+                continue;
+            }
             LoadedPlugin plugin = loadFile(file);
             if (plugin != null) {
                 plugins.add(plugin);
