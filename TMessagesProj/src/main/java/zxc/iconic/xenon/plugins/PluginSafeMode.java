@@ -56,6 +56,16 @@ public final class PluginSafeMode {
     /** When true, we've already entered this launch — guards against double-handling. */
     private static volatile boolean bootHandledThisLaunch;
 
+    /**
+     * Snapshot of the boot flag from the PREVIOUS launch, captured before
+     * markBootStarted overwrites it with our own "in progress" marker. This is
+     * what checkAndHandleCrash must read — reading prefs directly would return
+     * the value we just wrote for this launch, causing a false "failed to start"
+     * every single time.
+     */
+    private static volatile boolean previousBootIncomplete;
+    private static volatile long previousBootTime;
+
     private PluginSafeMode() {
     }
 
@@ -179,9 +189,13 @@ public final class PluginSafeMode {
     public static void markBootStarted() {
         Context ctx = ApplicationLoader.applicationContext;
         if (ctx == null) return;
+        // CAPTURE the previous launch's state BEFORE we overwrite it with our
+        // own "in progress" marker. This is read later by checkAndHandleCrash.
+        android.content.SharedPreferences prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        previousBootIncomplete = prefs.getBoolean(KEY_BOOT_FLAG, false);
+        previousBootTime = prefs.getLong(KEY_BOOT_TIME, 0);
         bootHandledThisLaunch = false;
-        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .edit()
+        prefs.edit()
                 .putBoolean(KEY_BOOT_FLAG, true)
                 .putLong(KEY_BOOT_TIME, System.currentTimeMillis())
                 .apply();
@@ -230,12 +244,15 @@ public final class PluginSafeMode {
 
         boolean crashed = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .getBoolean(KEY_CRASH_FLAG, false);
-        boolean hung = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .getBoolean(KEY_BOOT_FLAG, false);
+        // IMPORTANT: read the PREVIOUS launch's boot state from the captured
+        // field, not from prefs. prefs[KEY_BOOT_FLAG] was already overwritten
+        // to true by markBootStarted() at the start of THIS launch — reading it
+        // here would make every launch look like it failed to start.
+        boolean hung = previousBootIncomplete;
 
         if (!crashed && !hung) {
-            // Healthy previous launch — just make sure this one is tracked.
-            markBootStarted();
+            // Healthy previous launch — nothing to do. This launch is already
+            // tracked (markBootStarted ran in ApplicationLoader).
             return;
         }
 
@@ -243,8 +260,7 @@ public final class PluginSafeMode {
         long when = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .getLong(KEY_CRASH_TIME, 0);
         if (when == 0) {
-            when = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                    .getLong(KEY_BOOT_TIME, 0);
+            when = previousBootTime;
         }
 
         String reason = crashed ? "crash" : "hang";
