@@ -427,4 +427,104 @@ public final class PluginSafeMode {
             FileLog.e(e);
         }
     }
+
+    // ------------------------------------------------------------------
+    // Plugin-level failures (not a full app crash)
+    // ------------------------------------------------------------------
+
+    /**
+     * Report a plugin that threw during load or execution, but didn't take the
+     * whole app down. Writes a full stack trace to the crash log and shows a
+     * sheet so the user can copy the exact error (e.g. NoClassDefFoundError)
+     * instead of a truncated bulletin.
+     *
+     * @param activity the current activity (for showing the sheet)
+     * @param fileName the plugin file that failed
+     * @param stage    where it failed, e.g. "loading" or "hook onNewMessage"
+     * @param t        the throwable that was caught (the source of the log)
+     */
+    public static void reportPluginFailure(Activity activity, String fileName, String stage, Throwable t) {
+        String report = buildPluginFailureReport(fileName, stage, t);
+        writeCrashLog(report);
+        if (activity != null) {
+            org.telegram.messenger.AndroidUtilities.runOnUIThread(
+                    () -> showPluginFailureSheet(activity, fileName, stage), 300);
+        }
+    }
+
+    private static String buildPluginFailureReport(String fileName, String stage, Throwable t) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Xenon plugin failure report\n");
+        sb.append("Plugin: ").append(fileName).append("\n");
+        sb.append("Stage: ").append(stage).append("\n");
+        sb.append("Time: ").append(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
+                .format(new Date())).append("\n");
+        sb.append("App: ").append(getAppVersion()).append("\n");
+        sb.append("\n--- Stack trace ---\n");
+        sb.append(t != null ? LogExceptionToString(t) : "(no throwable)");
+        return sb.toString();
+    }
+
+    private static void showPluginFailureSheet(Activity activity, String fileName, String stage) {
+        try {
+            final String crashLog = readCrashLog();
+
+            BottomSheet.Builder builder = new BottomSheet.Builder(activity, false, null);
+            LinearLayout layout = new LinearLayout(activity);
+            layout.setOrientation(LinearLayout.VERTICAL);
+            int pad = org.telegram.messenger.AndroidUtilities.dp(24);
+            layout.setPadding(pad, org.telegram.messenger.AndroidUtilities.dp(20), pad, pad);
+
+            TextView title = new TextView(activity);
+            title.setText("Plugin failed");
+            title.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 20);
+            title.setTypeface(org.telegram.messenger.AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+            title.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+            title.setPadding(0, 0, 0, org.telegram.messenger.AndroidUtilities.dp(12));
+            layout.addView(title);
+
+            TextView body = new TextView(activity);
+            body.setText("The plugin \"" + fileName + "\" failed during " + stage
+                    + " and has been disabled to keep the app stable. Copy the error below "
+                    + "to report or debug it.");
+            body.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+            body.setLineSpacing(org.telegram.messenger.AndroidUtilities.dp(2), 1f);
+            body.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText));
+            body.setPadding(0, 0, 0, org.telegram.messenger.AndroidUtilities.dp(16));
+            layout.addView(body);
+
+            // Show the stack trace inline, scrollable-ish via max lines.
+            TextView trace = new TextView(activity);
+            trace.setText(crashLog);
+            trace.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 11);
+            trace.setMaxLines(12);
+            trace.setVerticalScrollBarEnabled(true);
+            trace.setMovementMethod(android.text.method.ScrollingMovementMethod.getInstance());
+            trace.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText3));
+            trace.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundGray));
+            int tp = org.telegram.messenger.AndroidUtilities.dp(12);
+            trace.setPadding(tp, tp, tp, tp);
+            layout.addView(trace);
+
+            final BottomSheet[] sheetRef = new BottomSheet[1];
+            layout.addView(makeButton(activity, "Copy error", Theme.getColor(Theme.key_windowBackgroundWhiteBlueText), v -> {
+                copyToClipboard(crashLog);
+                Toast.makeText(activity, "Error copied", Toast.LENGTH_SHORT).show();
+            }));
+            layout.addView(divider(activity));
+            layout.addView(makeButton(activity, "Open plugins", Theme.getColor(Theme.key_windowBackgroundWhiteBlueText), v -> {
+                if (sheetRef[0] != null) sheetRef[0].dismiss();
+                openPlugins(activity);
+            }));
+            layout.addView(divider(activity));
+            layout.addView(makeButton(activity, "Close", Theme.getColor(Theme.key_windowBackgroundWhiteGrayText), v -> {
+                if (sheetRef[0] != null) sheetRef[0].dismiss();
+            }));
+
+            builder.setCustomView(layout);
+            sheetRef[0] = builder.show();
+        } catch (Exception e) {
+            FileLog.e(e);
+        }
+    }
 }

@@ -256,8 +256,7 @@ public class PluginManager {
                 FileLog.e("Plugin " + file.getName() + " crashed during load", t);
                 Log.e(TAG, "reloadAll: plugin " + file.getName() + " threw during load: "
                         + t.getClass().getSimpleName() + ": " + t.getMessage());
-                quarantineFile(file.getName(), "crashed during load ("
-                        + t.getClass().getSimpleName() + ")");
+                quarantineFile(file.getName(), "loading", t);
                 continue;
             }
             if (plugin != null) {
@@ -564,7 +563,8 @@ public class PluginManager {
     /**
      * Disable a misbehaving plugin permanently (until the user re-enables it)
      * and rebuild the engine so it stops receiving hooks. Used by the hook
-     * timeout guard.
+     * timeout guard. Also surfaces a failure sheet so the user can copy the
+     * reason (a hook running longer than the guard allows, i.e. an infinite loop).
      */
     private void quarantinePlugin(LoadedPlugin plugin, String reason) {
         try {
@@ -574,11 +574,14 @@ public class PluginManager {
                 try {
                     PluginApi.stopAllForPlugin(plugin.fileName);
                     reloadAll();
-                    PluginApi.showBulletin("Plugin " + plugin.displayName
-                            + " was disabled: " + reason);
                 } catch (Exception ignored) {
                 }
             });
+            // Report with a synthetic throwable so the failure sheet + copy
+            // button show a meaningful, copyable reason.
+            Throwable synthetic = new java.util.concurrent.TimeoutException(reason);
+            android.app.Activity activity = getCurrentActivity();
+            PluginSafeMode.reportPluginFailure(activity, plugin.fileName, reason, synthetic);
         } catch (Exception ignored) {
         }
     }
@@ -586,20 +589,22 @@ public class PluginManager {
     /**
      * Disable a plugin by file name without needing a loaded instance (e.g. when
      * its top-level code threw during load). Sets the prefs flag so it won't run
-     * again, records a crash log, and notifies the user.
+     * again, writes a full crash log, and shows a sheet so the user can copy the
+     * exact error (the full stack trace, not a truncated class name).
      */
-    private void quarantineFile(String fileName, String reason) {
+    private void quarantineFile(String fileName, String stage, Throwable t) {
         try {
             getPrefs().edit().putBoolean("plugin_enabled_" + fileName, false).apply();
-            FileLog.e("Plugin quarantined: " + fileName + " — " + reason);
-            // Surface in the safe-mode crash log so "Copy crash log" has context.
-            org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
-                try {
-                    PluginApi.showBulletin("Plugin " + fileName
-                            + " was disabled: " + reason);
-                } catch (Exception ignored) {
-                }
-            });
+            FileLog.e("Plugin quarantined: " + fileName + " — " + stage, t);
+            android.app.Activity activity = getCurrentActivity();
+            if (activity != null) {
+                PluginSafeMode.reportPluginFailure(activity, fileName, stage, t);
+            } else {
+                // No activity available — fall back to a plain bulletin.
+                String msg = t != null ? t.getClass().getSimpleName() : stage;
+                PluginApi.showBulletin("Plugin " + fileName
+                        + " was disabled: " + msg);
+            }
         } catch (Exception ignored) {
         }
     }
