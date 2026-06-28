@@ -142,7 +142,7 @@ local reactions = {"🔥", "❤️", "😂", "😱", "👌", "🤝", "😁", "�
 local function rebuild_settings()
     local settings = {
         {type = "header", key = "hdr_roulette", name = "ROULETTE"},
-        {type = "seekbar", key = "lookback", name = "Last messages to check", min = 1, max = 50, step = 1, default = 10},
+        {type = "seekbar", key = "lookback", name = "Last messages to check", min = 1, max = 500, step = 1, default = 10},
         {type = "toggle", key = "auto_send", name = "Auto-send on activity", default = false},
         {type = "seekbar", key = "auto_interval", name = "Interval (seconds)", min = 5, max = 1800, step = 5, default = 60},
         {type = "button", key = "roulette_btn", name = "Get and send random message", action = do_random_send},

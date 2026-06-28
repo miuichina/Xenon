@@ -142,30 +142,57 @@ public class PluginApi {
         if (total == 0) return;
         for (long chatId : w.chats) {
             int account = UserConfig.selectedAccount;
-            MessagesController mc = MessagesController.getInstance(account);
-            TLRPC.InputPeer peer = mc.getInputPeer(chatId);
-            if (peer == null) { done[0]++; continue; }
-            TLRPC.TL_messages_getHistory req = new TLRPC.TL_messages_getHistory();
-            req.peer = peer;
-            req.limit = 20;
-            req.offset_id = 0;
-            req.offset_date = 0;
-            req.add_offset = 0;
             long cid = chatId;
-            ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
-                if (response instanceof TLRPC.messages_Messages) {
-                    TLRPC.messages_Messages msgs = (TLRPC.messages_Messages) response;
-                    int latestAnyId = msgs.messages.isEmpty() ? 0 : msgs.messages.get(0).id;
-                    w.lastIds.put(cid, latestAnyId);
+            ensurePeerLoaded(account, cid, () -> {
+                if (!w.running) {
+                    // Stopped while loading — still finish the round so nothing
+                    // hangs.
+                    finishWatcherBaselineRound(w, done, total);
+                    return;
                 }
-                saveWatcherIds(w.key, w.lastIds);
-                done[0]++;
-                if (done[0] == total) {
-                    scheduleWatcher(w);
+                MessagesController mc = MessagesController.getInstance(account);
+                TLRPC.InputPeer peer = mc.getInputPeer(cid);
+                if (peer == null) {
+                    // Couldn't resolve: set a baseline of 0 so the watcher isn't
+                    // "blind" on this chat for its whole life — the first check
+                    // will treat everything as new, which is safer than missing.
+                    Log.e("XenonPlugin", "watcher init: chat=" + cid + " peer null, baseline=0");
+                    w.lastIds.putIfAbsent(cid, 0);
+                    finishWatcherBaselineRound(w, done, total);
+                    return;
                 }
+                TLRPC.TL_messages_getHistory req = new TLRPC.TL_messages_getHistory();
+                req.peer = peer;
+                req.limit = 20;
+                req.offset_id = 0;
+                req.offset_date = 0;
+                req.add_offset = 0;
+                ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
+                    try {
+                        if (error != null) {
+                            Log.e("XenonPlugin", "watcher init: chat=" + cid + " error=" + error.text);
+                            w.lastIds.putIfAbsent(cid, 0);
+                        } else if (response instanceof TLRPC.messages_Messages) {
+                            TLRPC.messages_Messages msgs = (TLRPC.messages_Messages) response;
+                            int latestAnyId = msgs.messages.isEmpty() ? 0 : msgs.messages.get(0).id;
+                            w.lastIds.put(cid, latestAnyId);
+                        }
+                    } catch (Throwable t) {
+                        FileLog.e(t);
+                    } finally {
+                        // ALWAYS bump the counter — otherwise one failing chat
+                        // would prevent scheduleWatcher from ever running.
+                        finishWatcherBaselineRound(w, done, total);
+                    }
+                });
             });
         }
-        if (done[0] == total) {
+    }
+
+    private static void finishWatcherBaselineRound(MessageWatcher w, int[] done, int total) {
+        int n = ++done[0];
+        saveWatcherIds(w.key, w.lastIds);
+        if (n == total) {
             scheduleWatcher(w);
         }
     }
@@ -200,61 +227,92 @@ public class PluginApi {
         int[] idx = {1};
         for (long chatId : w.chats) {
             int account = UserConfig.selectedAccount;
-            MessagesController mc = MessagesController.getInstance(account);
-            TLRPC.TL_messages_getHistory req = new TLRPC.TL_messages_getHistory();
-            req.peer = mc.getInputPeer(chatId);
-            req.limit = 20;
-            req.offset_id = 0;
-            req.offset_date = 0;
-            req.add_offset = 0;
             long cid = chatId;
-            ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
-                if (response instanceof TLRPC.messages_Messages) {
-                    TLRPC.messages_Messages msgs = (TLRPC.messages_Messages) response;
-                        if (!msgs.messages.isEmpty()) {
-                            int latestAnyId = msgs.messages.get(0).id;
-                            Integer saved = w.lastIds.get(cid);
-                            if (saved == null) {
-                                Log.d("XenonPlugin", "watcher: " + w.key + " chat=" + cid + " init baseline=" + latestAnyId);
-                                w.lastIds.put(cid, latestAnyId);
-                            } else {
-                                int prevId = saved;
-                                int incomingCount = 0;
-                                for (TLRPC.Message m : msgs.messages) {
-                                    if (!m.out && m.id > prevId) {
-                                        incomingCount++;
+            ensurePeerLoaded(account, cid, () -> {
+                if (!w.running) {
+                    // Watcher was stopped while we were loading the peer. Still
+                    // bump done so nothing hangs, then bail.
+                    bumpWatcherDone(w, done, total, idx, triggered, 0);
+                    return;
+                }
+                MessagesController mc = MessagesController.getInstance(account);
+                TLRPC.InputPeer peer = mc.getInputPeer(cid);
+                if (peer == null) {
+                    // Couldn't resolve the peer even after loading. Count this
+                    // chat as "checked" so the round completes and the next
+                    // interval still schedules — otherwise one unresolvable chat
+                    // would freeze the whole watcher forever.
+                    Log.e("XenonPlugin", "watcher: " + w.key + " chat=" + cid + " peer null, skipping");
+                    bumpWatcherDone(w, done, total, idx, triggered, 0);
+                    return;
+                }
+                TLRPC.TL_messages_getHistory req = new TLRPC.TL_messages_getHistory();
+                req.peer = peer;
+                req.limit = 20;
+                req.offset_id = 0;
+                req.offset_date = 0;
+                req.add_offset = 0;
+                ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
+                    try {
+                        if (error != null) {
+                            Log.e("XenonPlugin", "watcher: " + w.key + " chat=" + cid + " error=" + error.text);
+                        } else if (response instanceof TLRPC.messages_Messages) {
+                            TLRPC.messages_Messages msgs = (TLRPC.messages_Messages) response;
+                            if (!msgs.messages.isEmpty()) {
+                                int latestAnyId = msgs.messages.get(0).id;
+                                Integer saved = w.lastIds.get(cid);
+                                if (saved == null) {
+                                    Log.d("XenonPlugin", "watcher: " + w.key + " chat=" + cid + " init baseline=" + latestAnyId);
+                                    w.lastIds.put(cid, latestAnyId);
+                                } else {
+                                    int prevId = saved;
+                                    int incomingCount = 0;
+                                    for (TLRPC.Message m : msgs.messages) {
+                                        if (!m.out && m.id > prevId) {
+                                            incomingCount++;
+                                        }
                                     }
+                                    Log.d("XenonPlugin", "watcher: " + w.key + " chat=" + cid + " prev=" + prevId + " latestAny=" + latestAnyId + " incomingCount=" + incomingCount + " threshold=" + w.threshold);
+                                    if (incomingCount >= w.threshold) {
+                                        LuaTable entry = new LuaTable();
+                                        entry.set("chatId", cid);
+                                        entry.set("new_count", incomingCount);
+                                        triggered.set(idx[0]++, entry);
+                                    }
+                                    w.lastIds.put(cid, latestAnyId);
                                 }
-                                Log.d("XenonPlugin", "watcher: " + w.key + " chat=" + cid + " prev=" + prevId + " latestAny=" + latestAnyId + " incomingCount=" + incomingCount + " threshold=" + w.threshold);
-                                if (incomingCount >= w.threshold) {
-                                    LuaTable entry = new LuaTable();
-                                    entry.set("chatId", cid);
-                                    entry.set("new_count", incomingCount);
-                                    triggered.set(idx[0]++, entry);
-                                }
-                                w.lastIds.put(cid, latestAnyId);
+                            } else if (!w.lastIds.containsKey(cid)) {
+                                w.lastIds.put(cid, 0);
                             }
-                        } else if (!w.lastIds.containsKey(cid)) {
-                            w.lastIds.put(cid, 0);
                         }
+                    } catch (Throwable t) {
+                        FileLog.e(t);
+                    } finally {
+                        // ALWAYS bump done, even on error/exception — otherwise
+                        // the round never completes and the watcher hangs.
+                        bumpWatcherDone(w, done, total, idx, triggered, 0);
+                    }
+                });
+            });
+        }
+    }
+
+    private static void bumpWatcherDone(MessageWatcher w, int[] done, int total, int[] idx, LuaTable triggered, int unused) {
+        int n = ++done[0];
+        if (n == total) {
+            saveWatcherIds(w.key, w.lastIds);
+            AndroidUtilities.runOnUIThread(() -> {
+                if (!w.running) return;
+                if (!isPluginValid(w.pluginFileName)) {
+                    w.running = false;
+                    return;
                 }
-                done[0]++;
-                if (done[0] == total) {
-                    saveWatcherIds(w.key, w.lastIds);
-                    AndroidUtilities.runOnUIThread(() -> {
-                        if (!w.running) return;
-                        if (!isPluginValid(w.pluginFileName)) {
-                            w.running = false;
-                            return;
-                        }
-                        boolean triggeredAny = idx[0] > 1;
-                        Log.d("XenonPlugin", "runWatcherCheck: key=" + w.key + " done. triggered=" + triggeredAny + " triggeredCount=" + (idx[0] - 1));
-                        if (triggeredAny && w.callback != null && !w.callback.isnil()) {
-                            w.callback.call(triggered);
-                        }
-                        scheduleWatcher(w);
-                    });
+                boolean triggeredAny = idx[0] > 1;
+                Log.d("XenonPlugin", "runWatcherCheck: key=" + w.key + " done. triggered=" + triggeredAny + " triggeredCount=" + (idx[0] - 1));
+                if (triggeredAny && w.callback != null && !w.callback.isnil()) {
+                    w.callback.call(triggered);
                 }
+                scheduleWatcher(w);
             });
         }
     }
@@ -1308,6 +1366,8 @@ public class PluginApi {
 
     private static LuaValue messagesToLuaTable(TLRPC.messages_Messages msgs) {
         LuaTable t = new LuaTable();
+        int account = UserConfig.selectedAccount;
+        long myUserId = UserConfig.getInstance(account).getClientUserId();
         for (int i = 0; i < msgs.messages.size(); i++) {
             TLRPC.Message msg = msgs.messages.get(i);
             LuaTable m = new LuaTable();
@@ -1316,7 +1376,12 @@ public class PluginApi {
             m.set("sender_id", LuaValue.valueOf(peerToId(msg.from_id)));
             m.set("chat_id", LuaValue.valueOf(peerToId(msg.peer_id)));
             m.set("date", msg.date);
-            m.set("out", LuaValue.valueOf(msg.out));
+            // The `out` flag from channels.getMessages / messages.getMessages is
+            // NOT reliable: the server often leaves it false even for messages
+            // we sent. Derive "is this ours" from from_id against our own id, so
+            // plugins (e.g. reply-to-me detection) don't silently misfire.
+            boolean isOut = msg.out || (msg.from_id != null && msg.from_id.user_id == myUserId);
+            m.set("out", LuaValue.valueOf(isOut));
             if (msg.reply_to != null) {
                 m.set("reply_to_msg_id", msg.reply_to.reply_to_msg_id);
             }
