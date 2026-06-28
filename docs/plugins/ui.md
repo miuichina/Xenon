@@ -104,6 +104,38 @@ xenon.createDialog(
 
 ---
 
+## `xenon.promptText`
+
+```lua
+xenon.promptText(title, hint, callback)
+```
+
+Shows a dialog with a text input field. Use it to ask the user for a string
+value (e.g. adding a custom message to a list). The callback receives the typed
+text, or `nil` if the user cancelled.
+
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| `title` | string | ❌ | Dialog title (empty to hide). |
+| `hint` | string | ❌ | Placeholder/hint inside the input field. |
+| `callback` | function | ✅ | `function(text)` — the entered string, or `nil` on cancel. |
+
+Returns: nothing.
+
+```lua
+xenon.promptText("Add message", "Type a message...", function(text)
+    if text == nil or text == "" then return end
+    xenon.setSetting("custom_msg", text)
+    xenon.bulletin("Saved!")
+end)
+```
+
+> The keyboard opens automatically and the field is focused. On cancel the
+> callback still fires with `nil`, so you can distinguish "cancelled" from
+> "submitted empty string".
+
+---
+
 ## `xenon.createBottomSheet`
 
 ```lua

@@ -13,16 +13,19 @@ call them from any hook.
 ## `xenon.sendMessage`
 
 ```lua
-xenon.sendMessage(text, chatId [, replyToMsgId])
+xenon.sendMessage(text, chatId [, replyToMsgId [, callback]])
 ```
 
-Sends a plain-text message to a chat. Optionally as a reply.
+Sends a plain-text message to a chat. Optionally as a reply, and optionally
+with a callback that receives the server-assigned message id (useful if you
+need to delete or edit the message later).
 
 | Param | Type | Required | Description |
 |-------|------|----------|-------------|
 | `text` | string | ✅ | Message body. |
 | `chatId` | number | ✅ | Destination dialog id. **Users positive**, chats/channels **negative**. |
 | `replyToMsgId` | number | ❌ | Message id to reply to. Omit or `0` for no reply. |
+| `callback` | function | ❌ | `function(msgId)` — called with the sent message's id, or `nil` on failure. |
 
 Returns: nothing.
 
@@ -38,11 +41,20 @@ xenon.on("onNewMessage", function(ctx)
     if ctx.out then return end
     xenon.sendMessage("noted", ctx.chatId, ctx.msgId)
 end)
+
+-- send + get the id, then delete it after 2 seconds
+xenon.sendMessage("oops", chatId, 0, function(msgId)
+    if msgId == nil then return end
+    xenon.setTimeout(2, function()
+        xenon.deleteMessage(chatId, msgId)
+    end)
+end)
 ```
 
 > If the chat isn't in memory (common for private chats not opened this
 > session), the engine resolves it from the local database before sending. If it
-> still can't be resolved, the send is skipped and an error is logged to logcat.
+> still can't be resolved, the send is skipped and the callback (if any) gets
+> `nil`.
 
 ---
 
@@ -128,6 +140,39 @@ end)
 
 > In channels, this also clears the unread counter. It does not affect messages
 > that arrive after the call.
+
+---
+
+## `xenon.deleteMessage`
+
+```lua
+xenon.deleteMessage(chatId, msgId)
+```
+
+Deletes a message. For private chats and basic groups, it deletes for everyone
+(`revoke = true`). For channels/supergroups it uses `channels.deleteMessages`.
+
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| `chatId` | number | ✅ | Dialog id containing the message. |
+| `msgId` | number | ✅ | Id of the message to delete. |
+
+Returns: nothing.
+
+```lua
+-- send a message, then delete it after 2 seconds
+xenon.sendMessage("temporary", chatId, 0, function(msgId)
+    if msgId == nil then return end
+    xenon.setTimeout(2, function()
+        xenon.deleteMessage(chatId, msgId)
+    end)
+end)
+```
+
+> You can only delete messages you have permission to delete (your own, or ones
+> you're admin for). In basic groups, `revoke` deletes for everyone if the group
+> allows it. Pair with `sendMessage`'s callback to get the id of a message you
+> just sent.
 
 ---
 

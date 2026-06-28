@@ -39,11 +39,11 @@ Everything the host exposes lives under the global `xenon` table:
 | Area | Functions |
 |------|-----------|
 | [Hooks](./hooks.md) | `on` |
-| [Messaging](./messaging.md) | `sendMessage`, `sendMedia`, `setReaction`, `readHistory` |
+| [Messaging](./messaging.md) | `sendMessage`, `sendMedia`, `setReaction`, `readHistory`, `deleteMessage` |
 | [Message queries](./message-queries.md) | `getMessageById`, `getRecentMessages`, `getMessagesFromUser` |
 | [Settings & storage](./settings.md) | `getSetting`, `setSetting`, `refreshSettings` |
 | [Timers & watchers](./timers.md) | `setTimeout`, `clearTimeout`, `startMessageWatcher`, `stopMessageWatcher` |
-| [UI](./ui.md) | `toast`, `bulletin`, `createDialog`, `createBottomSheet`, `openChatPicker` |
+| [UI](./ui.md) | `toast`, `bulletin`, `createDialog`, `createBottomSheet`, `openChatPicker`, `promptText` |
 | [App integration](./app-integration.md) | `getOpenChatId`, `getPeerName`, `openActivity`, `openPluginSettings`, `finish` |
 | [Manifest](./manifest.md) | `plugin_id`, `plugin_name`, `plugin_description`, `plugin_settings` |
 

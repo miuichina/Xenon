@@ -20,6 +20,7 @@ import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BottomSheet;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.EditTextBoldCursor;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Varargs;
 import org.luaj.vm2.lib.OneArgFunction;
@@ -30,6 +31,7 @@ import org.telegram.messenger.FileLog;
 import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.MessagesStorage;
 import org.telegram.messenger.NotificationCenter;
+import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.Utilities;
@@ -407,8 +409,22 @@ public class PluginApi {
                     String text = uargs.arg(1).checkjstring();
                     long peer = uargs.arg(2).checklong();
                     int replyTo = n >= 3 && uargs.arg(3).isnumber() ? (int) uargs.arg(3).todouble() : 0;
-                    Log.d("XenonPlugin", "xenon.sendMessage called: text=" + text + " peer=" + peer + " replyTo=" + replyTo);
-                    sendMessage(text, peer, replyTo);
+                    LuaValue cb = n >= 4 && uargs.arg(4).isfunction() ? uargs.arg(4) : null;
+                    Log.d("XenonPlugin", "xenon.sendMessage called: text=" + text + " peer=" + peer + " replyTo=" + replyTo + " hasCb=" + (cb != null));
+                    sendMessage(text, peer, replyTo, cb);
+                }
+                return LuaValue.NIL;
+            }
+        });
+        api.set("deleteMessage", new VarArgFunction() {
+            @Override
+            public LuaValue invoke(Varargs args) {
+                Varargs uargs = args.subargs(1);
+                if (uargs.narg() >= 2) {
+                    long chatId = (long) uargs.arg(1).todouble();
+                    int msgId = (int) uargs.arg(2).todouble();
+                    Log.d("XenonPlugin", "xenon.deleteMessage called: chatId=" + chatId + " msgId=" + msgId);
+                    deleteMessage(chatId, msgId);
                 }
                 return LuaValue.NIL;
             }
@@ -575,6 +591,20 @@ public class PluginApi {
                 return LuaValue.NIL;
             }
         });
+        api.set("promptText", new VarArgFunction() {
+            @Override
+            public LuaValue invoke(Varargs args) {
+                Varargs uargs = args.subargs(1);
+                int n = uargs.narg();
+                String title = n > 0 ? uargs.arg(1).optjstring("") : "";
+                String hint = n > 1 ? uargs.arg(2).optjstring("") : "";
+                LuaValue cb = n > 2 ? uargs.arg(3) : LuaValue.NIL;
+                if (cb.isfunction()) {
+                    promptText(title, hint, cb);
+                }
+                return LuaValue.NIL;
+            }
+        });
         api.set("createDialog", new VarArgFunction() {
             @Override
             public LuaValue invoke(Varargs args) {
@@ -661,6 +691,10 @@ public class PluginApi {
     }
 
     static void sendMessage(final String text, final long peerId, final int replyToMsgId) {
+        sendMessage(text, peerId, replyToMsgId, null);
+    }
+
+    static void sendMessage(final String text, final long peerId, final int replyToMsgId, final LuaValue callback) {
         org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
             try {
                 int account = UserConfig.selectedAccount;
@@ -668,7 +702,7 @@ public class PluginApi {
                 // dialogId convention: positive = user, negative = chat/channel.
                 final long dialogId = peerId;
                 if (mc.getInputPeer(dialogId) != null) {
-                    doSendMessage(account, mc, dialogId, text, replyToMsgId);
+                    doSendMessage(account, mc, dialogId, text, replyToMsgId, callback);
                     return;
                 }
                 // Peer not in memory (common for private chats we haven't
@@ -676,13 +710,19 @@ public class PluginApi {
                 ensurePeerLoaded(account, dialogId, () -> {
                     if (mc.getInputPeer(dialogId) == null) {
                         Log.e("XenonPlugin", "sendMessage: could not resolve peer " + dialogId);
+                        if (callback != null && callback.isfunction()) {
+                            failCallback(callback, "could not resolve peer");
+                        }
                         return;
                     }
-                    doSendMessage(account, mc, dialogId, text, replyToMsgId);
+                    doSendMessage(account, mc, dialogId, text, replyToMsgId, callback);
                 });
             } catch (Exception e) {
                 FileLog.e("Plugin sendMessage failed", e);
                 Log.e("XenonPlugin", "sendMessage exception: " + e.getMessage());
+                if (callback != null && callback.isfunction()) {
+                    failCallback(callback, e.getMessage());
+                }
             }
         });
     }
@@ -724,10 +764,13 @@ public class PluginApi {
         });
     }
 
-    private static void doSendMessage(int account, MessagesController mc, long dialogId, String text, int replyToMsgId) {
+    private static void doSendMessage(int account, MessagesController mc, long dialogId, String text, int replyToMsgId, LuaValue callback) {
         TLRPC.InputPeer inputPeer = mc.getInputPeer(dialogId);
         if (inputPeer == null) {
             Log.e("XenonPlugin", "doSendMessage: getInputPeer returned null for dialogId=" + dialogId);
+            if (callback != null && callback.isfunction()) {
+                failCallback(callback, "peer not available");
+            }
             return;
         }
         TLRPC.TL_messages_sendMessage req = new TLRPC.TL_messages_sendMessage();
@@ -742,13 +785,53 @@ public class PluginApi {
             req.flags |= 1;
         }
         ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
+            int sentMsgId = 0;
             if (error != null) {
                 FileLog.e("Plugin sendMessage error: " + error.text);
                 Log.e("XenonPlugin", "sendMessage error: " + error.text);
             } else if (response instanceof TLRPC.Updates) {
-                mc.processUpdates((TLRPC.Updates) response, false);
+                TLRPC.Updates updates = (TLRPC.Updates) response;
+                mc.processUpdates(updates, false);
+                // Extract the server-assigned message id from the updates.
+                sentMsgId = extractMessageIdFromUpdates(updates, req.random_id);
+            }
+            if (callback != null && callback.isfunction()) {
+                final int finalId = sentMsgId;
+                org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
+                    if (finalId > 0) {
+                        callback.call(LuaValue.valueOf(finalId));
+                    } else {
+                        callback.call(LuaValue.NIL);
+                    }
+                });
             }
         });
+    }
+
+    /**
+     * Pull the final server message id out of a sendMessage response.
+     * The Updates contain either a TL_updateMessageID (id + random_id) or a
+     * TL_updateNewMessage/TL_updateNewChannelMessage whose message.id is the id.
+     */
+    private static int extractMessageIdFromUpdates(TLRPC.Updates updates, long randomId) {
+        if (updates == null || updates.updates == null) return 0;
+        // First pass: look for updateMessageID matching our random_id.
+        for (TLRPC.Update u : updates.updates) {
+            if (u instanceof org.telegram.tgnet.tl.TL_update.TL_updateMessageID
+                    && ((org.telegram.tgnet.tl.TL_update.TL_updateMessageID) u).random_id == randomId) {
+                return ((org.telegram.tgnet.tl.TL_update.TL_updateMessageID) u).id;
+            }
+        }
+        // Fallback: look for updateNewMessage / updateNewChannelMessage.
+        for (TLRPC.Update u : updates.updates) {
+            if (u instanceof org.telegram.tgnet.tl.TL_update.TL_updateNewMessage) {
+                return ((org.telegram.tgnet.tl.TL_update.TL_updateNewMessage) u).message.id;
+            }
+            if (u instanceof org.telegram.tgnet.tl.TL_update.TL_updateNewChannelMessage) {
+                return ((org.telegram.tgnet.tl.TL_update.TL_updateNewChannelMessage) u).message.id;
+            }
+        }
+        return 0;
     }
 
     static void sendMedia(final long chatId, final int msgId, final int replyToMsgId) {
@@ -925,6 +1008,63 @@ public class PluginApi {
         });
     }
 
+    static void deleteMessage(final long chatId, final int msgId) {
+        AndroidUtilities.runOnUIThread(() -> {
+            try {
+                int account = UserConfig.selectedAccount;
+                final MessagesController mc = MessagesController.getInstance(account);
+                Runnable doDelete = () -> {
+                    TLRPC.Chat chat = null;
+                    if (chatId < 0) {
+                        chat = mc.getChat(-chatId);
+                    }
+                    boolean isChannel = chat != null && chat instanceof TLRPC.TL_channel;
+                    if (isChannel) {
+                        TLRPC.InputChannel channel = mc.getInputChannel(-chatId);
+                        if (channel == null) {
+                            Log.e("XenonPlugin", "deleteMessage: input channel null for " + chatId);
+                            return;
+                        }
+                        TLRPC.TL_channels_deleteMessages req = new TLRPC.TL_channels_deleteMessages();
+                        req.channel = channel;
+                        req.id.add(msgId);
+                        ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
+                            if (error != null) {
+                                Log.e("XenonPlugin", "deleteMessage error: " + error.text);
+                            } else {
+                                Log.d("XenonPlugin", "deleteMessage success (channel)");
+                            }
+                        });
+                    } else {
+                        TLRPC.InputPeer peer = mc.getInputPeer(chatId);
+                        if (peer == null) {
+                            Log.e("XenonPlugin", "deleteMessage: input peer null for " + chatId);
+                            return;
+                        }
+                        TLRPC.TL_messages_deleteMessages req = new TLRPC.TL_messages_deleteMessages();
+                        req.id.add(msgId);
+                        req.revoke = true;
+                        ConnectionsManager.getInstance(account).sendRequest(req, (response, error) -> {
+                            if (error != null) {
+                                Log.e("XenonPlugin", "deleteMessage error: " + error.text);
+                            } else {
+                                Log.d("XenonPlugin", "deleteMessage success");
+                            }
+                        });
+                    }
+                };
+                if (mc.getInputPeer(chatId) == null) {
+                    ensurePeerLoaded(account, chatId, doDelete);
+                } else {
+                    doDelete.run();
+                }
+            } catch (Exception e) {
+                FileLog.e("Plugin deleteMessage failed", e);
+                Log.e("XenonPlugin", "deleteMessage exception: " + e.getMessage());
+            }
+        });
+    }
+
     static String getCachedPeerName(long chatId) {
         int account = UserConfig.selectedAccount;
         MessagesController mc = MessagesController.getInstance(account);
@@ -986,6 +1126,45 @@ public class PluginApi {
                 if (plugin != null) {
                     launch.presentFragment(new zxc.iconic.xenon.settings.PluginSettingsActivity().setPlugin(plugin));
                 }
+            } catch (Exception e) {
+                FileLog.e(e);
+            }
+        });
+    }
+
+    static void promptText(final String title, final String hint, final LuaValue callback) {
+        org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
+            try {
+                Activity a = PluginManager.getCurrentActivity();
+                if (a == null) return;
+                AlertDialog.Builder builder = new AlertDialog.Builder(a);
+                if (title != null && !title.isEmpty()) builder.setTitle(title);
+                LinearLayout container = new LinearLayout(a);
+                container.setOrientation(LinearLayout.VERTICAL);
+                container.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(16), AndroidUtilities.dp(24), 0);
+                EditTextBoldCursor editText = new EditTextBoldCursor(a);
+                editText.setTextSize(16);
+                editText.setTextColor(Theme.getColor(Theme.key_dialogTextBlack));
+                if (hint != null && !hint.isEmpty()) {
+                    editText.setHint(hint);
+                    editText.setHintTextColor(Theme.getColor(Theme.key_dialogTextGray));
+                }
+                container.addView(editText, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+                builder.setView(container);
+                builder.setPositiveButton(LocaleController.getString("OK", R.string.OK), (dialog, which) -> {
+                    String val = editText.getText().toString();
+                    if (callback != null && callback.isfunction()) {
+                        callback.call(LuaValue.valueOf(val));
+                    }
+                });
+                builder.setNegativeButton(LocaleController.getString("Cancel", R.string.Cancel), (dialog, which) -> {
+                    if (callback != null && callback.isfunction()) {
+                        callback.call(LuaValue.NIL);
+                    }
+                });
+                AlertDialog dialog = builder.show();
+                editText.requestFocus();
+                AndroidUtilities.showKeyboard(editText);
             } catch (Exception e) {
                 FileLog.e(e);
             }
