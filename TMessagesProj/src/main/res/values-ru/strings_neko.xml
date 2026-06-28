@@ -458,6 +458,12 @@
     <string name="PluginsLoadedCount">Плагинов загружено: %d</string>
     <string name="PluginsSettings">Настройки плагина</string>
     <string name="PluginsOpenSettings">Открыть настройки</string>
+    <string name="PluginsUpdate">Обновление</string>
+    <string name="PluginsVersion">Версия</string>
+    <string name="PluginsSafeModeTitle">Безопасный режим</string>
+    <string name="PluginsSafeModeDesc">Если плагин сломает приложение, ты всегда можешь запустить его в безопасном режиме: удерживай кнопку громкости при открытии приложения. Плагины будут отключены, и ты сможешь починить или удалить проблемный.</string>
+    <string name="PluginsSafeModeGot">Понятно</string>
+    <string name="PluginsSafeModeActivated">Безопасный режим активирован — плагины отключены</string>
     <string name="HideCameraInMediaPicker">Скрыть камеру в выборе медиа</string>
     <string name="ShowOnlineDotsInChat">Показывать точки онлайна в чате</string>
     <string name="SwitchToAyu">Переключиться на ayu-features (posral)</string>

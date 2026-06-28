@@ -7236,7 +7236,9 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
 
         // Plugin Safe Mode: if the previous launch crashed or hung, disable
         // plugins and show the crash sheet before anything else plugin-related
-        // runs.
+        // runs. Also: if the user held a volume key at cold launch, activate
+        // Safe Mode manually.
+        zxc.iconic.xenon.plugins.PluginSafeMode.consumeVolumeKeySafeMode(this);
         zxc.iconic.xenon.plugins.PluginSafeMode.checkAndHandleCrash(this);
 
         // Plugin hook: any plugin that registered via xenon.on("onResume", ...)
@@ -8620,6 +8622,10 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         int keyCode = event.getKeyCode();
+        if (event.getAction() == android.view.KeyEvent.ACTION_DOWN && (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)) {
+            // Track volume key presses during launch for the Safe Mode gesture.
+            zxc.iconic.xenon.plugins.PluginSafeMode.onVolumeKeyDown(keyCode);
+        }
         if (event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_UP || event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_DOWN) {
             BaseFragment baseFragment = getLastFragment();
             if (baseFragment != null && baseFragment.getLastStoryViewer() != null) {

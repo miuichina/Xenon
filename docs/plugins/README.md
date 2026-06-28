@@ -43,9 +43,10 @@ Everything the host exposes lives under the global `xenon` table:
 | [Message queries](./message-queries.md) | `getMessageById`, `getRecentMessages`, `getMessagesFromUser` |
 | [Settings & storage](./settings.md) | `getSetting`, `setSetting`, `refreshSettings` |
 | [Timers & watchers](./timers.md) | `setTimeout`, `clearTimeout`, `startMessageWatcher`, `stopMessageWatcher` |
-| [UI](./ui.md) | `toast`, `bulletin`, `createDialog`, `createBottomSheet`, `openChatPicker`, `promptText` |
+| [UI](./ui.md) | `toast`, `bulletin`, `bulletinButton`, `createDialog`, `createBottomSheet`, `openChatPicker`, `promptText` |
 | [App integration](./app-integration.md) | `getOpenChatId`, `getPeerName`, `openActivity`, `openPluginSettings`, `finish` |
-| [Manifest](./manifest.md) | `plugin_id`, `plugin_name`, `plugin_description`, `plugin_settings` |
+| [Manifest](./manifest.md) | `plugin_id`, `plugin_name`, `plugin_description`, `plugin_settings`, `plugin_author`, `plugin_version` |
+| [Safe Mode](./safe-mode.md) | How to recover if a plugin breaks the app (hold volume at launch) |
 
 ---
 

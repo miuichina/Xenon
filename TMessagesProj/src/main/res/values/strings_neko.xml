@@ -467,6 +467,11 @@
     <string name="PluginsSettings">Plugin settings</string>
     <string name="PluginsOpenSettings">Open settings</string>
     <string name="PluginsUpdate">Update</string>
+    <string name="PluginsVersion">Version</string>
+    <string name="PluginsSafeModeTitle">Safe Mode</string>
+    <string name="PluginsSafeModeDesc">If a plugin ever breaks the app, you can always start in Safe Mode: hold a volume button while the app is opening. Plugins will be disabled so you can fix or remove the problematic one.</string>
+    <string name="PluginsSafeModeGot">Got it</string>
+    <string name="PluginsSafeModeActivated">Safe Mode activated — plugins disabled</string>
     <string name="HideCameraInMediaPicker">Hide camera in media picker</string>
     <string name="ShowOnlineDotsInChat">Show online dots in chat</string>
     <string name="SwitchToAyu">Switch to ayu-features (posral)</string>

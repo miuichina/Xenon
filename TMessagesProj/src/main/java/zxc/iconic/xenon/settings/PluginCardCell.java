@@ -36,8 +36,11 @@ public class PluginCardCell extends FrameLayout {
     /** Vertical inset of the white card surface (gap between cards top/bottom). */
     private static final int CARD_INSET_V = 5;
 
-    private TextCheckCell toggleCell;
+    private TextView nameView;
+    private TextView versionView;
+    private TextView authorView;
     private TextView descView;
+    private View toggleSwitch;
     private View settingsButton;
     private View deleteButton;
 
@@ -87,17 +90,61 @@ public class PluginCardCell extends FrameLayout {
         LinearLayout content = new LinearLayout(context);
         content.setOrientation(LinearLayout.VERTICAL);
 
-        // Title + toggle cell (reuses the themed switch).
-        toggleCell = new TextCheckCell(context, resourcesProvider);
-        toggleCell.setBackgroundColor(Color.TRANSPARENT);
-        content.addView(toggleCell, LayoutHelper.createLinear(
+        // Title row: name + version (gray) on the left, switch on the right.
+        // Using our own TextViews keeps the name and description aligned on the
+        // same left edge (TextCheckCell had its own padding that shifted the
+        // title to the right).
+        LinearLayout titleRow = new LinearLayout(context);
+        titleRow.setOrientation(LinearLayout.HORIZONTAL);
+        titleRow.setGravity(Gravity.CENTER_VERTICAL);
+
+        nameView = new TextView(context);
+        nameView.setTextSize(16);
+        nameView.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+        nameView.setMaxLines(1);
+        nameView.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        nameView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText, resourcesProvider));
+        titleRow.addView(nameView, LayoutHelper.createLinear(
+                LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, 0, 0, 6, 0));
+
+        versionView = new TextView(context);
+        versionView.setTextSize(13);
+        versionView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText, resourcesProvider));
+        titleRow.addView(versionView, LayoutHelper.createLinear(
+                LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT));
+
+        // Spacer to push the switch to the right.
+        View spacer = new View(context);
+        titleRow.addView(spacer, LayoutHelper.createLinear(0, 1, 1f));
+
+        org.telegram.ui.Components.Switch sw = new org.telegram.ui.Components.Switch(context);
+        sw.setColors(Theme.key_switchTrack, Theme.key_switchTrackChecked,
+                Theme.key_windowBackgroundWhite, Theme.key_windowBackgroundWhite);
+        toggleSwitch = sw;
+        // FIXED size (standard Telegram switch 37x20dp). Using WRAP_CONTENT made
+        // the switch's measured width vary between cards, so it appeared to jump
+        // horizontally. A fixed size keeps it in the exact same spot on every
+        // card. No right margin — the cell already has 16dp padding, so the
+        // switch's right edge lines up with the text's left inset (symmetric).
+        titleRow.addView(toggleSwitch, LayoutHelper.createLinear(
+                37, 20, Gravity.CENTER_VERTICAL, 0, 0, 0, 0));
+
+        content.addView(titleRow, LayoutHelper.createLinear(
                 LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        // Author (under name, above description).
+        authorView = new TextView(context);
+        authorView.setTextSize(12);
+        authorView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2, resourcesProvider));
+        content.addView(authorView, LayoutHelper.createLinear(
+                LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 2, 0, 0));
 
         // Description.
         descView = new TextView(context);
         descView.setTextSize(13);
         descView.setMaxLines(3);
         descView.setLineSpacing(AndroidUtilities.dp(1), 1f);
+        descView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText, resourcesProvider));
         content.addView(descView, LayoutHelper.createLinear(
                 LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 4, 0, 0));
 
@@ -122,13 +169,13 @@ public class PluginCardCell extends FrameLayout {
                 LocaleController.getString(R.string.PluginsOpenSettings),
                 Theme.key_windowBackgroundWhiteBlackText);
         actions.addView(settingsButton, LayoutHelper.createLinear(
-                LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, 0, 0, 24, 0));
+                LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, 0, 0, 12, 0));
 
         deleteButton = makeIconButton(context, R.drawable.msg_delete,
                 LocaleController.getString(R.string.Delete),
                 Theme.key_text_RedBold);
         actions.addView(deleteButton, LayoutHelper.createLinear(
-                LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, 24, 0, 0, 0));
+                LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, 12, 0, 0, 0));
 
         content.addView(actions, LayoutHelper.createLinear(
                 LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
@@ -167,15 +214,31 @@ public class PluginCardCell extends FrameLayout {
     public void bind(UItem item) {
         String title = item.text != null ? item.text.toString() : "";
         String desc = item.subtext != null ? item.subtext.toString() : "";
+        String author = item.textValue != null ? item.textValue.toString() : "";
+        String version = (item.texts != null && item.texts.length > 0) ? item.texts[0] : null;
 
-        toggleCell.setTextAndCheck(title, item.checked, false);
-        toggleCell.setEnabled(true);
+        nameView.setText(title);
+        if (version != null && !version.isEmpty()) {
+            versionView.setText("v" + version);
+            versionView.setVisibility(VISIBLE);
+        } else {
+            versionView.setVisibility(GONE);
+        }
+        if (author != null && !author.isEmpty()) {
+            authorView.setText("by " + author);
+            authorView.setVisibility(VISIBLE);
+        } else {
+            authorView.setVisibility(GONE);
+        }
         descView.setText(desc);
-        descView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText, resourcesProvider));
+
+        if (toggleSwitch instanceof org.telegram.ui.Components.Switch) {
+            ((org.telegram.ui.Components.Switch) toggleSwitch).setChecked(item.checked, false);
+        }
     }
 
-    public TextCheckCell getToggleCell() {
-        return toggleCell;
+    public View getToggleSwitch() {
+        return toggleSwitch;
     }
 
     public View getSettingsButton() {

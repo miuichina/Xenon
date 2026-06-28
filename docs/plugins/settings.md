@@ -127,6 +127,7 @@ for the full schema; the supported row types are:
 | `seekbar` | A slider | a number (as string) |
 | `text` | Read-only text / label | — |
 | `button` | A tappable row | runs `action` |
+| `list` | A dropdown selector | selected index (0-based, as string) |
 | `header` | A section header | — |
 
 The UI writes back to the store using the entry's `key`, so after the user

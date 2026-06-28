@@ -176,6 +176,59 @@ public final class PluginSafeMode {
     }
 
     // ------------------------------------------------------------------
+    // Volume-key Safe Mode (cold launch)
+    // ------------------------------------------------------------------
+
+    /** Set by onVolumeKeyDown during the launch window. */
+    private static volatile boolean volumeKeyHeldAtLaunch;
+
+    /**
+     * Called from LaunchActivity.dispatchKeyEvent when a volume key goes down
+     * during the launch window (before markBootCompleted). Records the press.
+     */
+    public static void onVolumeKeyDown(int keyCode) {
+        if (keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP
+                || keyCode == android.view.KeyEvent.KEYCODE_VOLUME_DOWN) {
+            volumeKeyHeldAtLaunch = true;
+        }
+    }
+
+    /**
+     * If a volume key was held during launch, trigger Safe Mode: disable
+     * plugins and show the sheet. Called from onResume before plugins fire.
+     * Clears the flag. Returns true if Safe Mode was activated.
+     */
+    public static boolean consumeVolumeKeySafeMode(Activity activity) {
+        if (!volumeKeyHeldAtLaunch) return false;
+        volumeKeyHeldAtLaunch = false;
+        triggerSafeModeManual(activity, "Volume key held at launch");
+        return true;
+    }
+
+    private static void triggerSafeModeManual(Activity activity, String reason) {
+        try {
+            Context ctx = ApplicationLoader.applicationContext;
+            if (ctx != null) {
+                NekoConfig.pluginsEnabled = false;
+                ctx.getSharedPreferences("nekoconfig", Context.MODE_PRIVATE)
+                        .edit().putBoolean("pluginsEnabled", false).apply();
+            }
+            PluginManager.getInstance().onEnabledChanged();
+            writeCrashLog("Xenon plugin safe-mode report\n"
+                    + "Reason: " + reason + "\n"
+                    + "Time: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
+                        .format(new Date()) + "\n"
+                    + "Plugins disabled by user (safe mode).\n");
+            if (activity != null) {
+                org.telegram.messenger.AndroidUtilities.runOnUIThread(
+                        () -> showCrashSheet(activity, System.currentTimeMillis(), "safe"), 500);
+            }
+        } catch (Throwable t) {
+            FileLog.e(t);
+        }
+    }
+
+    // ------------------------------------------------------------------
     // Recovery
     // ------------------------------------------------------------------
 
