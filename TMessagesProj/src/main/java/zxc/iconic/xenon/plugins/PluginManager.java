@@ -85,6 +85,76 @@ public class PluginManager {
     private final CopyOnWriteArrayList<LoadedPlugin> plugins = new CopyOnWriteArrayList<>();
     private volatile boolean initialized;
 
+    // ------------------------------------------------------------------
+    // Global engine watchdog
+    // ------------------------------------------------------------------
+
+    /**
+     * If any hook has been running for longer than this without returning, the
+     * engine assumes the UI thread is wedged and force-restarts the process so
+     * the next launch boots clean (with plugins disabled by the boot guard).
+     * This is a last resort — the per-hook timeout (for fire-and-forget hooks)
+     * and Throwable catch (for result hooks) handle most cases. But a plugin
+     * that blocks the UI thread (e.g. a synchronous onSendMessage that loops)
+     * can't be interrupted from Java, so the only recovery is to kill the
+     * process and let Safe Mode take over.
+     */
+    private static final long ENGINE_WATCHDOG_TIMEOUT_MS = 10_000;
+    private static volatile long hookStartTimestamp;
+    private static volatile String hookInProgress;
+    private static Thread watchdogThread;
+
+    private static void startWatchdogIfNeeded() {
+        if (watchdogThread != null && watchdogThread.isAlive()) return;
+        hookStartTimestamp = System.currentTimeMillis();
+        watchdogThread = new Thread(() -> {
+            while (true) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    return;
+                }
+                if (hookStartTimestamp == 0) continue;
+                long elapsed = System.currentTimeMillis() - hookStartTimestamp;
+                if (elapsed > ENGINE_WATCHDOG_TIMEOUT_MS) {
+                    String hook = hookInProgress;
+                    org.telegram.messenger.FileLog.e("Plugin engine watchdog: hook '"
+                            + hook + "' has been running for " + elapsed
+                            + "ms — killing process to recover");
+                    // Try to write a crash note first (best-effort).
+                    try {
+                        PluginSafeMode.reportPluginFailure(getCurrentActivity(),
+                                "unknown", "watchdog: hook '" + hook + "' exceeded "
+                                        + ENGINE_WATCHDOG_TIMEOUT_MS + "ms",
+                                new java.util.concurrent.TimeoutException(
+                                        "Plugin engine watchdog killed the process: hook '"
+                                                + hook + "' did not return in "
+                                                + ENGINE_WATCHDOG_TIMEOUT_MS + "ms"));
+                    } catch (Throwable ignored) {
+                    }
+                    // Nuclear option: kill the process. Boot guard will disable
+                    // plugins on the next launch and show the Safe Mode sheet.
+                    System.exit(2);
+                }
+            }
+        }, "XenonPluginWatchdog");
+        watchdogThread.setDaemon(true);
+        watchdogThread.start();
+    }
+
+    /** Mark that a hook is about to run (called by fire/fireReturn). */
+    private static void markHookStart(String hookName) {
+        hookInProgress = hookName;
+        hookStartTimestamp = System.currentTimeMillis();
+        startWatchdogIfNeeded();
+    }
+
+    /** Mark that a hook finished (called by fire/fireReturn). */
+    private static void markHookEnd() {
+        hookStartTimestamp = 0;
+        hookInProgress = null;
+    }
+
     private PluginManager() {
     }
 
@@ -507,24 +577,29 @@ public class PluginManager {
             return;
         }
         Log.d(TAG, "fire(" + hookName + "): firing on " + plugins.size() + " plugin(s)");
-        for (LoadedPlugin plugin : plugins) {
-            if (!plugin.isEnabled()) {
-                Log.d(TAG, "fire(" + hookName + "): " + plugin.displayName + " disabled, skipping");
-                continue;
+        markHookStart(hookName);
+        try {
+            for (LoadedPlugin plugin : plugins) {
+                if (!plugin.isEnabled()) {
+                    Log.d(TAG, "fire(" + hookName + "): " + plugin.displayName + " disabled, skipping");
+                    continue;
+                }
+                // Run on a guarded executor with a timeout, so a plugin that loops
+                // forever (while true do end) can't hang the calling thread (often
+                // the UI thread, e.g. onResume). We can't hard-kill the Lua thread
+                // (Java has no safe Thread.stop), but on timeout we flag the plugin
+                // as misbehaving, disable it, and rebuild — which is enough to keep
+                // the app responsive. Only applies to fire-and-forget hooks;
+                // synchronous result hooks (fireReturn) are left intact.
+                try {
+                    invokeHookWithTimeout(plugin, hookName, args);
+                } catch (LuaError e) {
+                    FileLog.e("Plugin " + plugin.fileName + " hook " + hookName + " error", e);
+                    Log.e(TAG, "fire(" + hookName + "): error in " + plugin.fileName + ": " + e.getMessage());
+                }
             }
-            // Run on a guarded executor with a timeout, so a plugin that loops
-            // forever (while true do end) can't hang the calling thread (often
-            // the UI thread, e.g. onResume). We can't hard-kill the Lua thread
-            // (Java has no safe Thread.stop), but on timeout we flag the plugin
-            // as misbehaving, disable it, and rebuild — which is enough to keep
-            // the app responsive. Only applies to fire-and-forget hooks;
-            // synchronous result hooks (fireReturn) are left intact.
-            try {
-                invokeHookWithTimeout(plugin, hookName, args);
-            } catch (LuaError e) {
-                FileLog.e("Plugin " + plugin.fileName + " hook " + hookName + " error", e);
-                Log.e(TAG, "fire(" + hookName + "): error in " + plugin.fileName + ": " + e.getMessage());
-            }
+        } finally {
+            markHookEnd();
         }
     }
 
@@ -557,6 +632,32 @@ public class PluginManager {
             quarantinePlugin(plugin, "hook '" + hookName + "' exceeded timeout");
         } catch (Exception e) {
             Log.e(TAG, "fire(" + hookName + "): wait failed: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Invoke a SYNCHRONOUS result hook (fireReturn / fireBooleanResult) with a
+     * Throwable-catch around it. These hooks can't use the timeout executor
+     * (they must return a value immediately), but they still must not be able
+     * to crash the app via a StackOverflowError / OutOfMemoryError escaping
+     * Lua. If such an Error is thrown, we quarantine the offending plugin and
+     * treat the hook as returning nil/false. Normal LuaError is rethrown so the
+     * caller's catch(LuaError) handles it as before.
+     */
+    private LuaValue invokeHookReturnGuarded(LoadedPlugin plugin, String hookName, LuaValue[] args) {
+        try {
+            return plugin.invokeHookReturn(hookName, args);
+        } catch (LuaError e) {
+            // Normal Lua error — let the caller's catch(LuaError) deal with it.
+            throw e;
+        } catch (Throwable t) {
+            // StackOverflowError, OutOfMemoryError, or any other JVM-level
+            // error. These would otherwise propagate out of fireReturn and crash
+            // the app. Quarantine the plugin and move on.
+            Log.e(TAG, plugin.fileName + " hook " + hookName + " threw "
+                    + t.getClass().getSimpleName() + ": " + t.getMessage());
+            quarantineFile(plugin.fileName, "hook '" + hookName + "'", t);
+            return null;
         }
     }
 
@@ -626,24 +727,29 @@ public class PluginManager {
             return null;
         }
         Log.d(TAG, "fireReturn(" + hookName + "): firing on " + plugins.size() + " plugin(s)");
-        for (LoadedPlugin plugin : plugins) {
-            if (!plugin.isEnabled()) {
-                Log.d(TAG, "fireReturn(" + hookName + "): " + plugin.displayName + " disabled, skipping");
-                continue;
-            }
-            try {
-                LuaValue res = plugin.invokeHookReturn(hookName, args);
-                if (res != null && !res.isnil()) {
-                    Log.d(TAG, "fireReturn(" + hookName + "): " + plugin.fileName + " returned a value");
-                    return res;
+        markHookStart(hookName);
+        try {
+            for (LoadedPlugin plugin : plugins) {
+                if (!plugin.isEnabled()) {
+                    Log.d(TAG, "fireReturn(" + hookName + "): " + plugin.displayName + " disabled, skipping");
+                    continue;
                 }
-            } catch (LuaError e) {
-                FileLog.e("Plugin " + plugin.fileName + " hook " + hookName + " error", e);
-                Log.e(TAG, "fireReturn(" + hookName + "): error in " + plugin.fileName + ": " + e.getMessage());
+                try {
+                    LuaValue res = invokeHookReturnGuarded(plugin, hookName, args);
+                    if (res != null && !res.isnil()) {
+                        Log.d(TAG, "fireReturn(" + hookName + "): " + plugin.fileName + " returned a value");
+                        return res;
+                    }
+                } catch (LuaError e) {
+                    FileLog.e("Plugin " + plugin.fileName + " hook " + hookName + " error", e);
+                    Log.e(TAG, "fireReturn(" + hookName + "): error in " + plugin.fileName + ": " + e.getMessage());
+                }
             }
+            Log.d(TAG, "fireReturn(" + hookName + "): no plugin returned a value");
+            return null;
+        } finally {
+            markHookEnd();
         }
-        Log.d(TAG, "fireReturn(" + hookName + "): no plugin returned a value");
-        return null;
     }
 
     /**
@@ -662,23 +768,28 @@ public class PluginManager {
             return false;
         }
         Log.d(TAG, "fireBooleanResult(" + hookName + "): firing on " + plugins.size() + " plugin(s)");
-        for (LoadedPlugin plugin : plugins) {
-            if (!plugin.isEnabled()) {
-                Log.d(TAG, "fireBooleanResult(" + hookName + "): " + plugin.displayName + " disabled, skipping");
-                continue;
-            }
-            try {
-                LuaValue res = plugin.invokeHookReturn(hookName, args);
-                if (res != null && res.toboolean()) {
-                    Log.d(TAG, "fireBooleanResult(" + hookName + "): " + plugin.fileName + " returned true");
-                    return true;
+        markHookStart(hookName);
+        try {
+            for (LoadedPlugin plugin : plugins) {
+                if (!plugin.isEnabled()) {
+                    Log.d(TAG, "fireBooleanResult(" + hookName + "): " + plugin.displayName + " disabled, skipping");
+                    continue;
                 }
-            } catch (LuaError e) {
-                FileLog.e("Plugin " + plugin.fileName + " hook " + hookName + " error", e);
-                Log.e(TAG, "fireBooleanResult(" + hookName + "): error in " + plugin.fileName + ": " + e.getMessage());
+                try {
+                    LuaValue res = invokeHookReturnGuarded(plugin, hookName, args);
+                    if (res != null && res.toboolean()) {
+                        Log.d(TAG, "fireBooleanResult(" + hookName + "): " + plugin.fileName + " returned true");
+                        return true;
+                    }
+                } catch (LuaError e) {
+                    FileLog.e("Plugin " + plugin.fileName + " hook " + hookName + " error", e);
+                    Log.e(TAG, "fireBooleanResult(" + hookName + "): error in " + plugin.fileName + ": " + e.getMessage());
+                }
             }
+            return false;
+        } finally {
+            markHookEnd();
         }
-        return false;
     }
 
     /**

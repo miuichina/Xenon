@@ -312,6 +312,11 @@ public class ApplicationLoader extends Application {
         // finishes coming up (crash, ANR, hang, killed), the flag stays set and
         // the next launch detects the failed boot.
         zxc.iconic.xenon.plugins.PluginSafeMode.markBootStarted();
+        // Hardware panic switch: volume up/down/up/down disables plugins and
+        // restarts the app even when the UI thread is wedged by a plugin.
+        // Registered on a binder-backed ContentObserver, so it runs regardless
+        // of main-thread state.
+        zxc.iconic.xenon.plugins.VolumeKeyPanicSwitch.register();
 
         AnalyticsHelper.start(this);
         ComponentsHelper.fixComponents(this);

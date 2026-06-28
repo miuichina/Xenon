@@ -46,7 +46,6 @@ Everything the host exposes lives under the global `xenon` table:
 | [UI](./ui.md) | `toast`, `bulletin`, `createDialog`, `createBottomSheet`, `openChatPicker` |
 | [App integration](./app-integration.md) | `getOpenChatId`, `getPeerName`, `openActivity`, `openPluginSettings`, `finish` |
 | [Manifest](./manifest.md) | `plugin_id`, `plugin_name`, `plugin_description`, `plugin_settings` |
-| [Safe Mode](./safe-mode.md) | Automatic crash recovery — what happens when the app crashes |
 
 ---
 

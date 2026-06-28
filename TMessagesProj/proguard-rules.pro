@@ -172,3 +172,12 @@
 
 -dontwarn android.support.annotation.*
 -dontwarn androidx.compose.**
+
+# luaj-jse: the Lua platform loads its standard libraries (Bit32Lib, BaseLib,
+# MathLib, etc. and their inner classes like Bit32LibV) via reflection from
+# JsePlatform.standardGlobals(). R8 sees no static references to those classes
+# and strips them, causing NoClassDefFoundError at runtime when a plugin runs.
+# Keep the entire luaj package so reflection-based loading keeps working.
+-keep class org.luaj.vm2.** { *; }
+-keepclassmembers class org.luaj.vm2.** { *; }
+-dontwarn org.luaj.vm2.**
