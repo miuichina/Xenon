@@ -1,6 +1,7 @@
 package zxc.iconic.xenon.settings;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.view.View;
@@ -20,8 +21,10 @@ import org.telegram.ui.Cells.TextCheckCell;
 import org.telegram.ui.Components.BackupImageView;
 import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.UniversalAdapter;
+import org.telegram.ui.Components.UniversalRecyclerView;
 
 import java.io.File;
 import java.io.InputStream;
@@ -62,7 +65,7 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
         if (infos.isEmpty()) {
             items.add(UItem.asShadow(LocaleController.getString(R.string.PluginsEmpty)));
         } else {
-            items.add(UItem.asHeader(LocaleController.getString(R.string.PluginsInstalled)));
+            // No "Installed" header — cards stand on their own.
             pluginRows.clear();
             nextPluginRow = rowId;
             int unnamedCount = 0;
@@ -73,13 +76,10 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
                 String desc = info.description != null
                         ? info.description
                         : LocaleController.getString(R.string.PluginsNoDescription);
-                // Reflect the stored toggle (plugin_enabled_<fileName>) so the
-                // check is accurate even with the engine off, and stays fully
-                // clickable so the user can pick which plugins run after
-                // re-enabling the engine.
                 boolean enabled = PluginSettingsActivity.getPrefs()
                         .getBoolean("plugin_enabled_" + info.fileName, true);
-                items.add(UItem.asCheck(rid, title, desc).setChecked(enabled));
+                // Card with toggle + description + settings/delete buttons.
+                items.add(PluginCardFactory.of(rid, title, desc, enabled, NekoConfig.pluginsEnabled));
                 if (info.name == null) unnamedCount++;
             }
             items.add(UItem.asShadow(null));
@@ -118,10 +118,9 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
             // Allow installing plugins regardless of the engine state. They'll
             // activate once the engine is enabled.
             launchFilePicker();
-        } else if (pluginRows.containsKey(id)) {
-            PluginManager.PluginInfo info = pluginRows.get(id);
-            showPluginBottomSheet(info);
         }
+        // Plugin cards handle their own clicks (toggle + settings + delete) in
+        // PluginCardFactory, so there's no top-level click for them here.
     }
 
     private void showPluginBottomSheet(PluginManager.PluginInfo info) {
@@ -479,11 +478,15 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
     public void onResume() {
         super.onResume();
         PluginManager.setCurrentActivity(getParentActivity());
+        PluginCardHost.host = this;
     }
 
     @Override
     public void onPause() {
         super.onPause();
+        if (PluginCardHost.host == this) {
+            PluginCardHost.host = null;
+        }
     }
 
     @Override
@@ -494,5 +497,116 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
     @Override
     protected String getKey() {
         return "plugins";
+    }
+
+    // ------------------------------------------------------------------
+    // Plugin card factory: renders each plugin as a card with a toggle,
+    // description, and settings/delete action buttons.
+    // ------------------------------------------------------------------
+
+    protected static class PluginCardFactory extends UItem.UItemFactory<PluginCardCell> {
+        static {
+            setup(new PluginCardFactory());
+        }
+
+        private Theme.ResourcesProvider resourcesProvider;
+
+        @Override
+        public PluginCardCell createView(Context context, RecyclerListView listView, int currentAccount, int classGuid, Theme.ResourcesProvider resourcesProvider) {
+            this.resourcesProvider = resourcesProvider;
+            return new PluginCardCell(context, resourcesProvider);
+        }
+
+        @Override
+        public void bindView(View view, UItem item, boolean divider, UniversalAdapter adapter, UniversalRecyclerView listView) {
+            PluginCardCell cell = (PluginCardCell) view;
+            cell.bind(item);
+
+            // Resolve the plugin info this card represents.
+            final PluginManager.PluginInfo info = findInfoById(item.id);
+            if (info == null) return;
+
+            // Toggle: click on the whole toggle cell flips the switch. This
+            // TextCheckCell variant has no OnCheckedChangeListener — clicks go
+            // through the standard View OnClickListener, so we toggle manually.
+            cell.getToggleCell().setOnClickListener(v -> {
+                boolean newState = !PluginSettingsActivity.getPrefs()
+                        .getBoolean("plugin_enabled_" + info.fileName, true);
+                PluginSettingsActivity.getPrefs().edit()
+                        .putBoolean("plugin_enabled_" + info.fileName, newState).apply();
+                cell.getToggleCell().setChecked(newState);
+                if (NekoConfig.pluginsEnabled) {
+                    PluginManager.getInstance().reloadAll();
+                }
+            });
+
+            // Settings button: open the plugin's settings (only when engine on).
+            cell.getSettingsButton().setOnClickListener(v -> {
+                if (!NekoConfig.pluginsEnabled) {
+                    BulletinFactory.of(hostActivity()).createErrorBulletin(
+                            LocaleController.getString(R.string.PluginsEnableFirst)).show();
+                    return;
+                }
+                PluginManager.LoadedPlugin loaded = PluginManager.getInstance().findPlugin(info.fileName);
+                if (loaded != null) {
+                    hostActivity().presentFragment(new PluginSettingsActivity().setPlugin(loaded));
+                }
+            });
+
+            // Delete button: confirm then remove.
+            cell.getDeleteButton().setOnClickListener(v -> {
+                AlertDialog.Builder builder = new AlertDialog.Builder(hostActivity().getParentActivity(), resourcesProvider);
+                builder.setTitle(LocaleController.getString(R.string.Plugins));
+                builder.setMessage(LocaleController.formatString(R.string.PluginsDeleteConfirm, info.name != null ? info.name : info.fileName));
+                builder.setPositiveButton(LocaleController.getString(R.string.Delete), (dialog, which) -> {
+                    PluginManager.getInstance().remove(info.fileName);
+                    BulletinFactory.of(hostActivity()).createSimpleBulletin(R.raw.chats_infotip,
+                            LocaleController.getString(R.string.PluginsRemoved)).show();
+                    hostActivity().updateRows();
+                });
+                builder.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
+                AlertDialog dialog = builder.create();
+                dialog.show();
+                var button = (TextView) dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+                if (button != null) {
+                    button.setTextColor(Theme.getColor(Theme.key_text_RedBold, resourcesProvider));
+                }
+            });
+        }
+
+        @Override
+        public boolean isClickable() {
+            // The card itself isn't clickable as a whole — the toggle and the
+            // two buttons handle their own clicks.
+            return false;
+        }
+
+        private PluginManager.PluginInfo findInfoById(int itemId) {
+            NekoPluginsActivity host = hostActivity();
+            if (host == null) return null;
+            for (Map.Entry<Integer, PluginManager.PluginInfo> e : host.pluginRows.entrySet()) {
+                if (e.getKey() == itemId) return e.getValue();
+            }
+            return null;
+        }
+
+        private NekoPluginsActivity hostActivity() {
+            return PluginCardHost.host;
+        }
+
+        public static UItem of(int id, CharSequence title, CharSequence desc, boolean checked, boolean enabled) {
+            UItem item = UItem.ofFactory(PluginCardFactory.class);
+            item.id = id;
+            item.text = title;
+            item.subtext = desc;
+            item.checked = checked;
+            item.enabled = enabled;
+            return item;
+        }
+    }
+
+    /** Lets the static factory reach the host activity's plugin map. */
+    private static class PluginCardHost {
+        static NekoPluginsActivity host;
     }
 }
