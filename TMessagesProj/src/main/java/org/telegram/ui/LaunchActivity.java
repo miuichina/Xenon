@@ -761,7 +761,27 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
 
 
         //RestrictedLanguagesSelectActivity.checkRestrictedLanguages(false);
-        if (Build.VERSION.SDK_INT >= 34 && NekoConfig.predictiveBackAnimation) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && NekoConfig.alternativeTransition && actionBarLayout != null) {
+            // Alternative transition opts predictive back into the Material 3 animation (ported from Inugram).
+            if (onBackAnimationCallback == null) {
+                onBackAnimationCallback = zxc.iconic.xenon.helpers.Material3PredictiveBack.createCallback(
+                    this,
+                    actionBarLayout,
+                    () -> {
+                        if (AndroidUtilities.isTablet()) {
+                            onBackPressed();
+                            return;
+                        }
+                        if (!onBackPressed(true)) return;
+                        onBackPressed();
+                    }
+                );
+            }
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                (OnBackAnimationCallback) onBackAnimationCallback
+            );
+        } else if (Build.VERSION.SDK_INT >= 34 && NekoConfig.predictiveBackAnimation) {
             if (onBackAnimationCallback == null) {
                 onBackAnimationCallback =  new OnBackAnimationCallback() {
                     private AnimationNotificationsLocker locker = new AnimationNotificationsLocker();

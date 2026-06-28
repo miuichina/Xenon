@@ -299,6 +299,9 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
                 ((TextCheckCell) view).setChecked(NekoConfig.alternativeTransition);
             }
             listView.adapter.update(true);
+            // Predictive back is registered once in LaunchActivity.onCreate, so switching the
+            // Material 3 predictive-back animation only takes effect after a restart.
+            showRestartBulletin();
         } else if (id == alternativeTransitionEaseRow) {
             showEaseDialog();
         } else if (id == roundedBulletinRow) {

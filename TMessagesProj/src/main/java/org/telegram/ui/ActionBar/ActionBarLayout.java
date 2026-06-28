@@ -387,6 +387,9 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
             if ((passivePreview || transitionAnimationPreviewMode) && (ev.getActionMasked() == MotionEvent.ACTION_DOWN || ev.getActionMasked() == MotionEvent.ACTION_POINTER_DOWN)) {
                 return false;
             }
+            if (m3PredictiveActive && this == containerView) {
+                return false;
+            }
             try {
                 return (!passivePreview || this != containerView) && super.dispatchTouchEvent(ev);
             } catch (Throwable e) {
@@ -1081,10 +1084,12 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         int clipRight = width + getPaddingLeft();
         int backOffset = 0;
 
-        if (child == containerViewBack) {
-            clipRight = translationX + dp(1);
-        } else if (child == containerView) {
-            clipLeft = translationX;
+        if (!m3PredictiveActive) {
+            if (child == containerViewBack) {
+                clipRight = translationX + dp(1);
+            } else if (child == containerView) {
+                clipLeft = translationX;
+            }
         }
 
         final int restoreCount2 = canvas.save();
@@ -1332,7 +1337,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         delegate = INavigationLayoutDelegate;
     }
 
-    private void onSlideAnimationEnd(final boolean backAnimation) {
+    public void onSlideAnimationEnd(final boolean backAnimation) {
         if (!backAnimation) {
             if (fragmentsStack.size() < 2) {
                 checkBlackScreen("onSlideAnimationEnd exit");
@@ -1563,8 +1568,11 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         return false;
     }
 
-    private boolean predictiveInput;
-    private boolean predictiveBackInProgress;
+    public boolean predictiveInput;
+    public boolean predictiveBackInProgress;
+    // When true, an M3-style predictive back gesture (Inugram) is driving the transition directly;
+    // the stock clip/translate path in drawChild and touch dispatch on containerView are suppressed.
+    public boolean m3PredictiveActive;
     private boolean predictiveBackHasProgress;
     private float predictiveBackY;
     private boolean predictiveBackLeft;
