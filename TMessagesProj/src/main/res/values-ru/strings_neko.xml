@@ -470,4 +470,17 @@
     <string name="SwitchToAyuConfirm">Переключение на ayu-features означает загрузку последней posral-сборки с функциями ayugram. Продолжить?</string>
     <string name="BuildInfo">Сборка</string>
     <string name="Channel">Канал</string>
+    <string name="InuSpoilers">Спойлеры</string>
+    <string name="InuTextSpoilerMode">Режим текстовых спойлеров</string>
+    <string name="InuTextSpoilerModeDefault">Обычный (Telegram)</string>
+    <string name="InuTextSpoilerModeSimple">Простой</string>
+    <string name="InuTextSpoilerModeEpstein">Epstein</string>
+    <string name="InuMediaSpoilerMode">Режим медиа-спойлеров</string>
+    <string name="InuMediaSpoilerModeTelegram">Обычный (Telegram)</string>
+    <string name="InuMediaSpoilerModePill">Таблетка</string>
+    <string name="InuMediaSpoilerModeCircle">Круг</string>
+    <string name="InuSpoilerExtendToLineEnd">До конца строки</string>
+    <string name="InuSpoilerExtendToLineEndInfo">Расширять спойлер до конца строки</string>
+    <string name="InuSpoilerExtendToLineEndInfoExtra">Скопировано из inugram</string>
+    <string name="InuMediaSpoilerLabel">СПОЙЛЕР</string>
 </resources>
