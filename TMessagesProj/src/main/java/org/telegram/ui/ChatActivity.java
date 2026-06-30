@@ -31080,6 +31080,10 @@ public class ChatActivity extends BaseFragment implements
         int dh = decorView.getHeight();
         if (dw <= 0 || dh <= 0) return;
         removePopupBlur();
+        if (scrimPopupWindow != null) {
+            View cv = scrimPopupWindow.getContentView();
+            if (cv != null) addPopupDetachListener(cv);
+        }
         int pixelation = NekoConfig.blurPixelation;
         int downscale = Math.max(1, 1 + pixelation / 5);
         int bw = Math.max(1, dw / downscale);
@@ -31132,16 +31136,73 @@ public class ChatActivity extends BaseFragment implements
     }
 
     private void removePopupBlur() {
+        removePopupBlur(false);
+    }
+
+    private void removePopupBlur(boolean animated) {
         if (popupBlurOverlayView != null) {
-            popupBlurOverlayView.animate().cancel();
-            ViewGroup parent = (ViewGroup) popupBlurOverlayView.getParent();
-            if (parent != null) parent.removeView(popupBlurOverlayView);
-            popupBlurOverlayView = null;
+            if (animated) {
+                View overlay = popupBlurOverlayView;
+                Bitmap bitmap = popupBlurOverlayBitmap;
+                overlay.animate().cancel();
+                long duration = 250;
+                if (Build.VERSION.SDK_INT >= 31 && NekoConfig.blurSmoothly && !NekoConfig.disableBlurBs) {
+                    float startBlur = NekoConfig.blurOverlayRadius * 8f;
+                    ValueAnimator blurAnim = ValueAnimator.ofFloat(startBlur, 0f);
+                    blurAnim.setDuration(duration);
+                    blurAnim.setInterpolator(CubicBezierInterpolator.EASE_OUT);
+                    blurAnim.addUpdateListener(a -> {
+                        if (popupBlurOverlayView == overlay) {
+                            float val = (float) a.getAnimatedValue();
+                            overlay.setRenderEffect(RenderEffect.createBlurEffect(
+                                val, val, Shader.TileMode.CLAMP
+                            ));
+                        }
+                    });
+                    blurAnim.start();
+                }
+                overlay.animate()
+                    .alpha(0f)
+                    .setDuration(duration)
+                    .setInterpolator(CubicBezierInterpolator.EASE_OUT)
+                    .withEndAction(() -> {
+                        ViewGroup parent = (ViewGroup) overlay.getParent();
+                        if (parent != null) parent.removeView(overlay);
+                        if (bitmap != null) bitmap.recycle();
+                        if (popupBlurOverlayView == overlay) {
+                            popupBlurOverlayView = null;
+                            popupBlurOverlayBitmap = null;
+                        }
+                    })
+                    .start();
+            } else {
+                popupBlurOverlayView.animate().cancel();
+                ViewGroup parent = (ViewGroup) popupBlurOverlayView.getParent();
+                if (parent != null) parent.removeView(popupBlurOverlayView);
+                popupBlurOverlayView = null;
+                if (popupBlurOverlayBitmap != null) {
+                    popupBlurOverlayBitmap.recycle();
+                    popupBlurOverlayBitmap = null;
+                }
+            }
+        } else {
+            if (popupBlurOverlayBitmap != null) {
+                popupBlurOverlayBitmap.recycle();
+                popupBlurOverlayBitmap = null;
+            }
         }
-        if (popupBlurOverlayBitmap != null) {
-            popupBlurOverlayBitmap.recycle();
-            popupBlurOverlayBitmap = null;
-        }
+    }
+
+    private void addPopupDetachListener(View contentView) {
+        contentView.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+            @Override
+            public void onViewAttachedToWindow(View v) {}
+            @Override
+            public void onViewDetachedFromWindow(View v) {
+                v.removeOnAttachStateChangeListener(this);
+                removePopupBlur(true);
+            }
+        });
     }
 
     private boolean createMenu(View v, boolean single, boolean listView, float x, float y, boolean longpress) {
@@ -32752,8 +32813,8 @@ public class ChatActivity extends BaseFragment implements
             scrimPopupWindow = new ActionBarPopupWindow(scrimPopupContainerLayout, LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT) {
                 @Override
                 public void dismiss() {
-                    removePopupBlur();
-                    super.dismiss();
+                    removePopupBlur(true);
+                    super.dismiss(true);
                     if (scrimPopupWindow != this) {
                         return;
                     }
@@ -32777,7 +32838,7 @@ public class ChatActivity extends BaseFragment implements
 
                 @Override
                 public void dismiss(boolean animated) {
-                    removePopupBlur();
+                    removePopupBlur(true);
                     super.dismiss(animated);
                     if (finalReactionsLayout1 != null) {
                         finalReactionsLayout1.dismissParent(animated);
@@ -32849,8 +32910,8 @@ public class ChatActivity extends BaseFragment implements
                 if (waitForLangDetection.get() || waitForQr.get()) {
                     return;
                 }
-                applyPopupBlur(v);
                 scrimPopupWindow.showAtLocation(chatListView, Gravity.LEFT | Gravity.TOP, finalPopupX, finalPopupY);
+                applyPopupBlur(v);
                 if (isReactionsAvailableFinal && finalReactionsLayout != null) {
                     finalReactionsLayout.startEnterAnimation(true);
                 }
@@ -41062,8 +41123,8 @@ public class ChatActivity extends BaseFragment implements
             scrimPopupWindow = new ActionBarPopupWindow(scrimPopupContainerLayout, LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT) {
                 @Override
                 public void dismiss() {
-                    removePopupBlur();
-                    super.dismiss();
+                    removePopupBlur(true);
+                    super.dismiss(true);
                     if (scrimPopupWindow != this) {
                         return;
                     }
@@ -41128,8 +41189,8 @@ public class ChatActivity extends BaseFragment implements
             if (scrimPopupContainerLayout.getVisibility() != View.VISIBLE) {
                 scrimViewReactionOffset = 0;
             }
-            applyPopupBlur(cell);
             scrimPopupWindow.showAtLocation(chatListView, Gravity.LEFT | Gravity.TOP, scrimPopupX = popupX, scrimPopupY = popupY);
+            applyPopupBlur(cell);
 
             chatListView.stopScroll();
             chatLayoutManager.setCanScrollVertically(false);
@@ -46271,8 +46332,8 @@ public class ChatActivity extends BaseFragment implements
             scrimPopupWindow = new ActionBarPopupWindow(scrimPopupContainerLayout, LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT) {
                 @Override
                 public void dismiss() {
-                    removePopupBlur();
-                    super.dismiss();
+                    removePopupBlur(true);
+                    super.dismiss(true);
                     if (scrimPopupWindow != this) {
                         return;
                     }
@@ -46337,8 +46398,8 @@ public class ChatActivity extends BaseFragment implements
             if (scrimPopupContainerLayout.getVisibility() != View.VISIBLE) {
                 scrimViewReactionOffset = 0;
             }
-            applyPopupBlur(cell);
             scrimPopupWindow.showAtLocation(chatListView, Gravity.LEFT | Gravity.TOP, scrimPopupX = popupX, scrimPopupY = popupY);
+            applyPopupBlur(cell);
 
             chatListView.stopScroll();
             chatLayoutManager.setCanScrollVertically(false);
