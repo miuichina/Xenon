@@ -85,6 +85,8 @@ import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
 import org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundProvider;
 import org.telegram.ui.FiltersSetupActivity;
 
+import zxc.iconic.xenon.helpers.M3SectionsHelper;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Field;
@@ -213,7 +215,7 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
 
     protected Consumer<Canvas> selectorTransformer;
 
-    protected final Theme.ResourcesProvider resourcesProvider;
+    public final Theme.ResourcesProvider resourcesProvider;
 
     private boolean accessibilityEnabled = true;
 
@@ -3253,12 +3255,12 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
         return sectionsItemDecoration != null;
     }
 
-    private ListSectionsDecoration sectionsItemDecoration;
+    public ListSectionsDecoration sectionsItemDecoration;
     private Utilities.CallbackReturn<Integer, Boolean> isViewTypeSection;
     private Utilities.Callback5<Canvas, RectF, Float, Float, Float> drawSectionBackground;
     public ArrayList<Long> forcedSections;
-    private float sectionRadius;
-    private float[] sectionRadiusTop, sectionRadiusBottom;
+    public float sectionRadius;
+    public float[] sectionRadiusTop, sectionRadiusBottom;
     public boolean applyPaddingToSections = false;
 
     public static final int TAG_NOT_SECTION = -33024;
@@ -3399,6 +3401,11 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
 
                         if (first) outRect.top = enableTopPadding ? padding : dp(4);
                         if (last) outRect.bottom = padding;
+
+                        if (M3SectionsHelper.isEnabled()) {
+                            if (!first) outRect.top = Math.max(outRect.top, M3SectionsHelper.getGap());
+                            if (!last) outRect.bottom = Math.max(outRect.bottom, M3SectionsHelper.getGap());
+                        }
                     }
                 }
             }
@@ -3470,6 +3477,10 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
         return false;
     }
     public void drawSectionsBackgrounds(Canvas canvas) {
+        if (M3SectionsHelper.isEnabled()) {
+            M3SectionsHelper.drawSectionsBackgrounds(canvas, this);
+            return;
+        }
         if (drawSectionBackground == null) return;
 
         if (isAnimating()) {
@@ -3615,6 +3626,10 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
 
     private final Path clipPath = new Path();
     private void clipChild(Canvas canvas, View child) {
+        if (M3SectionsHelper.isEnabled()) {
+            M3SectionsHelper.clipChild(canvas, child, this);
+            return;
+        }
         if (child == null || !sectionsItemDecoration.isSectionItem.run(child))
             return;
 
@@ -3672,6 +3687,9 @@ public class RecyclerListView extends RecyclerView implements IBlur3Capture {
     }
 
     public Drawable getClipBackground(View child) {
+        if (M3SectionsHelper.isEnabled()) {
+            return M3SectionsHelper.makeClipBackground(this, child);
+        }
         if (child.getParent() != this || !hasSections() || !sectionsItemDecoration.isSectionItem.run(child)) return null;
 
         boolean prev, next;

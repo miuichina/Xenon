@@ -31,6 +31,8 @@ import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.Reactions.ReactionsUtils;
 import org.telegram.ui.Components.Switch;
 
+import zxc.iconic.xenon.NekoConfig;
+
 public class AvailableReactionCell extends FrameLayout {
     private SimpleTextView textView;
     private BackupImageView imageView;
@@ -68,7 +70,7 @@ public class AvailableReactionCell extends FrameLayout {
         } else {
             switchView = new Switch(context);
             switchView.setColors(Theme.key_switchTrack, Theme.key_switchTrackChecked, Theme.key_switchTrackBlueThumb, Theme.key_switchTrackBlueThumbChecked);
-            addView(switchView, LayoutHelper.createFrameRelatively(37, 20, Gravity.END | Gravity.CENTER_VERTICAL, 0, 0, 22, 0));
+            addView(switchView, LayoutHelper.createFrameRelatively(37, NekoConfig.material3Switches ? 24 : 20, Gravity.END | Gravity.CENTER_VERTICAL, 0, 0, 22, 0));
         }
         setWillNotDraw(false);
     }

@@ -184,6 +184,9 @@ public class NekoConfig {
     public static boolean alternativeTransition = false;
     public static int alternativeTransitionSpeed = 300;
     public static String alternativeTransitionEase = "0.37,0.01,0.1,1";
+    public static boolean material3Switches = false;
+    public static boolean m3SectionsStyle = false;
+    public static boolean aospTransition = false;
     public static boolean removeChatDelay = false;
     public static boolean showOnlineDotsInChat = false;
     private static final String XRAY_DEFAULT_CHECK_URL = "https://www.gstatic.com/generate_204";
@@ -397,6 +400,9 @@ public class NekoConfig {
             alternativeTransition = preferences.getBoolean("alternativeTransition", false);
             alternativeTransitionSpeed = preferences.getInt("alternativeTransitionSpeed", 300);
             alternativeTransitionEase = preferences.getString("alternativeTransitionEase", "0.37,0.01,0.1,1");
+            material3Switches = preferences.getBoolean("material3Switches", false);
+            m3SectionsStyle = preferences.getBoolean("m3SectionsStyle", false);
+            aospTransition = preferences.getBoolean("aospTransition", false);
             removeChatDelay = preferences.getBoolean("removeChatDelay", false);
             showOnlineDotsInChat = preferences.getBoolean("showOnlineDotsInChat", false);
             roundedBulletin = preferences.getBoolean("roundedBulletin", false);
@@ -643,6 +649,30 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putString("alternativeTransitionEase", alternativeTransitionEase);
+        editor.apply();
+    }
+
+    public static void toggleMaterial3Switches() {
+        material3Switches = !material3Switches;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("material3Switches", material3Switches);
+        editor.apply();
+    }
+
+    public static void toggleM3SectionsStyle() {
+        m3SectionsStyle = !m3SectionsStyle;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("m3SectionsStyle", m3SectionsStyle);
+        editor.apply();
+    }
+
+    public static void toggleAospTransition() {
+        aospTransition = !aospTransition;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("aospTransition", aospTransition);
         editor.apply();
     }
 

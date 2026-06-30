@@ -483,4 +483,7 @@
     <string name="InuSpoilerExtendToLineEndInfo">Расширять спойлер до конца строки</string>
     <string name="InuSpoilerExtendToLineEndInfoExtra">Скопировано из inugram</string>
     <string name="InuMediaSpoilerLabel">СПОЙЛЕР</string>
+    <string name="InuMaterial3">Material Design 3</string>
+    <string name="InuMaterial3Switches">Переключатели</string>
+    <string name="InuMaterial3Sections">Элементы списка</string>
 </resources>

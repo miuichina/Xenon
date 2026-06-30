@@ -61,6 +61,9 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int alternativeTransitionSpeedRow = rowId++;
     private final int alternativeTransitionEaseRow = rowId++;
     private final int alternativeTransitionEaseDescriptionRow = rowId++;
+    private final int aospTransitionRow = rowId++;
+    private final int material3SwitchesRow = rowId++;
+    private final int m3SectionsStyleRow = rowId++;
 
     private final int textAnimationSettingsRow = rowId++;
     private final int roundedBulletinRow = rowId++;
@@ -129,6 +132,9 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             }
             items.add(UItem.asShadow(alternativeTransitionEaseDescriptionRow, description));
         }
+        items.add(UItem.asHeader("Material Design 3"));
+        items.add(UItem.asCheck(material3SwitchesRow, "Switches").setChecked(NekoConfig.material3Switches).slug("material3Switches"));
+        items.add(UItem.asCheck(m3SectionsStyleRow, "List items").setChecked(NekoConfig.m3SectionsStyle).slug("m3SectionsStyle"));
         items.add(UItem.asHeader(LocaleController.getString(R.string.TextAnimation)));
         items.add(TextSettingsCellFactory.of(textAnimationSettingsRow, LocaleController.getString(R.string.TextAnimation), "›").slug("textAnimationSettings"));
         items.add(UItem.asShadow(null));
@@ -304,6 +310,23 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             showRestartBulletin();
         } else if (id == alternativeTransitionEaseRow) {
             showEaseDialog();
+        } else if (id == aospTransitionRow) {
+            NekoConfig.toggleAospTransition();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.aospTransition);
+            }
+        } else if (id == material3SwitchesRow) {
+            NekoConfig.toggleMaterial3Switches();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.material3Switches);
+            }
+            showRestartBulletin();
+        } else if (id == m3SectionsStyleRow) {
+            NekoConfig.toggleM3SectionsStyle();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.m3SectionsStyle);
+            }
+            showRestartBulletin();
         } else if (id == roundedBulletinRow) {
             NekoConfig.toggleRoundedBulletin();
             if (view instanceof TextCheckCell) {

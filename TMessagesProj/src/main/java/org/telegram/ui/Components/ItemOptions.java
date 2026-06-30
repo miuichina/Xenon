@@ -84,6 +84,8 @@ import org.telegram.ui.SettingsActivity;
 import org.telegram.ui.Stories.StoriesController;
 import org.telegram.ui.Stories.recorder.HintView2;
 
+import zxc.iconic.xenon.helpers.M3SectionsHelper;
+
 import java.lang.ref.WeakReference;
 import java.util.HashSet;
 
@@ -1859,6 +1861,7 @@ public class ItemOptions {
                     }
                     scrimViewBackground.draw(canvas);
                 }
+                M3SectionsHelper.applyScrimClip(canvas, scrimView);
                 if (scrimViewPadding > 0 || scrimViewRoundRadius > 0) {
                     clipPath.rewind();
                     AndroidUtilities.rectTmp.set(-viewAdditionalOffsets.left + scrimViewPadding * dimProgress, -viewAdditionalOffsets.top + scrimViewPadding * getAlpha(), -viewAdditionalOffsets.left + cachedBitmap.getWidth() - scrimViewPadding * getAlpha(), -viewAdditionalOffsets.top + cachedBitmap.getHeight() - scrimViewPadding * getAlpha());
@@ -1922,6 +1925,7 @@ public class ItemOptions {
                     }
                     scrimViewBackground.draw(canvas);
                 }
+                M3SectionsHelper.applyScrimClip(canvas, scrimView);
                 if (scrimViewPadding > 0 || scrimViewRoundRadius > 0) {
                     clipPath.rewind();
                     if (scrimView instanceof ScrimView) {
