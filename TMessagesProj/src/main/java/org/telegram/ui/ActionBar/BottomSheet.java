@@ -51,6 +51,8 @@ import android.view.Window;
 import android.view.WindowInsets;
 import android.view.PixelCopy;
 import android.view.WindowManager;
+import android.window.OnBackAnimationCallback;
+import android.window.OnBackInvokedDispatcher;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.animation.Interpolator;
 import android.view.inputmethod.InputMethodManager;
@@ -122,6 +124,7 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
 
     private boolean dismissed;
     private int tag;
+    private OnBackAnimationCallback predictiveBackCallback;
 
     protected boolean useHardwareLayer = true;
 
@@ -1728,6 +1731,9 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
         } else {
             super.show();
         }
+        if (Build.VERSION.SDK_INT >= 34 && zxc.iconic.xenon.NekoConfig.predictiveBackAnimation) {
+            registerPredictiveBack();
+        }
         setShowing(true);
         if (focusable) {
             getWindow().setSoftInputMode(focusableSoftInputMode);
@@ -2462,6 +2468,9 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
     }
 
     public void dismissInternal() {
+        if (Build.VERSION.SDK_INT >= 34) {
+            unregisterPredictiveBack();
+        }
         if (blurRefreshCallback != null) {
             Choreographer.getInstance().removeFrameCallback(blurRefreshCallback);
             blurRefreshCallback = null;
@@ -2675,6 +2684,84 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
 
     public int getBottomInset() {
         return (int) (bottomInset * (1f - hideSystemVerticalInsetsProgress));
+    }
+
+    public int getKeyboardHeight() {
+        return keyboardHeight;
+    }
+
+    public void setSkipDismissAnimation(boolean skip) {
+        this.skipDismissAnimation = skip;
+    }
+
+    public void predictiveBackFinish() {
+        if (dismissed) return;
+        dismissed = true;
+        dismissInternal();
+    }
+
+    public void setPredictiveBackProgress(float progress) {
+        float p = Math.max(0f, Math.min(1f, progress));
+        if (blurOverlayView != null) {
+            if (zxc.iconic.xenon.NekoConfig.blurSmoothly && Build.VERSION.SDK_INT >= 31) {
+                float targetBlur = zxc.iconic.xenon.NekoConfig.disableBlurBs ? 0f : zxc.iconic.xenon.NekoConfig.blurOverlayRadius * 8f;
+                blurOverlayView.setRenderEffect(RenderEffect.createBlurEffect(
+                        targetBlur * (1f - p), targetBlur * (1f - p), Shader.TileMode.CLAMP
+                ));
+            }
+            blurOverlayView.setAlpha(1f - p);
+        }
+        if (dimBehind) {
+            backDrawable.setAlpha((int) (dimBehindAlpha * (1f - p)));
+        }
+    }
+
+    @RequiresApi(34)
+    private void registerPredictiveBack() {
+        if (predictiveBackCallback != null) return;
+        OnBackAnimationCallback callback = zxc.iconic.xenon.helpers.BottomSheetPredictiveBack.createCallback(this);
+        OnBackInvokedDispatcher dispatcher = getBackDispatcher();
+        if (dispatcher != null) {
+            dispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, callback);
+            predictiveBackCallback = callback;
+        }
+    }
+
+    @RequiresApi(34)
+    private void unregisterPredictiveBack() {
+        if (predictiveBackCallback == null) return;
+        OnBackInvokedDispatcher dispatcher = getBackDispatcher();
+        if (dispatcher != null) {
+            dispatcher.unregisterOnBackInvokedCallback(predictiveBackCallback);
+        }
+        predictiveBackCallback = null;
+    }
+
+    @RequiresApi(34)
+    private OnBackInvokedDispatcher getBackDispatcher() {
+        if (attachedFragment != null) {
+            if (attachedFragment.getLayoutContainer() != null) {
+                try {
+                    java.lang.reflect.Method vm = View.class.getMethod("getOnBackInvokedDispatcher");
+                    return (OnBackInvokedDispatcher) vm.invoke(attachedFragment.getLayoutContainer());
+                } catch (Exception e) {
+                    FileLog.e(e);
+                }
+            }
+            if (LaunchActivity.instance != null) {
+                return LaunchActivity.instance.getOnBackInvokedDispatcher();
+            }
+        }
+        try {
+            java.lang.reflect.Method m = Window.class.getMethod("getOnBackInvokedDispatcher");
+            Window w = getWindow();
+            if (w != null) {
+                return (OnBackInvokedDispatcher) m.invoke(w);
+            }
+        } catch (Exception e) {
+            FileLog.e(e);
+        }
+        return null;
     }
 
     public void onConfigurationChanged(android.content.res.Configuration newConfig) {
