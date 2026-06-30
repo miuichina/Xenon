@@ -97,6 +97,7 @@ public class M3SectionsHelper {
             View child = listView.getChildAt(i);
             if (child == null || child.getVisibility() != View.VISIBLE || child.getAlpha() <= 0f) continue;
             if (!isSection.run(child)) continue;
+            if (child instanceof HeaderCell) continue;
             float[] tRbR = computeRadii(listView, child, i, isSection);
             float tR = tRbR[0];
             float bR = tRbR[1];
@@ -114,7 +115,7 @@ public class M3SectionsHelper {
         RecyclerListView.ListSectionsDecoration deco = listView.sectionsItemDecoration;
         if (deco == null) return;
         Utilities.CallbackReturn<View, Boolean> isSection = deco.isSectionItem;
-        if (!isSection.run(child)) return;
+        if (!isSection.run(child) || child instanceof HeaderCell) return;
         int index = listView.indexOfChild(child);
         float[] tRbR = computeRadii(listView, child, index, isSection);
         float tR = tRbR[0];
@@ -129,7 +130,9 @@ public class M3SectionsHelper {
     private static float[] computeRadii(RecyclerListView listView, View child, int childIndex, Utilities.CallbackReturn<View, Boolean> isSection) {
         View prev = childIndex >= 0 ? visualSibling(listView, childIndex, false) : null;
         View next = childIndex >= 0 ? visualSibling(listView, childIndex, true) : null;
-        return m3Radii(child, prev != null && isSection.run(prev), next != null && isSection.run(next));
+        boolean prevIsSection = prev != null && isSection.run(prev) && !(prev instanceof HeaderCell);
+        boolean nextIsSection = next != null && isSection.run(next) && !(next instanceof HeaderCell);
+        return m3Radii(child, prevIsSection, nextIsSection);
     }
 
     private static View visualSibling(RecyclerListView listView, int fromIndex, boolean forward) {
@@ -149,6 +152,7 @@ public class M3SectionsHelper {
     }
 
     public static Drawable makeClipBackground(RecyclerListView listView, View child) {
+        if (child instanceof HeaderCell) return null;
         float[] tRbR = sectionRadiiFor(listView, child);
         if (tRbR == null) return null;
         float tR = tRbR[0];
@@ -195,7 +199,7 @@ public class M3SectionsHelper {
         RecyclerListView.ListSectionsDecoration deco = listView.sectionsItemDecoration;
         if (deco == null) return;
         Utilities.CallbackReturn<View, Boolean> isSection = deco.isSectionItem;
-        if (!isSection.run(child)) return;
+        if (!isSection.run(child) || child instanceof HeaderCell) return;
         rect.set(0f, 0f, child.getWidth(), child.getHeight());
         path.rewind();
         if (isEnabled()) {
