@@ -386,7 +386,23 @@ public class PluginApi {
         currentPluginFileName = name;
     }
 
+    /**
+     * Check the {@code MESSAGING} scope for the plugin that's currently
+     * loading/calling. Protected API methods call this and silently bail
+     * (return nil) when it's false, so a plugin without the scope — or without
+     * God Mode — can't send/delete/react/read messages or run message queries.
+     * The {@code currentPluginFileName} is captured by the API closures at
+     * creation time, so it stays correct even though it's a mutable static.
+     */
+    static boolean hasMessagingScope(String fileName) {
+        return PluginManager.hasScope(fileName, PluginManager.SCOPE_MESSAGING);
+    }
+
     static LuaTable[] createApiTable(Globals globals) {
+        // Capture the owning plugin's file name once; every API closure below
+        // binds this, so it stays tied to the right plugin even though
+        // currentPluginFileName is a shared mutable static.
+        final String pluginFileName = currentPluginFileName;
         LuaTable hooks = new LuaTable();
         globals.set("xenon_hooks", hooks);
 
@@ -403,6 +419,7 @@ public class PluginApi {
         api.set("sendMessage", new VarArgFunction() {
             @Override
             public LuaValue invoke(Varargs args) {
+                if (!hasMessagingScope(pluginFileName)) return LuaValue.NIL;
                 Varargs uargs = args.subargs(1);
                 int n = uargs.narg();
                 if (n >= 2) {
@@ -419,6 +436,7 @@ public class PluginApi {
         api.set("deleteMessage", new VarArgFunction() {
             @Override
             public LuaValue invoke(Varargs args) {
+                if (!hasMessagingScope(pluginFileName)) return LuaValue.NIL;
                 Varargs uargs = args.subargs(1);
                 if (uargs.narg() >= 2) {
                     long chatId = (long) uargs.arg(1).todouble();
@@ -432,6 +450,7 @@ public class PluginApi {
         api.set("sendMedia", new VarArgFunction() {
             @Override
             public LuaValue invoke(Varargs args) {
+                if (!hasMessagingScope(pluginFileName)) return LuaValue.NIL;
                 Varargs uargs = args.subargs(1);
                 if (uargs.narg() >= 2) {
                     long chatId = (long) uargs.arg(1).todouble();
@@ -446,6 +465,7 @@ public class PluginApi {
         api.set("setReaction", new VarArgFunction() {
             @Override
             public LuaValue invoke(Varargs args) {
+                if (!hasMessagingScope(pluginFileName)) return LuaValue.NIL;
                 Varargs uargs = args.subargs(1);
                 if (uargs.narg() >= 3) {
                     long chatId = (long) uargs.arg(1).todouble();
@@ -460,6 +480,7 @@ public class PluginApi {
         api.set("readHistory", new OneArgFunction() {
             @Override
             public LuaValue call(LuaValue chatId) {
+                if (!hasMessagingScope(pluginFileName)) return LuaValue.NIL;
                 long cid = (long) chatId.todouble();
                 Log.d("XenonPlugin", "xenon.readHistory: chatId=" + cid);
                 readHistory(cid);
@@ -489,6 +510,7 @@ public class PluginApi {
         api.set("startMessageWatcher", new OneArgFunction() {
             @Override
             public LuaValue call(LuaValue config) {
+                if (!hasMessagingScope(pluginFileName)) return LuaValue.NIL;
                 if (!config.istable()) return LuaValue.NIL;
                 LuaTable t = (LuaTable) config;
                 String key = t.get("key").optjstring("");
@@ -656,6 +678,7 @@ public class PluginApi {
         api.set("getMessageById", new VarArgFunction() {
             @Override
             public LuaValue invoke(Varargs args) {
+                if (!hasMessagingScope(pluginFileName)) return LuaValue.NIL;
                 Varargs uargs = args.subargs(1);
                 int n = uargs.narg();
                 if (n >= 3 && uargs.arg(1).isnumber() && uargs.arg(2).isnumber() && uargs.arg(3).isfunction()) {
@@ -667,6 +690,7 @@ public class PluginApi {
         api.set("getRecentMessages", new VarArgFunction() {
             @Override
             public LuaValue invoke(Varargs args) {
+                if (!hasMessagingScope(pluginFileName)) return LuaValue.NIL;
                 Varargs uargs = args.subargs(1);
                 int n = uargs.narg();
                 if (n >= 3 && uargs.arg(1).isnumber() && uargs.arg(2).isnumber() && uargs.arg(3).isfunction()) {
@@ -678,6 +702,7 @@ public class PluginApi {
         api.set("getMessagesFromUser", new VarArgFunction() {
             @Override
             public LuaValue invoke(Varargs args) {
+                if (!hasMessagingScope(pluginFileName)) return LuaValue.NIL;
                 Varargs uargs = args.subargs(1);
                 int n = uargs.narg();
                 if (n >= 4 && uargs.arg(1).isnumber() && uargs.arg(2).isnumber() && uargs.arg(3).isnumber() && uargs.arg(4).isfunction()) {

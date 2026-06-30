@@ -162,6 +162,14 @@ public class NekoConfig {
     public static boolean ghostModeEnabled = false;
     public static boolean bypassBlocking = false;
     public static boolean pluginsEnabled = false;
+    /**
+     * When true, {@code PluginManager.hasScope} short-circuits to true for every
+     * scope, letting a plugin call any API regardless of its declared
+     * {@code plugin_scopes}. This does NOT weaken the Lua sandbox — {@code io},
+     * {@code os.execute} etc. stay blocked, so the session token and phone number
+     * remain unreachable. Intended for trusted plugins that need full access.
+     */
+    public static boolean pluginGodMode = false;
     public static boolean hidePhoneNumber = false;
     public static boolean autoInlineBot = false;
     public static boolean removeAds = false;
@@ -355,6 +363,7 @@ public class NekoConfig {
             ghostModeEnabled = preferences.getBoolean("ghostModeEnabled", false);
             bypassBlocking = preferences.getBoolean("bypassBlocking", false);
             pluginsEnabled = preferences.getBoolean("pluginsEnabled", false);
+            pluginGodMode = preferences.getBoolean("pluginGodMode", false);
             hidePhoneNumber = preferences.getBoolean("hidePhoneNumber", false);
             autoInlineBot = preferences.getBoolean("autoInlineBot", false);
             xrayAppProxyEnabled = preferences.getBoolean("xrayAppProxyEnabled", false);
@@ -701,6 +710,16 @@ public class NekoConfig {
         // Apply immediately: load/unload the plugin engine so the change is
         // visible without a restart.
         zxc.iconic.xenon.plugins.PluginManager.getInstance().onEnabledChanged();
+    }
+
+    public static void togglePluginGodMode() {
+        pluginGodMode = !pluginGodMode;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("pluginGodMode", pluginGodMode);
+        editor.apply();
+        // Scope grants are evaluated live, so a toggle takes effect on the next
+        // API call without reloading the engine.
     }
 
     public static void toggleKeepFormatting() {

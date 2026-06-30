@@ -17,6 +17,7 @@ function). The engine reads them after running your script.
 | `plugin_name` | string | Display name (shown in the plugins list). Falls back to the file name. |
 | `plugin_description` | string | One-line description shown under the name. |
 | `plugin_settings` | table | Settings schema — renders a native UI. See below. |
+| `plugin_scopes` | table | Security scopes the plugin needs (e.g. `{"MESSAGING"}`). See [security.md](./security.md). |
 
 ```lua
 plugin_id          = "my_cool_plugin"

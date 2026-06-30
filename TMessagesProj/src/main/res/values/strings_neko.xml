@@ -467,6 +467,13 @@
     <string name="PluginsSettings">Plugin settings</string>
     <string name="PluginsOpenSettings">Open settings</string>
     <string name="PluginsUpdate">Update</string>
+    <string name="PluginPermissions">Permissions</string>
+    <string name="PluginScopeGeneral">General</string>
+    <string name="PluginScopeMessaging">Messaging</string>
+    <string name="PluginGodMode">God Mode</string>
+    <string name="PluginGodModeDesc">Grant all plugins every scope. Does NOT weaken the sandbox.</string>
+    <string name="PluginGodModeWarn">God Mode lets every plugin send, delete and read messages regardless of its declared scopes. The Lua sandbox (filesystem, processes, code loading) stays locked. Only enable this for plugins you fully trust. Continue?</string>
+    <string name="PluginGodModeCountdown">Wait %ds…</string>
     <string name="HideCameraInMediaPicker">Hide camera in media picker</string>
     <string name="ShowOnlineDotsInChat">Show online dots in chat</string>
     <string name="SwitchToAyu">Switch to ayu-features (posral)</string>

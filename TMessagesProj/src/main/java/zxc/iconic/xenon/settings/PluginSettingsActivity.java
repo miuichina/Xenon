@@ -43,6 +43,10 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
     private PluginManager.LoadedPlugin plugin;
     private int rowIdCounter;
     private final List<Integer> settingRowIds = new ArrayList<>();
+    // Permissions section rows.
+    private int permHeaderRow;
+    private int permGeneralRow;
+    private int permMessagingRow;
 
     public PluginSettingsActivity setPlugin(PluginManager.LoadedPlugin p) {
         this.plugin = p;
@@ -57,6 +61,22 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
             plugin.invokeHook("onSettingsOpen", new LuaValue[0]);
             plugin.refreshSettingsFromGlobals();
         }
+        // Permissions section — always shown, even before plugin settings.
+        permHeaderRow = rowIdCounter++;
+        permGeneralRow = rowIdCounter++;
+        permMessagingRow = rowIdCounter++;
+        items.add(UItem.asHeader(LocaleController.getString(R.string.PluginPermissions)));
+        // GENERAL is always granted and can't be revoked — disabled, checked.
+        UItem general = UItem.asCheck(permGeneralRow, LocaleController.getString(R.string.PluginScopeGeneral))
+                .setChecked(true);
+        general.setEnabled(false);
+        items.add(general);
+        boolean messaging = plugin != null
+                && getPrefs().getBoolean("plugin_scope_" + plugin.fileName + "_" + PluginManager.SCOPE_MESSAGING, false);
+        items.add(UItem.asCheck(permMessagingRow, LocaleController.getString(R.string.PluginScopeMessaging))
+                .setChecked(messaging));
+        items.add(UItem.asShadow(null));
+
         if (plugin == null || plugin.settings.isEmpty()) {
             items.add(UItem.asShadow(LocaleController.getString(R.string.PluginsEmpty)));
             return;
@@ -129,6 +149,18 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
     @Override
     protected void onItemClick(UItem item, View view, int position, float x, float y) {
         if (plugin == null) return;
+        // Permissions section: only MESSAGING is interactive (GENERAL is locked
+        // on). Toggling it persists the scope flag and reloads the engine so the
+        // change takes effect immediately.
+        if (item.id == permMessagingRow) {
+            String key = "plugin_scope_" + plugin.fileName + "_" + PluginManager.SCOPE_MESSAGING;
+            boolean newVal = !getPrefs().getBoolean(key, false);
+            getPrefs().edit().putBoolean(key, newVal).apply();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(newVal);
+            }
+            return;
+        }
         int idx = settingRowIds.indexOf(item.id);
         if (idx < 0 || idx >= plugin.settings.size()) return;
         PluginManager.LoadedPlugin.PluginSetting s = plugin.settings.get(idx);

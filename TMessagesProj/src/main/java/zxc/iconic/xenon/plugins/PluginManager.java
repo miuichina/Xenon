@@ -51,6 +51,17 @@ public class PluginManager {
     public static final String PLUGINS_DIR = "xenonplugins";
     public static final String PLUGIN_EXT = ".xplugin";
 
+    /**
+     * Security scopes a plugin can request via its manifest. {@link #SCOPE_GENERAL}
+     * is always granted; {@link #SCOPE_MESSAGING} gates the messaging/query API
+     * (sendMessage, deleteMessage, setReaction, readHistory, message queries,
+     * watchers). Used by {@link PluginApi} to silently refuse protected calls
+     * from plugins that lack the scope. God Mode ({@code NekoConfig.pluginGodMode})
+     * bypasses the check.
+     */
+    public static final String SCOPE_GENERAL = "GENERAL";
+    public static final String SCOPE_MESSAGING = "MESSAGING";
+
     private static volatile PluginManager instance;
     private static WeakReference<Activity> currentActivity = new WeakReference<>(null);
     private static volatile long currentDialogId;
@@ -457,8 +468,11 @@ public class PluginManager {
             Log.e(TAG, "loadFile: error reading file: " + e.getMessage());
             return null;
         }
-        Globals globals = JsePlatform.standardGlobals();
+        Globals globals = createSandboxGlobals();
         PluginApi.setCurrentPluginFileName(file.getName());
+        // Auto-grant declared scopes BEFORE the plugin's top-level code runs,
+        // so protected calls made during load are gated correctly.
+        grantScopes(file.getName(), file);
         LuaTable[] tables = PluginApi.createApiTable(globals);
         globals.set("xenon", tables[0]);
         LuaTable hooks = tables[1];
@@ -855,6 +869,114 @@ public class PluginManager {
             }
         }
         return null;
+    }
+
+    /**
+     * Parse a plugin's requested security scopes (e.g.
+     * {@code plugin_scopes = {"MESSAGING"}}) by scanning the source text, never
+     * by executing Lua. Returns the list of recognized scope names found. Unknown
+     * names are dropped (deny-by-default). Mirrors the crash-proof regex
+     * approach used by {@link #parseMetadata}.
+     */
+    public static List<String> parseScopes(File file) {
+        List<String> scopes = new ArrayList<>();
+        if (file == null || !file.exists()) return scopes;
+        try (InputStream in = new FileInputStream(file)) {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = in.read(buf)) > 0 && baos.size() < 65536) {
+                baos.write(buf, 0, n);
+            }
+            String source = new String(baos.toByteArray(), "UTF-8");
+            // Match the RHS of `plugin_scopes = { ... }` as a flat string blob,
+            // then pull out every quoted token. This is deliberately loose: it
+            // catches both {"MESSAGING"} and { "MESSAGING", "GENERAL" } without
+            // caring about whitespace or order.
+            java.util.regex.Pattern p = java.util.regex.Pattern.compile(
+                    "(?:^|\\n)\\s*(?:local\\s+)?plugin_scopes\\s*=\\s*\\{([^}]*)\\}",
+                    java.util.regex.Pattern.DOTALL);
+            java.util.regex.Matcher m = p.matcher(source);
+            if (!m.find()) return scopes;
+            String body = m.group(1);
+            java.util.regex.Pattern tok = java.util.regex.Pattern.compile("\"([^\"]*)\"");
+            java.util.regex.Matcher tm = tok.matcher(body);
+            while (tm.find()) {
+                String s = tm.group(1).trim().toUpperCase();
+                if (SCOPE_GENERAL.equals(s) || SCOPE_MESSAGING.equals(s)) {
+                    if (!scopes.contains(s)) scopes.add(s);
+                }
+            }
+        } catch (Throwable t) {
+            FileLog.e(t);
+        }
+        return scopes;
+    }
+
+    /**
+     * Build the locked-down {@link Globals} every plugin runs in. Starts from
+     * the full JSE platform (so {@code print}, {@code pairs}, {@code pcall},
+     * {@code tostring}, {@code type}, {@code setmetatable} and friends are all
+     * present), then strips everything that can touch the filesystem, spawn
+     * processes, load code, or escape the interpreter. The session token and
+     * phone number live in {@code userconfig.xml}; with {@code io}/
+     * {@code os.execute} gone a plugin cannot read them. This is NOT weakened
+     * by God Mode — the sandbox is absolute.
+     */
+    private static Globals createSandboxGlobals() {
+        Globals globals = JsePlatform.standardGlobals();
+        // Filesystem / process / code-loading libs — remove entirely.
+        globals.set("io", LuaValue.NIL);
+        globals.set("package", LuaValue.NIL);
+        globals.set("debug", LuaValue.NIL);
+        globals.set("luajava", LuaValue.NIL);
+        globals.set("loadfile", LuaValue.NIL);
+        globals.set("dofile", LuaValue.NIL);
+        globals.set("load", LuaValue.NIL);
+        globals.set("loadstring", LuaValue.NIL);
+        globals.set("require", LuaValue.NIL);
+        // Keep only the harmless os.* functions; build a fresh table so there's
+        // no leftover reference to the dangerous originals.
+        LuaValue oldOs = globals.get("os");
+        LuaTable safeOs = new LuaTable();
+        String[] keep = {"time", "date", "clock", "difftime"};
+        for (String fn : keep) {
+            LuaValue v = oldOs.get(fn);
+            if (!v.isnil()) safeOs.set(fn, v);
+        }
+        globals.set("os", safeOs);
+        return globals;
+    }
+
+    /**
+     * Does {@code fileName} hold {@code scope}? {@link #SCOPE_GENERAL} is always
+     * granted. Other scopes read the persisted auto-grant flag
+     * ({@code plugin_scope_<file>_<SCOPE>}). God Mode
+     * ({@code NekoConfig.pluginGodMode}) short-circuits to true for every scope.
+     */
+    public static boolean hasScope(String fileName, String scope) {
+        if (fileName == null || scope == null) return false;
+        if (SCOPE_GENERAL.equals(scope)) return true;
+        if (zxc.iconic.xenon.NekoConfig.pluginGodMode) return true;
+        return getPrefs().getBoolean("plugin_scope_" + fileName + "_" + scope, false);
+    }
+
+    /**
+     * Auto-grant every scope a plugin declares in its manifest, persisting them
+     * to prefs. {@link #SCOPE_GENERAL} is forced on unconditionally. Called when
+     * a plugin loads so the declared permissions take effect without a prompt.
+     */
+    private static void grantScopes(String fileName, File file) {
+        if (fileName == null || file == null) return;
+        List<String> scopes = parseScopes(file);
+        SharedPreferences.Editor ed = getPrefs().edit();
+        ed.putBoolean("plugin_scope_" + fileName + "_" + SCOPE_GENERAL, true);
+        for (String s : scopes) {
+            if (!SCOPE_GENERAL.equals(s)) {
+                ed.putBoolean("plugin_scope_" + fileName + "_" + s, true);
+            }
+        }
+        ed.apply();
     }
 
     /**

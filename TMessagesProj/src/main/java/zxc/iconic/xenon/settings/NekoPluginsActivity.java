@@ -3,6 +3,7 @@ package zxc.iconic.xenon.settings;
 import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Handler;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -38,6 +39,7 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
     private static final int REQUEST_CODE_INSTALL = 7001;
 
     private final int enableRow = rowId++;
+    private final int godModeRow = rowId++;
     private final int installRow = rowId++;
     private final int pluginsHeaderRow = rowId++;
     private int nextPluginRow = rowId;
@@ -50,6 +52,10 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
         items.add(UItem.asHeader(LocaleController.getString(R.string.Plugins)));
         items.add(UItem.asCheck(enableRow, LocaleController.getString(R.string.PluginsEnable),
                 LocaleController.getString(R.string.PluginsEnableDesc)).setChecked(NekoConfig.pluginsEnabled));
+        items.add(UItem.asShadow(null));
+
+        items.add(UItem.asCheck(godModeRow, LocaleController.getString(R.string.PluginGodMode),
+                LocaleController.getString(R.string.PluginGodModeDesc)).setChecked(NekoConfig.pluginGodMode));
         items.add(UItem.asShadow(null));
 
         items.add(TextSettingsCellFactory.of(installRow, LocaleController.getString(R.string.PluginsInstall)).accent());
@@ -114,6 +120,18 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
                 ((TextCheckCell) view).setChecked(NekoConfig.pluginsEnabled);
             }
             updateRows();
+        } else if (id == godModeRow) {
+            if (NekoConfig.pluginGodMode) {
+                // Turning off is unconditional — no confirmation needed.
+                NekoConfig.togglePluginGodMode();
+                if (view instanceof TextCheckCell) {
+                    ((TextCheckCell) view).setChecked(NekoConfig.pluginGodMode);
+                }
+            } else {
+                // Turning on is dangerous: force a 60s cooldown on the confirm
+                // button so it can't be enabled by an accidental tap.
+                showGodModeConfirmDialog(view);
+            }
         } else if (id == installRow) {
             // Allow installing plugins regardless of the engine state. They'll
             // activate once the engine is enabled.
@@ -122,6 +140,55 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
             PluginManager.PluginInfo info = pluginRows.get(id);
             showPluginBottomSheet(info);
         }
+    }
+
+    /**
+     * God Mode confirmation dialog. The OK button is disabled for 60s with a
+     * live countdown, so enabling it can't be an accident; only once the timer
+     * reaches zero does the button turn active and actually flip the toggle.
+     */
+    private void showGodModeConfirmDialog(View toggleView) {
+        Activity activity = getParentActivity();
+        if (activity == null) return;
+        AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+        builder.setTitle(LocaleController.getString(R.string.PluginGodMode));
+        builder.setMessage(LocaleController.getString(R.string.PluginGodModeWarn));
+        final int[] seconds = {60};
+        final AlertDialog[] dialogRef = new AlertDialog[1];
+        builder.setPositiveButton(LocaleController.formatString(R.string.PluginGodModeCountdown, seconds[0]),
+                (d, which) -> {
+                    NekoConfig.togglePluginGodMode();
+                    if (toggleView instanceof TextCheckCell) {
+                        ((TextCheckCell) toggleView).setChecked(NekoConfig.pluginGodMode);
+                    }
+                });
+        builder.setNegativeButton(LocaleController.getString("Cancel", R.string.Cancel), null);
+        AlertDialog dialog = builder.create();
+        dialogRef[0] = dialog;
+        dialog.show();
+        final TextView okButton = (TextView) dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+        if (okButton != null) {
+            okButton.setEnabled(false);
+        }
+        final Handler handler = new Handler(activity.getMainLooper());
+        final Runnable ticker = new Runnable() {
+            @Override
+            public void run() {
+                if (seconds[0] > 0) {
+                    seconds[0]--;
+                    if (okButton != null && seconds[0] > 0) {
+                        okButton.setText(LocaleController.formatString(R.string.PluginGodModeCountdown, seconds[0]));
+                    }
+                    handler.postDelayed(this, 1000);
+                } else if (okButton != null && dialogRef[0] != null && dialogRef[0].isShowing()) {
+                    okButton.setEnabled(true);
+                    okButton.setText(LocaleController.getString("OK", R.string.OK));
+                }
+            }
+        };
+        handler.postDelayed(ticker, 1000);
+        // Stop the ticker if the dialog is dismissed before the timer ends.
+        dialog.setOnDismissListener(d -> handler.removeCallbacks(ticker));
     }
 
     private void showPluginBottomSheet(PluginManager.PluginInfo info) {
