@@ -2277,7 +2277,8 @@ public class PeerColorActivity extends BaseFragment implements NotificationCente
 
         @Override
         protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-            super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(dp(50) + (needDivider ? 1 : 0), MeasureSpec.EXACTLY));
+            int h = zxc.iconic.xenon.helpers.M3SectionsHelper.isEnabled() ? 56 : 50;
+            super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(dp(h) + (needDivider ? 1 : 0), MeasureSpec.EXACTLY));
         }
 
         private int rtl(int x) {

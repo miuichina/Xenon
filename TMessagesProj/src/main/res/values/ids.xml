@@ -82,4 +82,7 @@
     <item name="passcode_btn_done" type="id"/>
 
     <item name="dragging" type="id"/>
+
+    <item name="inu_merge_with_prev" type="id"/>
+    <item name="inu_merge_with_next" type="id"/>
 </resources>

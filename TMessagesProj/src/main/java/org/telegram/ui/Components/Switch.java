@@ -236,6 +236,9 @@ public class Switch extends View {
     private void animateToCheckedState(boolean newCheckedState) {
         checkAnimator = ObjectAnimator.ofFloat(this, "progress", newCheckedState ? 1 : 0);
         checkAnimator.setDuration(200);
+        if (zxc.iconic.xenon.NekoConfig.material3Switches) {
+            checkAnimator.setInterpolator(CubicBezierInterpolator.EASE_OUT_BACK);
+        }
         checkAnimator.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
@@ -374,6 +377,11 @@ public class Switch extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         if (getVisibility() != VISIBLE) {
+            return;
+        }
+
+        if (zxc.iconic.xenon.NekoConfig.material3Switches) {
+            zxc.iconic.xenon.helpers.M3SwitchHelper.draw(getMeasuredWidth(), getMeasuredHeight(), progress, isChecked, drawIconType, iconProgress, iconDrawable, animatorIconVisibility.getFloatValue(), trackColorKey, trackCheckedColorKey, thumbCheckedColorKey, resourcesProvider, canvas);
             return;
         }
 

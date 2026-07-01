@@ -59,7 +59,7 @@ public class TextCheckCell extends FrameLayout {
     private Paint animationPaint;
     private float lastTouchX;
     private ObjectAnimator animator;
-    private boolean drawCheckRipple;
+    public boolean drawCheckRipple;
     private int padding;
     private Theme.ResourcesProvider resourcesProvider;
     ImageView imageView;
@@ -149,7 +149,11 @@ public class TextCheckCell extends FrameLayout {
         if (isMultiline) {
             super.onMeasure(MeasureSpec.makeMeasureSpec(MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
         } else {
-            super.onMeasure(MeasureSpec.makeMeasureSpec(MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(AndroidUtilities.dp(valueTextView.getVisibility() == VISIBLE ? 64 : height) + (needDivider ? 1 : 0), MeasureSpec.EXACTLY));
+            int h = valueTextView.getVisibility() == VISIBLE ? 64 : height;
+            if (zxc.iconic.xenon.helpers.M3SectionsHelper.isEnabled()) {
+                h = 56;
+            }
+            super.onMeasure(MeasureSpec.makeMeasureSpec(MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(AndroidUtilities.dp(h) + (needDivider ? 1 : 0), MeasureSpec.EXACTLY));
         }
     }
 

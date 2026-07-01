@@ -514,4 +514,7 @@
     <string name="InuSpoilerExtendToLineEndInfo">Extend spoiler overlay to the end of each line</string>
     <string name="InuSpoilerExtendToLineEndInfoExtra">Copied from inugram</string>
     <string name="InuMediaSpoilerLabel">SPOILER</string>
+    <string name="InuMaterial3">Material Design 3</string>
+    <string name="InuMaterial3Switches">Switches</string>
+    <string name="InuMaterial3Sections">List items</string>
 </resources>
