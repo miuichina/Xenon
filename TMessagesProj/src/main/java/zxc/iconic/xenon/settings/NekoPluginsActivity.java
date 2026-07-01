@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
-import android.os.Handler;
 import android.util.TypedValue;
 import android.view.View;
 import android.widget.FrameLayout;
@@ -12,6 +11,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.BotWebViewVibrationEffect;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
@@ -24,6 +24,8 @@ import org.telegram.ui.Components.BackupImageView;
 import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.RecyclerListView;
+import org.telegram.ui.Components.ScaleStateListAnimator;
+import org.telegram.ui.Stories.recorder.ButtonWithCounterView;
 import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.UniversalAdapter;
 import org.telegram.ui.Components.UniversalRecyclerView;
@@ -144,45 +146,59 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
     private void showGodModeConfirmDialog(View toggleView) {
         Activity activity = getParentActivity();
         if (activity == null) return;
-        AlertDialog.Builder builder = new AlertDialog.Builder(activity);
-        builder.setTitle(LocaleController.getString(R.string.PluginGodMode));
-        builder.setMessage(LocaleController.getString(R.string.PluginGodModeWarn));
-        final int[] seconds = {60};
-        final AlertDialog[] dialogRef = new AlertDialog[1];
-        builder.setPositiveButton(LocaleController.formatString(R.string.PluginGodModeCountdown, seconds[0]),
-                (d, which) -> {
-                    NekoConfig.togglePluginGodMode();
-                    if (toggleView instanceof TextCheckCell) {
-                        ((TextCheckCell) toggleView).setChecked(NekoConfig.pluginGodMode);
-                    }
-                });
-        builder.setNegativeButton(LocaleController.getString("Cancel", R.string.Cancel), null);
-        AlertDialog dialog = builder.create();
-        dialogRef[0] = dialog;
-        dialog.show();
-        final TextView okButton = (TextView) dialog.getButton(AlertDialog.BUTTON_POSITIVE);
-        if (okButton != null) {
-            okButton.setEnabled(false);
-        }
-        final Handler handler = new Handler(activity.getMainLooper());
-        final Runnable ticker = new Runnable() {
-            @Override
-            public void run() {
-                if (seconds[0] > 0) {
-                    seconds[0]--;
-                    if (okButton != null && seconds[0] > 0) {
-                        okButton.setText(LocaleController.formatString(R.string.PluginGodModeCountdown, seconds[0]));
-                    }
-                    handler.postDelayed(this, 1000);
-                } else if (okButton != null && dialogRef[0] != null && dialogRef[0].isShowing()) {
-                    okButton.setEnabled(true);
-                    okButton.setText(LocaleController.getString("OK", R.string.OK));
+
+        BottomSheet.Builder builder = new BottomSheet.Builder(activity, false, resourcesProvider);
+        LinearLayout sheet = new LinearLayout(activity);
+        sheet.setOrientation(LinearLayout.VERTICAL);
+        int pad = AndroidUtilities.dp(24);
+        sheet.setPadding(pad, AndroidUtilities.dp(20), pad, pad);
+
+        TextView title = new TextView(activity);
+        title.setText(LocaleController.getString(R.string.PluginGodMode));
+        title.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 20);
+        title.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+        title.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText, resourcesProvider));
+        title.setPadding(0, 0, 0, AndroidUtilities.dp(12));
+        sheet.addView(title);
+
+        TextView desc = new TextView(activity);
+        desc.setText(LocaleController.getString(R.string.PluginGodModeWarn));
+        desc.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+        desc.setLineSpacing(AndroidUtilities.dp(2), 1f);
+        desc.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText, resourcesProvider));
+        desc.setPadding(0, 0, 0, AndroidUtilities.dp(20));
+        sheet.addView(desc);
+
+        ButtonWithCounterView enableBtn = new ButtonWithCounterView(activity, resourcesProvider).setRound();
+        ScaleStateListAnimator.apply(enableBtn, 0.02f, 1.5f);
+        enableBtn.setText(LocaleController.getString(R.string.PluginGodModeEnable), false);
+        enableBtn.setTimer(60, () -> {});
+        final BottomSheet[] sheetRef = new BottomSheet[1];
+        enableBtn.setOnClickListener(v -> {
+            if (enableBtn.isTimerActive()) {
+                AndroidUtilities.shakeViewSpring(enableBtn, 3);
+                BotWebViewVibrationEffect.APP_ERROR.vibrate();
+            } else {
+                NekoConfig.togglePluginGodMode();
+                if (toggleView instanceof TextCheckCell) {
+                    ((TextCheckCell) toggleView).setChecked(NekoConfig.pluginGodMode);
                 }
+                if (sheetRef[0] != null) sheetRef[0].dismiss();
             }
-        };
-        handler.postDelayed(ticker, 1000);
-        // Stop the ticker if the dialog is dismissed before the timer ends.
-        dialog.setOnDismissListener(d -> handler.removeCallbacks(ticker));
+        });
+        sheet.addView(enableBtn, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48, 0, 0, 0, 8));
+
+        TextView cancelBtn = new TextView(activity);
+        cancelBtn.setText(LocaleController.getString(R.string.Cancel));
+        cancelBtn.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText, resourcesProvider));
+        cancelBtn.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
+        cancelBtn.setGravity(android.view.Gravity.CENTER);
+        cancelBtn.setPadding(0, AndroidUtilities.dp(14), 0, AndroidUtilities.dp(4));
+        cancelBtn.setOnClickListener(v -> { if (sheetRef[0] != null) sheetRef[0].dismiss(); });
+        sheet.addView(cancelBtn);
+
+        builder.setCustomView(sheet);
+        sheetRef[0] = builder.show();
     }
 
     private void showPluginBottomSheet(PluginManager.PluginInfo info) {

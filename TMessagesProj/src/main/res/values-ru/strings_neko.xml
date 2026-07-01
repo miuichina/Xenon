@@ -493,4 +493,35 @@
     <string name="InuMaterial3">Material Design 3</string>
     <string name="InuMaterial3Switches">Переключатели</string>
     <string name="InuMaterial3Sections">Элементы списка</string>
+    <string name="AppNameNeko">@string/Nekogram</string>
+    <string name="Nekogram">Xenon</string>
+    <string name="NekogramBeta">Xenon Beta</string>
+    <string name="CameraInVideoMessages">Камера в видеосообщениях</string>
+    <string name="AskCamera">Спрашивать каждый раз</string>
+    <string name="FrontCamera">Фронтальная камера</string>
+    <string name="RearCamera">Основная камера</string>
+    <string name="Ayugram">AyuGram</string>
+    <string name="SwitchToMain">Переключиться на основную сборку</string>
+    <string name="SwitchToMainConfirm">Переключение на основную сборку означает загрузку последней стабильной сборки Xenon без функций ayugram. Продолжить?</string>
+    <string name="EnablePushService">Фоновый сервис</string>
+    <string name="EnablePushServiceDesc">Держать приложение активным в фоне для получения обновлений и сохранения удалённых сообщений</string>
+    <string name="OptimizedPushService">Оптимизированный push-сервис</string>
+    <string name="OptimizedPushServiceDesc">Использовать энергоэффективное push-соединение для экономии батареи</string>
+    <string name="ClearDatabase">Очистить базу данных</string>
+    <string name="ClearDatabaseDesc">Удаляет все сохранённые удалённые сообщения и историю редактирований.</string>
+    <string name="ClearDatabaseConfirm">Все сохранённые удалённые сообщения и история редактирований будут безвозвратно удалены. Продолжить?</string>
+    <string name="ClearDatabaseDone">База данных очищена</string>
+    <string name="ClearDatabaseFreeUp">Освободится %1$s (%2$d удалённых сообщений, %3$d редакций)</string>
+    <string name="PushServiceText">Xenon запущен</string>
+    <string name="InuNonIslandUI">Non-island интерфейс</string>
+    <string name="InuNonIslandTabBars">Панели вкладок</string>
+    <string name="InuNonIslandGlobalSearch">Глобальный поиск</string>
+    <string name="InuNonIslandChatElements">Элементы чата</string>
+    <string name="InuNonIslandBottomBar">Нижняя панель (wip)</string>
+    <string name="InuNonIslandHint">(скопировано из inugram)\nIsland UI (aka \"Liquid Glass\") — это новый (>12.6) дизайн интерфейса, очевидно вдохновлённый iOS. Здесь можно откатить некоторые из этих изменений (best-effort).\nВозможны визуальные баги, имейте в виду.</string>
+    <string name="InuHideFadeView">Скрыть затенение</string>
+    <string name="InuDisableScrimBlur">Отключить размытие фона</string>
+    <string name="InuDisableScrimBlurInfo">Убирает размытие фона у bottom sheet</string>
+    <string name="InuDisableGlassGlare">Отключить блики стекла</string>
 </resources>
+
