@@ -152,29 +152,32 @@ jobs:
           name: outputs
           path: outputs
 
-      - name: Locate ARM64 APK
-        id: locate_apk
+      - name: Collect APKs
+        id: apks
         run: |
-          APK_PATH=$(find outputs/apk/release -name "*arm64-v8a*.apk" -type f | head -1)
-          if [ -z "$APK_PATH" ]; then
-            echo "ARM64 APK not found, trying any release APK..."
-            APK_PATH=$(find outputs/apk/release -name "*.apk" -type f | head -1)
+          set -euo pipefail
+          APK_GLOB="outputs/apk/release/*.apk"
+          APK_COUNT=$(ls $APK_GLOB 2>/dev/null | wc -l)
+          if [ "$APK_COUNT" -eq 0 ]; then
+            echo "No release APK found under outputs/apk/release"
+            exit 1
           fi
-          echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
-          echo "apk_name=$(basename $APK_PATH)" >> $GITHUB_OUTPUT
-          echo "Found APK: $APK_PATH"
 
-      - name: Generate Checksums
-        id: checksums
-        run: |
-          APK_PATH="${{ steps.locate_apk.outputs.apk_path }}"
-          SHA256=$(sha256sum "$APK_PATH" | awk '{print $1}')
-          MD5=$(md5sum "$APK_PATH" | awk '{print $1}')
-          FILE_SIZE=$(stat -c%s "$APK_PATH" | numfmt --to=iec)
-          
-          echo "sha256=$SHA256" >> $GITHUB_OUTPUT
-          echo "md5=$MD5" >> $GITHUB_OUTPUT
-          echo "size=$FILE_SIZE" >> $GITHUB_OUTPUT
+          # Build a markdown table of every APK with size + SHA256.
+          TABLE=$(printf '| File | Size | SHA256 |\n|-----------|------|--------|\n')
+          while IFS= read -r apk; do
+            name=$(basename "$apk")
+            size=$(stat -c%s "$apk" | numfmt --to=iec)
+            sha=$(sha256sum "$apk" | awk '{print $1}')
+            TABLE=$(printf '%s| `%s` | %s | `%s` |\n' "$TABLE" "$name" "$size" "$sha")
+          done < <(find outputs/apk/release -name "*.apk" -type f | sort)
+
+          # Preserve newlines across $GITHUB_OUTPUT.
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "table<<$EOF" >> $GITHUB_OUTPUT
+          echo "$TABLE" >> $GITHUB_OUTPUT
+          echo "$EOF" >> $GITHUB_OUTPUT
+          echo "count=$APK_COUNT" >> $GITHUB_OUTPUT
 
       - name: Get Commit Info
         id: commit_info
@@ -202,17 +205,104 @@ jobs:
             - **Branch:** `${{ github.ref_name }}`
             - **Build Date:** ${{ github.event.head_commit.timestamp }}
 
-            ## APK Details
-            - **File:** `${{ steps.locate_apk.outputs.apk_name }}`
-            - **Size:** ${{ steps.checksums.outputs.size }}
-
-            ## Checksums
-            | Algorithm | Hash |
-            |-----------|------|
-            | SHA256 | `${{ steps.checksums.outputs.sha256 }}` |
-            | MD5 | `${{ steps.checksums.outputs.md5 }}` |
+            ## APKs (${{ steps.apks.outputs.count }})
+            ${{ steps.apks.outputs.table }}
           files: |
-            ${{ steps.locate_apk.outputs.apk_path }}
+            outputs/apk/release/*.apk
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  telegram:
+    needs: [build, release]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: outputs
+          path: outputs
+
+      - name: Build message and publish to Telegram
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TG_TOKEN:-}" ] || [ -z "${TG_CHAT_ID:-}" ]; then
+            echo "TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID secret is not set"
+            exit 1
+          fi
+
+          API="https://api.telegram.org/bot${TG_TOKEN}"
+
+          # Commit / build metadata.
+          COMMIT_MSG=$(git log -1 --pretty=%B | head -1)
+          HASH_SHORT=$(git rev-parse --short=7 HEAD)
+          HASH_FULL=$(git rev-parse HEAD)
+          BRANCH="${GITHUB_REF_NAME:-main}"
+          BUILD_DATE="${BUILD_DATE:-$(date -u '+%Y-%m-%d %H:%M:%S UTC')}"
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          # GitHub Release created by the `release` job above (tag = short hash).
+          RELEASE_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${HASH_SHORT}"
+
+          # HTML-escape <, >, & for Telegram parse_mode=HTML.
+          esc() { sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g'; }
+          COMMIT_MSG_ESC=$(printf '%s' "$COMMIT_MSG" | esc)
+
+          # Compose the descriptive message (use real newlines — curl encodes them).
+          NL=$'\n'
+          MSG="🛠 <b>Новый билд</b>${NL}${NL}"
+          MSG+="📅 <b>Дата сборки:</b> ${BUILD_DATE}${NL}"
+          MSG+="🌿 <b>Ветка:</b> ${BRANCH}${NL}"
+          MSG+="🔗 <b>Коммит:</b> <code>${HASH_SHORT}</code> — ${COMMIT_MSG_ESC}${NL}"
+          MSG+="📦 <b>Релиз:</b> <a href=\"${RELEASE_URL}\">GitHub Release</a>${NL}"
+          MSG+="⚙️ <b>CI:</b> <a href=\"${RUN_URL}\">GitHub Actions run</a>${NL}${NL}"
+          MSG+="<b>APK-файлы:</b>${NL}"
+
+          # Collect every release APK with size + SHA256.
+          shopt -s nullglob
+          apks=(outputs/apk/release/*.apk)
+          shopt -u nullglob
+          if [ "${#apks[@]}" -eq 0 ]; then
+            echo "No release APK found under outputs/apk/release"
+            exit 1
+          fi
+
+          # Sort for a stable order.
+          IFS=$'\n' sorted=($(sort <<<"${apks[*]}")); unset IFS
+
+          curl --fail --silent --show-error \
+            --data-urlencode "chat_id=${TG_CHAT_ID}" \
+            --data-urlencode "text=${MSG}" \
+            --data-urlencode "parse_mode=HTML" \
+            --data-urlencode "disable_web_page_preview=true" \
+            "${API}/sendMessage" >/dev/null
+
+          # Send each APK as a document. Telegram Bot API limits files to ~50 MB;
+          # larger uploads (or any failure) will fail this step intentionally.
+          for apk in "${sorted[@]}"; do
+            name=$(basename "$apk")
+            size=$(stat -c%s "$apk" | numfmt --to=iec)
+            sha=$(sha256sum "$apk" | awk '{print $1}')
+            name_esc=$(printf '%s' "$name" | esc)
+
+            caption="<b>${name_esc}</b>${NL}"
+            caption+="📦 ${size}${NL}"
+            caption+="🔑 <code>${sha}</code>"
+
+            echo "Sending ${name} (${size})..."
+            curl --fail --silent --show-error \
+              --form "chat_id=${TG_CHAT_ID}" \
+              --form "document=@${apk}" \
+              --form "caption=${caption}" \
+              --form "parse_mode=HTML" \
+              "${API}/sendDocument" >/dev/null
+          done
+
+          echo "All APKs published to Telegram."
