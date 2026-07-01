@@ -160,7 +160,7 @@ public class MessageSendPreview extends Dialog implements NotificationCenter.Not
             @Override
             protected void dispatchDraw(@NonNull Canvas canvas) {
                 if (activityVisibilityController != null) {
-                    activityVisibilityController.setHidden(openProgress == 1 && blurBitmapPaint != null);
+                    activityVisibilityController.setHidden(openProgress == 1 && blurBitmapPaint != null && !zxc.iconic.xenon.NekoConfig.disableScrimBlur);
                 }
 
                 if (openProgress > 0 && blurBitmapPaint != null) {
@@ -1164,7 +1164,9 @@ public class MessageSendPreview extends Dialog implements NotificationCenter.Not
                 WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS |
                 WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION |
                 WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS;
-        params.flags |= WindowManager.LayoutParams.FLAG_FULLSCREEN;
+        if (!zxc.iconic.xenon.NekoConfig.disableScrimBlur) {
+            params.flags |= WindowManager.LayoutParams.FLAG_FULLSCREEN;
+        }
         params.flags |= WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON;
         if (Build.VERSION.SDK_INT >= 28) {
             params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
@@ -1700,6 +1702,14 @@ public class MessageSendPreview extends Dialog implements NotificationCenter.Not
             anchorSendButton.invalidate();
         }
         animateOpenTo(false, () -> {
+            if (zxc.iconic.xenon.NekoConfig.disableScrimBlur) {
+                if (editText != null) {
+                    editText.setAlpha(1f);
+                }
+                if (anchorSendButton != null && !sent) {
+                    anchorSendButton.setAlpha(1f);
+                }
+            }
             SpoilerEffect2.pause(SpoilerEffect2.TYPE_DEFAULT, false);
             if (spoilerEffect2 != null) {
                 spoilerEffect2.detach(windowView);
@@ -1762,13 +1772,13 @@ public class MessageSendPreview extends Dialog implements NotificationCenter.Not
                     closing = false;
                 }
                 if (editText != null) {
-                    editText.setAlpha(1f);
+                    editText.setAlpha(open && zxc.iconic.xenon.NekoConfig.disableScrimBlur ? 0f : 1f);
                 }
                 if (destCell != null) {
                     destCell.setVisibility(View.VISIBLE);
                 }
                 if (anchorSendButton != null && !sent) {
-                    anchorSendButton.setAlpha(1f);
+                    anchorSendButton.setAlpha(open && zxc.iconic.xenon.NekoConfig.disableScrimBlur ? 0f : 1f);
                 }
                 if (!open && sendButton != null) {
                     sendButton.setAlpha(0f);

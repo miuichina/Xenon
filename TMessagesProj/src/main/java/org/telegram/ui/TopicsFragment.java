@@ -4037,6 +4037,16 @@ public class TopicsFragment extends BaseFragment implements NotificationCenter.N
         if (blurredView == null || parentLayout == null) {
             return;
         }
+        if (zxc.iconic.xenon.NekoConfig.disableScrimBlur) {
+            blurredView.setBackgroundColor(0x60000000);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                blurredView.setForeground(null);
+            }
+            blurredView.setAlpha(0.0f);
+            blurredView.requestLayout();
+            blurredView.invalidate();
+            return;
+        }
         int w = (int) (fragmentView.getMeasuredWidth() / 6.0f);
         int h = (int) (fragmentView.getMeasuredHeight() / 6.0f);
         Bitmap bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);

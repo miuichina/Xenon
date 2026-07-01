@@ -3196,7 +3196,9 @@ public class ChatActivityEnterView extends FrameLayout implements
 
                     canvas.save();
                     canvas.scale(s, s, backgroundRect.centerX(), backgroundRect.centerY());
-                    canvas.drawRoundRect(backgroundRect, r, r, paint);
+                    if (!zxc.iconic.xenon.helpers.NonIslandHelper.chatElements()) {
+                        canvas.drawRoundRect(backgroundRect, r, r, paint);
+                    }
                     canvas.restore();
                 }
                 super.dispatchDraw(canvas);
@@ -3381,7 +3383,7 @@ public class ChatActivityEnterView extends FrameLayout implements
         cameraOutline = getResources().getDrawable(R.drawable.input_video).mutate();
         cameraOutline.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_glass_defaultIcon), PorterDuff.Mode.MULTIPLY));
 
-        audioVideoSendButton = new ChatActivityEnterViewAnimatedIconView(context, 24) {
+        audioVideoSendButton = new ChatActivityEnterViewAnimatedIconView(context, zxc.iconic.xenon.helpers.NonIslandHelper.chatElements() ? 32 : 24) {
             private final Rect tmpRectF = new Rect();
             @Override
             public void draw(@NonNull Canvas canvas) {
@@ -3399,7 +3401,7 @@ public class ChatActivityEnterView extends FrameLayout implements
         audioVideoSendButton.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
 //        audioVideoSendButton.setFocusable(true);
 //        audioVideoSendButton.setAccessibilityDelegate(mediaMessageButtonsDelegate);
-        padding = dp(10f);
+        padding = dp(zxc.iconic.xenon.helpers.NonIslandHelper.chatElements() ? 7.5f : 10f);
         audioVideoSendButton.setPadding(padding, padding, padding, padding);
         audioVideoButtonContainer.addView(audioVideoSendButton, LayoutHelper.createFrame(DEFAULT_HEIGHT, DEFAULT_HEIGHT));
 
@@ -3540,8 +3542,8 @@ public class ChatActivityEnterView extends FrameLayout implements
             if (paidMessagesPrice > 0 || isLiveComment) {
                 sendButton.setStarsPrice(paidMessagesPrice, 1);
             }
-            updateFieldRight(lastAttachVisible);
-        }
+        updateFieldRight(lastAttachVisible);
+    }
         if (isLiveComment) {
             createCaptionLimitView();
             int newLimit = areLiveCommentsFree() ? HighlightMessageSheet.getMaxLength(currentAccount) : HighlightMessageSheet.getTierOption(currentAccount, (int) paidMessagesPrice, HighlightMessageSheet.TIER_LENGTH);
@@ -4643,7 +4645,7 @@ public class ChatActivityEnterView extends FrameLayout implements
                 canvas.clipRect(0, separatorY, getMeasuredWidth(), getMeasuredHeight());
             }
             if (child == topView) {
-                canvas.clipRect(0, 0, getMeasuredWidth(), separatorY);
+                canvas.clipRect(0, zxc.iconic.xenon.helpers.NonIslandHelper.chatElements() ? Integer.MIN_VALUE : 0, getMeasuredWidth(), separatorY);
             }
         }
         boolean result = super.drawChild(canvas, child, drawingTime);
@@ -6302,7 +6304,7 @@ public class ChatActivityEnterView extends FrameLayout implements
 
         LayoutParams layoutParams = (LayoutParams) textFieldContainer.getLayoutParams();
         layoutParams.topMargin = (show ? topView.getLayoutParams().height : 0);
-        layoutParams.topMargin += dp(9); // for prevent clipping
+        layoutParams.topMargin += dp(zxc.iconic.xenon.helpers.NonIslandHelper.chatElements() ? 0 : 9); // for prevent clipping
         textFieldContainer.setLayoutParams(layoutParams);
 
         resizeForTopViewLastShow = show;
@@ -6400,7 +6402,7 @@ public class ChatActivityEnterView extends FrameLayout implements
 
         audioVideoButtonContainer.setAlpha(audioVideoButtonContainerForbidden ? 0.5f : 1.0f);
         audioVideoButtonContainer.invalidate();
-        audioVideoSendButton.setColorFilter(new PorterDuffColorFilter(audioVideoButtonContainerForbidden ?
+        audioVideoSendButton.setColorFilter(new PorterDuffColorFilter(audioVideoButtonContainerForbidden || zxc.iconic.xenon.helpers.NonIslandHelper.chatElements() ?
             getThemedColor(Theme.key_glass_defaultIcon) : Color.WHITE, PorterDuff.Mode.SRC_IN));
         audioVideoSendButton.invalidate();
         updateFieldHint(false);
@@ -9010,8 +9012,8 @@ public class ChatActivityEnterView extends FrameLayout implements
 
                     FrameLayout.LayoutParams newLayoutParams = new FrameLayout.LayoutParams(parent.getMeasuredWidth() - (editingMessageObject == null ? Math.max(0, sendButton.width() - dp(DEFAULT_HEIGHT)) : 0), dp(DEFAULT_HEIGHT));
                     newLayoutParams.gravity = Gravity.BOTTOM;
-                    newLayoutParams.leftMargin = dp(7);
-                    newLayoutParams.rightMargin = dp(7);
+                    newLayoutParams.leftMargin = dp(zxc.iconic.xenon.helpers.NonIslandHelper.chatElements() ? 0 : 7);
+                    newLayoutParams.rightMargin = dp(zxc.iconic.xenon.helpers.NonIslandHelper.chatElements() ? 0 : 7);
                     sizeNotifierLayout.addView(recordedAudioPanel, newLayoutParams);
                     videoTimelineView.setVisibility(GONE);
                 } else {
@@ -10184,7 +10186,7 @@ public class ChatActivityEnterView extends FrameLayout implements
         if (botKeyboardView != null) {
             botKeyboardView.updateColors();
         }
-        audioVideoSendButton.setColorFilter(new PorterDuffColorFilter(audioVideoButtonContainerForbidden ? getThemedColor(Theme.key_glass_defaultIcon) : Color.WHITE, PorterDuff.Mode.SRC_IN));
+        audioVideoSendButton.setColorFilter(new PorterDuffColorFilter(audioVideoButtonContainerForbidden || zxc.iconic.xenon.helpers.NonIslandHelper.chatElements() ? getThemedColor(Theme.key_glass_defaultIcon) : Color.WHITE, PorterDuff.Mode.SRC_IN));
         emojiButton.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_glass_defaultIcon), PorterDuff.Mode.SRC_IN));
         emojiButton.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector)));
     }
@@ -14519,7 +14521,7 @@ public class ChatActivityEnterView extends FrameLayout implements
             }
             updateColors();
             checkBackgroundRect();
-            if (isNewDesignSendButton) {
+            if (isNewDesignSendButton && !zxc.iconic.xenon.helpers.NonIslandHelper.chatElements()) {
                 canvas.drawRoundRect(backgroundRect, dp(RADIUS), dp(RADIUS), backgroundPaint);
             }
 
@@ -14593,7 +14595,7 @@ public class ChatActivityEnterView extends FrameLayout implements
                     blurredBackgroundDrawable.draw(canvas);
                 }
 
-                if (!isNewDesignSendButton) {
+                if (!isNewDesignSendButton && !zxc.iconic.xenon.helpers.NonIslandHelper.chatElements()) {
                     canvas.drawPath(path, backgroundPaint);
                 }
                 canvas.clipPath(path);
@@ -14929,9 +14931,11 @@ public class ChatActivityEnterView extends FrameLayout implements
         final float visibility = animatorTopViewVisibility.getFloatValue();
 
         if (topView != null) {
-            final float y = getMeasuredHeight() - animatorInputFieldHeight.getFactor();
-
-            topView.setTranslationY(y - topView.getMeasuredHeight() * visibility);
+            final float topH = topView.getLayoutParams().height;
+            final float topMargin = visibility > 0 ? (topH + dp(zxc.iconic.xenon.helpers.NonIslandHelper.chatElements() ? 0 : 9)) : 0;
+            final float fieldDelta = animatorInputFieldHeight.getToFactor() - animatorInputFieldHeight.getFactor();
+            final float baseY = topMargin + textFieldContainer.getPaddingTop() + fieldDelta;
+            topView.setTranslationY(baseY - topH * visibility);
             topView.setVisibility(visibility > 0 ? VISIBLE : GONE);
         }
 

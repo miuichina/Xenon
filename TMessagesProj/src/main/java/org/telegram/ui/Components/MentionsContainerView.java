@@ -44,6 +44,8 @@ import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Adapters.MentionsAdapter;
+
+import zxc.iconic.xenon.helpers.NonIslandHelper;
 import org.telegram.ui.Adapters.PaddedListAdapter;
 import org.telegram.ui.Business.QuickRepliesActivity;
 import org.telegram.ui.Cells.ContextLinkCell;
@@ -953,8 +955,8 @@ public class MentionsContainerView extends FrameLayout implements NotificationCe
 
     public void setBackgroundDrawable(@NonNull BlurredBackgroundDrawable backgroundDrawable) {
         this.backgroundDrawable = backgroundDrawable;
-        this.backgroundDrawable.setRadius(dp(22));
-        this.backgroundDrawable.setPadding(dp(5));
+        this.backgroundDrawable.setRadius(dp(NonIslandHelper.chatElements() ? 0 : 22));
+        this.backgroundDrawable.setPadding(dp(NonIslandHelper.chatElements() ? 0 : 5));
 
         checkListViewPadding();
     }
@@ -991,9 +993,9 @@ public class MentionsContainerView extends FrameLayout implements NotificationCe
         if (backgroundDrawable != null) {
             backgroundDrawable.setBounds(
                 0,
-                (int) containerTop - dp(5),
+                (int) containerTop - dp(NonIslandHelper.chatElements() ? 0 : 5),
                 getMeasuredWidth(),
-                (int) containerBottom + dp(5)
+                (int) containerBottom + dp(NonIslandHelper.chatElements() ? 0 : 5)
             );
 
 
@@ -1002,14 +1004,14 @@ public class MentionsContainerView extends FrameLayout implements NotificationCe
             if (isGif()) {
                 clipBounds.inset(dp(2), dp(2));
                 clipPath.addRoundRect(clipBounds,
-                    dp(20),
-                    dp(20),
+                    dp(NonIslandHelper.chatElements() ? 0 : 20),
+                    dp(NonIslandHelper.chatElements() ? 0 : 20),
                     Path.Direction.CW
                 );
             } else {
                 clipPath.addRoundRect(clipBounds,
-                    dp(22),
-                    dp(22),
+                    dp(NonIslandHelper.chatElements() ? 0 : 22),
+                    dp(NonIslandHelper.chatElements() ? 0 : 22),
                     Path.Direction.CW
                 );
             }
@@ -1030,7 +1032,7 @@ public class MentionsContainerView extends FrameLayout implements NotificationCe
         }
 
         final boolean isGif = isGif();
-        if (backgroundDrawable == null) {
+        if (backgroundDrawable == null || NonIslandHelper.chatElements()) {
             listView.setPadding(0, 0, 0, 0);
         } else {
             listView.setPadding(dp(isGif ? 7 : 5), isGif ? dp(2) : 0, dp(isGif ? 7 : 5), isGif ? dp(2) : 0);

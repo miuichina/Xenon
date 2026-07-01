@@ -244,6 +244,13 @@ public class NekoConfig {
     public static boolean keepUnreadArchivedOnTop = false;
     public static boolean shouldNOTTrustMe = false;
     public static boolean roundedBulletin = false;
+    public static boolean nonIslandTabBars = false;
+    public static boolean nonIslandGlobalSearch = false;
+    public static boolean nonIslandChatElements = false;
+    public static boolean hideFadeView = false;
+    public static boolean disableGlassGlare = true;
+    public static boolean disableScrimBlur = false;
+    public static boolean nonIslandBottomBar = false;
 
     public static int userMcc = 0;
 
@@ -415,6 +422,13 @@ public class NekoConfig {
             removeChatDelay = preferences.getBoolean("removeChatDelay", false);
             showOnlineDotsInChat = preferences.getBoolean("showOnlineDotsInChat", false);
             roundedBulletin = preferences.getBoolean("roundedBulletin", false);
+            nonIslandTabBars = preferences.getBoolean("nonIslandTabBars", false);
+            nonIslandGlobalSearch = preferences.getBoolean("nonIslandGlobalSearch", false);
+            nonIslandChatElements = preferences.getBoolean("nonIslandChatElements", false);
+            hideFadeView = preferences.getBoolean("hideFadeView", false);
+            disableGlassGlare = preferences.getBoolean("disableGlassGlare", true);
+            disableScrimBlur = preferences.getBoolean("disableScrimBlur", false);
+            nonIslandBottomBar = preferences.getBoolean("nonIslandBottomBar", false);
 
             LensHelper.checkLensSupportAsync();
             preferences.registerOnSharedPreferenceChangeListener(listener);
@@ -1616,6 +1630,62 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("roundedBulletin", roundedBulletin);
+        editor.apply();
+    }
+
+    public static void toggleNonIslandTabBars() {
+        nonIslandTabBars = !nonIslandTabBars;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("nonIslandTabBars", nonIslandTabBars);
+        editor.apply();
+    }
+
+    public static void toggleNonIslandGlobalSearch() {
+        nonIslandGlobalSearch = !nonIslandGlobalSearch;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("nonIslandGlobalSearch", nonIslandGlobalSearch);
+        editor.apply();
+    }
+
+    public static void toggleNonIslandChatElements() {
+        nonIslandChatElements = !nonIslandChatElements;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("nonIslandChatElements", nonIslandChatElements);
+        editor.apply();
+    }
+
+    public static void toggleHideFadeView() {
+        hideFadeView = !hideFadeView;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("hideFadeView", hideFadeView);
+        editor.apply();
+    }
+
+    public static void toggleDisableGlassGlare() {
+        disableGlassGlare = !disableGlassGlare;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("disableGlassGlare", disableGlassGlare);
+        editor.apply();
+    }
+
+    public static void toggleDisableScrimBlur() {
+        disableScrimBlur = !disableScrimBlur;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("disableScrimBlur", disableScrimBlur);
+        editor.apply();
+    }
+
+    public static void toggleNonIslandBottomBar() {
+        nonIslandBottomBar = !nonIslandBottomBar;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("nonIslandBottomBar", nonIslandBottomBar);
         editor.apply();
     }
 

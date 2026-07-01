@@ -65,6 +65,14 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int material3SwitchesRow = rowId++;
     private final int m3SectionsStyleRow = rowId++;
 
+    private final int nonIslandTabBarsRow = rowId++;
+    private final int nonIslandGlobalSearchRow = rowId++;
+    private final int nonIslandChatElementsRow = rowId++;
+    private final int hideFadeViewRow = rowId++;
+    private final int disableGlassGlareRow = rowId++;
+    private final int disableScrimBlurRow = rowId++;
+    private final int nonIslandBottomBarRow = rowId++;
+
     private final int textAnimationSettingsRow = rowId++;
     private final int roundedBulletinRow = rowId++;
 
@@ -136,6 +144,17 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         items.add(UItem.asCheck(material3SwitchesRow, "Switches").setChecked(NekoConfig.material3Switches).slug("material3Switches"));
         items.add(UItem.asCheck(m3SectionsStyleRow, "List items").setChecked(NekoConfig.m3SectionsStyle).slug("m3SectionsStyle"));
         items.add(UItem.asShadow(null));
+
+        items.add(UItem.asHeader(LocaleController.getString(R.string.InuNonIslandUI)));
+        items.add(UItem.asCheck(nonIslandTabBarsRow, LocaleController.getString(R.string.InuNonIslandTabBars)).setChecked(NekoConfig.nonIslandTabBars).slug("nonIslandTabBars"));
+        items.add(UItem.asCheck(nonIslandGlobalSearchRow, LocaleController.getString(R.string.InuNonIslandGlobalSearch)).setChecked(NekoConfig.nonIslandGlobalSearch).slug("nonIslandGlobalSearch"));
+        items.add(UItem.asCheck(nonIslandChatElementsRow, LocaleController.getString(R.string.InuNonIslandChatElements)).setChecked(NekoConfig.nonIslandChatElements).slug("nonIslandChatElements"));
+        items.add(UItem.asCheck(hideFadeViewRow, LocaleController.getString(R.string.InuHideFadeView)).setChecked(NekoConfig.hideFadeView).slug("hideFadeView"));
+        items.add(UItem.asCheck(disableGlassGlareRow, LocaleController.getString(R.string.InuDisableGlassGlare)).setChecked(NekoConfig.disableGlassGlare).slug("disableGlassGlare"));
+        items.add(UItem.asCheck(disableScrimBlurRow, LocaleController.getString(R.string.InuDisableScrimBlur)).setChecked(NekoConfig.disableScrimBlur).slug("disableScrimBlur"));
+        items.add(UItem.asCheck(nonIslandBottomBarRow, LocaleController.getString(R.string.InuNonIslandBottomBar)).setChecked(NekoConfig.nonIslandBottomBar).slug("nonIslandBottomBar"));
+        items.add(UItem.asShadow(LocaleController.getString(R.string.InuNonIslandHint)));
+
         items.add(UItem.asHeader(LocaleController.getString(R.string.TextAnimation)));
         items.add(TextSettingsCellFactory.of(textAnimationSettingsRow, LocaleController.getString(R.string.TextAnimation), "›").slug("textAnimationSettings"));
         items.add(UItem.asShadow(null));
@@ -326,6 +345,42 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             NekoConfig.toggleM3SectionsStyle();
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.m3SectionsStyle);
+            }
+            showRestartBulletin();
+        } else if (id == nonIslandTabBarsRow) {
+            NekoConfig.toggleNonIslandTabBars();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.nonIslandTabBars);
+            }
+        } else if (id == nonIslandGlobalSearchRow) {
+            NekoConfig.toggleNonIslandGlobalSearch();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.nonIslandGlobalSearch);
+            }
+        } else if (id == nonIslandChatElementsRow) {
+            NekoConfig.toggleNonIslandChatElements();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.nonIslandChatElements);
+            }
+        } else if (id == hideFadeViewRow) {
+            NekoConfig.toggleHideFadeView();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.hideFadeView);
+            }
+        } else if (id == disableGlassGlareRow) {
+            NekoConfig.toggleDisableGlassGlare();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.disableGlassGlare);
+            }
+        } else if (id == disableScrimBlurRow) {
+            NekoConfig.toggleDisableScrimBlur();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.disableScrimBlur);
+            }
+        } else if (id == nonIslandBottomBarRow) {
+            NekoConfig.toggleNonIslandBottomBar();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.nonIslandBottomBar);
             }
             showRestartBulletin();
         } else if (id == roundedBulletinRow) {

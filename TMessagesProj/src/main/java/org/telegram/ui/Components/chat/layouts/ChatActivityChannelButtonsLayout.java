@@ -26,6 +26,7 @@ import org.telegram.ui.Components.ScaleStateListAnimator;
 import org.telegram.ui.Components.blur3.BlurredBackgroundDrawableViewFactory;
 import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
 import org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundColorProvider;
+import zxc.iconic.xenon.helpers.NonIslandHelper;
 import org.telegram.ui.Components.chat.buttons.ChatActivityBlurredRoundButton;
 
 import java.util.HashSet;
@@ -136,13 +137,16 @@ public class ChatActivityChannelButtonsLayout extends FrameLayout implements Fac
             }
 
             ScaleStateListAnimator.apply(button, .13f, 2f);
+            if (NonIslandHelper.chatElements()) {
+                button.setBlurredBackgroundDrawable(null);
+            }
             button.setVisibility(GONE);
             button.setOnClickListener(v -> {
                 if (onClickListeners[buttonId] != null) {
                     onClickListeners[buttonId].onClick(v);
                 }
             });
-            addView(button, LayoutHelper.createFrame(56, 56));
+            addView(button, LayoutHelper.createFrame(56, 56, Gravity.CENTER_VERTICAL | Gravity.LEFT));
 
             buttonHolders[buttonId] = new ButtonHolder(button, visibilityAnimator);
             checkButtonsPositionsAndVisibility();
@@ -263,7 +267,7 @@ public class ChatActivityChannelButtonsLayout extends FrameLayout implements Fac
     private float totalWidthLeft, totalWidthRight;
 
     private void checkContainerPaddings(boolean canRequestLayout) {
-        int paddingLeft = dp(7), paddingRight = dp(7);
+        int paddingLeft = NonIslandHelper.chatElements() ? 0 : dp(7), paddingRight = NonIslandHelper.chatElements() ? 0 : dp(7);
         for (final int buttonId : buttonsOrderLeft) {
             final ButtonHolder holder = buttonHolders[buttonId];
             if (holder == null) {

@@ -282,6 +282,7 @@ import me.vkryl.android.animator.FactorAnimator;
 import zxc.iconic.xenon.helpers.PopupHelper;
 import zxc.iconic.xenon.helpers.TypefaceHelper;
 import zxc.iconic.xenon.helpers.remote.ConfigHelper;
+import zxc.iconic.xenon.helpers.NonIslandHelper;
 
 public class DialogsActivity extends BaseFragment implements NotificationCenter.NotificationCenterDelegate, FloatingDebugProvider, FactorAnimator.Target, MainTabsActivity.TabFragmentDelegate {
     private final int ADDITIONAL_LIST_HEIGHT_DP = Build.VERSION.SDK_INT >= 31 ? 48 : 0;
@@ -1310,6 +1311,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
             notifyHeightChanged();
             updateFilterTabsOffset();
+            NonIslandHelper.updateGlobalSearchBarInsets(fragmentSearchField);
             updateFloatingButtonOffset();
             updateContextViewPosition();
         }
@@ -3481,6 +3483,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             actionBar.setAddToContainer(false);
             actionBar.setCastShadows(false);
             actionBar.setClipContent(true);
+            actionBar.inu_nonIsland = NonIslandHelper.tabBars();
         //}
         actionBar.setTitleActionRunnable(() -> {
             if (initialDialogsType != DIALOGS_TYPE_WIDGET) {
@@ -4716,6 +4719,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         searchTabsViewBackground.setPadding(dp(6.666f));
         searchTabsAndFiltersLayout.setPadding(0, dp(7), 0, dp(7));
         searchTabsAndFiltersLayout.setBlurredBackground(searchTabsViewBackground);
+        NonIslandHelper.applyGlobalSearchTabs(searchTabsAndFiltersLayout, contentView);
 
         filtersView = new FiltersView(getParentActivity(), null);
         filtersView.setPadding(0, dp(3), 0, dp(3));
@@ -5109,6 +5113,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             writeButton.setCirclePadding(dp(7), dp(8));
             writeButton.newCounterPos = true;
             contentView.addView(writeButton, LayoutHelper.createFrame(110, 50, Gravity.RIGHT | Gravity.BOTTOM));
+            if (NonIslandHelper.tabBars()) {
+                // no padding for bottom buttons
+            }
             writeButton.setScrimViewBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
             writeButton.setOnClickListener(v -> {
                 if (delegate == null || selectedDialogs.isEmpty()) {
@@ -5140,10 +5147,12 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                     contentView.indexOfChild(chatInputViewsContainer) :
                     -1;
             contentView.addView(filterTabsView, index, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 36 + 7 + 7, bottomFilterTabs() ? Gravity.BOTTOM : Gravity.TOP, 4, 0, 4, 0));
+            NonIslandHelper.applyFilterTabBar(filterTabsView, contentView);
         }
 
         if (fragmentSearchField != null) {
             fragmentSearchField.setupBlurredBackground(iBlur3FactoryLiquidGlass.create(fragmentSearchField, BlurredBackgroundProviderImpl.topPanel(resourceProvider)));
+            NonIslandHelper.applyGlobalSearchBar(fragmentSearchField, contentView);
         }
 
         dialogStoriesCell = new DialogStoriesCell(context, this, currentAccount, isArchive() ? DialogStoriesCell.TYPE_ARCHIVE : DialogStoriesCell.TYPE_DIALOGS) {
@@ -8846,6 +8855,16 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         if (blurredView == null) {
             return;
         }
+        if (zxc.iconic.xenon.NekoConfig.disableScrimBlur) {
+            blurredView.setBackgroundColor(0x60000000);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                blurredView.setForeground(null);
+            }
+            blurredView.setAlpha(0.0f);
+            blurredView.setVisibility(View.VISIBLE);
+            checkUi_mainTabsVisible();
+            return;
+        }
         int w = (int) (fragmentView.getMeasuredWidth() / 9.0f);
         int h = (int) (fragmentView.getMeasuredHeight() / 9.0f);
         Bitmap bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
@@ -12521,6 +12540,10 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             return rightSlidingDialogContainer.getFragment().isLightStatusBar();
         }
         int color = getThemedColor(Theme.key_windowBackgroundWhite);
+        if (NonIslandHelper.tabBars()) {
+            boolean isLight = AndroidUtilities.computePerceivedBrightness(color) <= 0.7f;
+            AndroidUtilities.setLightStatusBar(getParentActivity().getWindow(), isLight);
+        }
         return ColorUtils.calculateLuminance(color) > 0.7f;
     }
 
@@ -13613,6 +13636,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             io.add(R.drawable.msg_help, getString(R.string.HowDoesItWork), this::showArchiveHelp);
         }
 
+        if (NonIslandHelper.chatElements()) {
+            io.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
+        }
         io.show();
         io.setTranslationY(-dp(64));
     }
@@ -13665,6 +13691,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             ViewCompat.dispatchApplyWindowInsets(rightSlidingDialogContainer, insets);
         }
 
+        NonIslandHelper.updateGlobalSearchBarInsets(fragmentSearchField);
+
         return WindowInsetsCompat.CONSUMED;
     }
 
@@ -13674,6 +13702,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     @Override
     public void onFactorChanged(int id, float factor, float fraction, FactorAnimator callee) {
         if (id == ANIMATOR_ID_SEARCH_VISIBLE) {
+            NonIslandHelper.updateGlobalSearchBarInsets(fragmentSearchField);
             checkUi_menuItems();
             checkUi_searchFieldVisibility();
             checkUi_topPanelVisible();
@@ -14026,7 +14055,11 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         if (commentView != null) {
             return (int) (windowInsetsStateHolder.getAnimatedMaxBottomInset() + dp(9) + chatInputViewsContainer.getInputBubbleHeight() + dp(7) + dp(2)) + getFilterTabsHeight();
         } else {
-            return navigationBarHeight + additionNavigationBarHeight + getFilterTabsHeight();
+            int paddingBottom = navigationBarHeight + additionNavigationBarHeight + getFilterTabsHeight();
+            if (NonIslandHelper.tabBars()) {
+                paddingBottom -= AndroidUtilities.navigationBarHeight;
+            }
+            return paddingBottom;
         }
     }
 

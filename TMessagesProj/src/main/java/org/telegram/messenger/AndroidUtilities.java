@@ -6106,6 +6106,13 @@ public class AndroidUtilities {
             return;
         }
 
+        if (zxc.iconic.xenon.NekoConfig.disableScrimBlur) {
+            Bitmap stub = Bitmap.createBitmap(2, 2, Bitmap.Config.ARGB_8888);
+            stub.eraseColor(0x60000000);
+            onBitmapDone.run(stub);
+            return;
+        }
+
         List<View> views = allGlobalViews();
 
         if (views == null) {

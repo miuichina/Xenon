@@ -2098,7 +2098,7 @@ public class ContentPreviewViewer {
                 containerView.invalidate();
             }
 
-            if (blurProgress != 0 && blurrBitmap != null) {
+            if (blurProgress != 0 && blurrBitmap != null && !zxc.iconic.xenon.NekoConfig.disableScrimBlur) {
                 paint.setAlpha((int) (blurProgress * 255));
                 if (paint.getAlpha() != 255) {
                     canvas.drawColor(Theme.multAlpha(Theme.getColor(Theme.key_windowBackgroundGray, resourcesProvider), blurProgress));
@@ -2107,7 +2107,7 @@ public class ContentPreviewViewer {
             }
         }
 
-        backgroundDrawable.setAlpha((int) (180 * showProgress));
+        backgroundDrawable.setAlpha((int) ((zxc.iconic.xenon.NekoConfig.disableScrimBlur ? 255 : 180) * showProgress));
         backgroundDrawable.setBounds(0, 0, containerView.getWidth(), containerView.getHeight());
         backgroundDrawable.draw(canvas);
 

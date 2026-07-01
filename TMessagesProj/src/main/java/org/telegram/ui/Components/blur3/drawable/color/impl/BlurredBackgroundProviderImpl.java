@@ -14,9 +14,23 @@ import org.telegram.messenger.UserConfig;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundProvider;
 import org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundProviderBuilder;
+import zxc.iconic.xenon.helpers.NonIslandHelper;
 
 public class BlurredBackgroundProviderImpl {
     public static BlurredBackgroundProvider mainTabs(Theme.ResourcesProvider resourcesProvider) {
+        if (NonIslandHelper.bottomBar()) {
+            return new BlurredBackgroundProviderBuilder(resourcesProvider)
+                .setBackgroundColor((r, isDark) -> {
+                    final float alpha = 0.76f;
+                    final int colorBg = Theme.getColor(Theme.key_windowBackgroundWhite, r);
+                    return Theme.multAlpha(colorBg, alpha);
+                })
+                .setStrokeColorTop(0xFFFFFFFF, 0x28FFFFFF)
+                .setStrokeColorBottom(0xFFFFFFFF, 0x14FFFFFF)
+                .setShadowColor(0x20000000, 0)
+                .setStrokeWidth(dpf2(0.5f), dpf2(0.5f))
+                .build();
+        }
         return new BlurredBackgroundProviderBuilder(resourcesProvider)
             .setBackgroundColor((r, isDark) -> {
                 final float alpha = glassTintAlpha(LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0.86f : 0.82f);
@@ -137,25 +151,24 @@ public class BlurredBackgroundProviderImpl {
     }
 
     public static BlurredBackgroundProvider topPanelChatActivity(Theme.ResourcesProvider resourcesProvider) {
-        return new BlurredBackgroundProviderBuilder(resourcesProvider)
+        BlurredBackgroundProviderBuilder b = new BlurredBackgroundProviderBuilder(resourcesProvider)
                 .setBackgroundColor((r, isDark) -> {
                     if (!checkBlurEnabled(resourcesProvider)) {
                         return ColorUtils.setAlphaComponent(Theme.getColor(isDark ?
                             Theme.key_actionBarDefault : Theme.key_chat_topPanelBackground, r), 255);
                     }
 
-                    final float alpha = glassTintAlpha(LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0.92f : 0.88f);
+                    final float alpha = !NonIslandHelper.chatElements() && LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0.85f : 0.76f;
                     final int colorBg = Theme.getColor(Theme.key_chat_topPanelBackground, r);
-                    final int accent = Theme.getColor(Theme.key_chat_messageLinkIn, r);
-                    final int tinted = ColorUtils.blendARGB(colorBg, accent, isDark ? 0.12f : 0.08f);
-                    return tintWithAccent(Theme.multAlpha(tinted, alpha), r);
-                })
-                .setStrokeColorTop(0xFFFFFFFF, 0x28FFFFFF)
+                    return Theme.multAlpha(colorBg, alpha);
+                });
+        if (!NonIslandHelper.chatElements()) {
+            b.setStrokeColorTop(0xFFFFFFFF, 0x28FFFFFF)
                 .setStrokeColorBottom(0xFFFFFFFF, 0x14FFFFFF)
                 .setShadowColor(0x20000000, 0)
-                //.setShadowLayer(dpf2(10 / 3f), 0, dpf2(2 / 3f))
-                .setStrokeWidth(dpf2(0.5f), dpf2(0.5f))
-                .build();
+                .setStrokeWidth(dpf2(0.5f), dpf2(0.5f));
+        }
+        return b.build();
     }
 
     public static BlurredBackgroundProvider chatTitlePill(Theme.ResourcesProvider resourcesProvider) {

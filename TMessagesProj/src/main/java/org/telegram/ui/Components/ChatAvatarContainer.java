@@ -732,6 +732,7 @@ public class ChatAvatarContainer extends FrameLayout implements NotificationCent
 
     private boolean glassMode;
     public void setGlassMode() {
+        if (zxc.iconic.xenon.helpers.NonIslandHelper.chatElements()) return;
         if (titleTextView != null) {
             titleTextView.setTextSizePx(dp(17.5f));
         }

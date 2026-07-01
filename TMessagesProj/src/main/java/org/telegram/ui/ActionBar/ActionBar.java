@@ -91,6 +91,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
     private Drawable glassDrawable;
     private Drawable glassDrawableBack;
     private Drawable glassDrawableMenu;
+    public boolean inu_nonIsland;
     private INavigationLayout.BackButtonState backButtonState = INavigationLayout.BackButtonState.BACK;
     public ImageView backButtonImageView;
     private BackupImageView avatarSearchImageView;
@@ -202,28 +203,31 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         setClipChildren(false);
         glassMode = true;
 
+        final int glassRadius = inu_nonIsland ? 0 : 23;
+        final int glassPadding = inu_nonIsland ? 0 : 6;
+
         glassDrawable = factory.create(this)
             .setColorProvider(colorProvider)
-            .setRadius(dp(23))
-            .setPadding(dp(6));
+            .setRadius(dp(glassRadius))
+            .setPadding(dp(glassPadding));
 
         glassDrawableBack = factory.create(this)
             .setColorProvider(colorProvider)
-            .setRadius(dp(23))
-            .setPadding(dp(6));
+            .setRadius(dp(glassRadius))
+            .setPadding(dp(glassPadding));
 
         glassDrawableMenu = factory.create(this)
             .setColorProvider(colorProvider)
-            .setRadius(dp(23))
-            .setPadding(dp(6));
+            .setRadius(dp(glassRadius))
+            .setPadding(dp(glassPadding));
 
         if (menu != null) {
-            menu.setTranslationX(-dp(10));
-            menu.setGlassMode(true);
+            menu.setTranslationX(inu_nonIsland ? 0 : -dp(10));
+            menu.setGlassMode(!inu_nonIsland);
         }
         if (actionMode != null) {
-            actionMode.setTranslationX(-dp(10));
-            actionMode.setGlassMode(true);
+            actionMode.setTranslationX(inu_nonIsland ? 0 : -dp(10));
+            actionMode.setGlassMode(!inu_nonIsland);
         }
         if (backButtonImageView != null) {
             backButtonImageView.setTranslationX(dp(2));
@@ -739,7 +743,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                 }
             }
         };
-        actionMode.setTranslationX(glassMode ? -dp(10) : 0);
+        actionMode.setTranslationX(glassMode && !inu_nonIsland ? -dp(10) : 0);
         actionMode.setGlassMode(glassMode);
         actionMode.isActionMode = true;
         actionMode.setClickable(true);
@@ -2152,14 +2156,18 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                 right = rightDefault;
             }
 
-            glassDrawable.setBounds(left, t, right, b);
+            if (inu_nonIsland) {
+                glassDrawable.setBounds(0, 0, getWidth(), getHeight());
+            } else {
+                glassDrawable.setBounds(left, t, right, b);
+            }
             glassDrawable.draw(canvas);
         }
-        if (glassDrawableBack != null && hasBackButton) {
+        if (glassDrawableBack != null && hasBackButton && !inu_nonIsland) {
             glassDrawableBack.setBounds(0, t, s + p * 2, b);
             glassDrawableBack.draw(canvas);
         }
-        if (glassDrawableMenu != null && menuWidth > 0) {
+        if (glassDrawableMenu != null && menuWidth > 0 && !inu_nonIsland) {
             glassDrawableMenu.setBounds(getWidth() - menuWidth - p * 2, t, getWidth(), b);
             glassDrawableMenu.draw(canvas);
         }

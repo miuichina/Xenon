@@ -73,6 +73,21 @@ public class BlurBehindDrawable {
         if (parentView == null || parentView.getMeasuredHeight() == 0 && parentView.getMeasuredWidth() == 0) {
             return;
         }
+        if (zxc.iconic.xenon.NekoConfig.disableScrimBlur) {
+            if (animateAlpha) {
+                if (show && blurAlpha != 1f) {
+                    blurAlpha = Math.min(1f, blurAlpha + 0.09f);
+                    parentView.invalidate();
+                } else if (!show && blurAlpha != 0f) {
+                    blurAlpha = Math.max(0f, blurAlpha - 0.09f);
+                    parentView.invalidate();
+                }
+            }
+            float a = animateAlpha ? blurAlpha : 1f;
+            errorBlackoutPaint.setAlpha((int) (0x60 * a));
+            canvas.drawPaint(errorBlackoutPaint);
+            return;
+        }
         if (type == 1 && !wasDraw && !animateAlpha) {
             generateBlurredBitmaps();
             invalidate = false;

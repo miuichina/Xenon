@@ -123,7 +123,7 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             for (int a = 0, N = getChildCount(); a < N; a++) {
                 tabsTextWidthWithMargin[a] *= m;
             }
-        } else if (totalWidth < minTotalWidthForTabs && !zxc.iconic.xenon.NekoConfig.dynamicTabSize) {
+        } else if (totalWidth < minTotalWidthForTabs && (!zxc.iconic.xenon.NekoConfig.dynamicTabSize || zxc.iconic.xenon.helpers.NonIslandHelper.bottomBar())) {
             final float growW = minTotalWidthForTabs - totalWidth;
             final float growP = growW / totalWeight;
 
@@ -143,6 +143,23 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             l += tabsWidth[a];
         }
         setMeasuredDimension(l + getPaddingLeft() + getPaddingRight(), height);
+        if (zxc.iconic.xenon.helpers.NonIslandHelper.bottomBar() && l + getPaddingLeft() + getPaddingRight() < width) {
+            int extra = width - (l + getPaddingLeft() + getPaddingRight());
+            int perTab = extra / visibleChildCount;
+            int remainder = extra % visibleChildCount;
+            l = getPaddingLeft();
+            for (int a = 0, N = getChildCount(); a < N; a++) {
+                if (!isViewVisible(getChildAt(a))) continue;
+                tabsWidth[a] += perTab;
+                if (remainder > 0) {
+                    tabsWidth[a]++;
+                    remainder--;
+                }
+                tabsLeftPos[a] = l;
+                l += tabsWidth[a];
+            }
+            setMeasuredDimension(width, height);
+        }
         for (int a = 0, N = getChildCount(); a < N; a++) {
             final View child = getChildAt(a);
             child.measure(

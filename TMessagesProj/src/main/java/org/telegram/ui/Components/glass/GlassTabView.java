@@ -52,12 +52,14 @@ import org.telegram.ui.MainTabsLayout;
 import me.vkryl.android.AnimatorUtils;
 import me.vkryl.android.animator.BoolAnimator;
 import me.vkryl.android.animator.FactorAnimator;
+import zxc.iconic.xenon.helpers.NonIslandHelper;
 
 public class GlassTabView extends FrameLayout implements MainTabsLayout.Tab, FactorAnimator.Target {
     private final TextView textView;
     private final RLottieImageView imageView;
     private BackupImageView backupImageView;
     private Theme.ResourcesProvider resourcesProvider;
+    public int inu_radiusOverride = -1;
     private final Paint paintCounterBackground = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final AnimatedTextView.AnimatedTextDrawable counter;
 
@@ -82,8 +84,6 @@ public class GlassTabView extends FrameLayout implements MainTabsLayout.Tab, Fac
     public GlassTabView(@NonNull Context context) {
         super(context);
         imageView = new RLottieImageView(context);
-        addView(imageView, LayoutHelper.createFrame(44, 44, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, -6, 0, 0));
-
         imageView.setColorFilter(new PorterDuffColorFilter(Color.BLACK, PorterDuff.Mode.SRC_IN));
 
         textView = new TextView(context);
@@ -95,7 +95,14 @@ public class GlassTabView extends FrameLayout implements MainTabsLayout.Tab, Fac
         textView.setGravity(Gravity.CENTER);
 
         defaultTextPaint = new TextPaint(textView.getPaint());
-        addView(textView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 28.33f, 0, 0));
+
+        if (zxc.iconic.xenon.helpers.NonIslandHelper.bottomBar()) {
+            addView(imageView, LayoutHelper.createFrame(44, 44, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 10, 0, 0));
+            addView(textView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 28.33f, 0, 0));
+        } else {
+            addView(imageView, LayoutHelper.createFrame(44, 44, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, -6, 0, 0));
+            addView(textView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 28.33f, 0, 0));
+        }
 
         counter = new AnimatedTextView.AnimatedTextDrawable();
         counter.setTypeface(AndroidUtilities.bold());
@@ -153,7 +160,7 @@ public class GlassTabView extends FrameLayout implements MainTabsLayout.Tab, Fac
     protected void dispatchDraw(@NonNull Canvas canvas) {
         final float viewWidth = hasVisualWidth ? visualWidth : getWidth();
         final float selectedFactor = hasGestureSelectedOverride ? gestureSelectedOverride : isSelectedAnimator.getFloatValue();
-        if (selectedFactor > 0 && !skipDrawSelector) {
+        if (selectedFactor > 0 && !skipDrawSelector && !zxc.iconic.xenon.helpers.NonIslandHelper.bottomBar()) {
             final float alpha = AnimatorUtils.DECELERATE_INTERPOLATOR.getInterpolation(selectedFactor);
 
             paintCounterBackground.setColor(Theme.multAlpha(colorSelected, 0.09f * alpha));
@@ -233,7 +240,7 @@ public class GlassTabView extends FrameLayout implements MainTabsLayout.Tab, Fac
     }
 
     public void setSelected(boolean selected, boolean animated) {
-        isSelectedAnimator.setValue(selected, animated);
+        isSelectedAnimator.setValue(selected, animated && !zxc.iconic.xenon.helpers.NonIslandHelper.bottomBar());
         checkPlayAnimation(animated);
 
         textView.setTypeface(selected ? AndroidUtilities.getTypeface(AndroidUtilities.TYPEFACE_ROBOTO_EXTRA_BOLD) : AndroidUtilities.bold());

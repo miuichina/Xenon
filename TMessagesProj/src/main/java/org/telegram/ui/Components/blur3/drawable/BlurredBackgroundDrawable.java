@@ -397,6 +397,7 @@ public abstract class BlurredBackgroundDrawable extends Drawable {
         float[] radii, float strokeWidth, boolean isTop,
         Paint paint
     ) {
+        if (zxc.iconic.xenon.NekoConfig.disableGlassGlare) return;
         if (!NekoConfig.strokeOnViews) return;
 
         final boolean radiiAreSame = isTop ?
@@ -653,7 +654,7 @@ public abstract class BlurredBackgroundDrawable extends Drawable {
             return;
         }
 
-        final NinePatchDrawable ninePatchDrawable = checkNinePatchDrawable(fillColor, NekoConfig.strokeOnViews);
+        final NinePatchDrawable ninePatchDrawable = checkNinePatchDrawable(fillColor, !zxc.iconic.xenon.NekoConfig.disableGlassGlare);
         ninePatchDrawable.setBounds(
             boundProps.boundsWithPadding.left - ninePatchDrawablePadding.left,
             boundProps.boundsWithPadding.top - ninePatchDrawablePadding.top,
@@ -708,6 +709,7 @@ public abstract class BlurredBackgroundDrawable extends Drawable {
     }
 
     private void drawStrokeInternalIfNeeded(Canvas canvas) {
+        if (zxc.iconic.xenon.NekoConfig.disableGlassGlare) return;
         if (!NekoConfig.strokeOnViews) return;
         final int strokeColorTop = Theme.multAlpha(this.strokeColorTop, alpha / 255f);
         final int strokeColorBottom = Theme.multAlpha(this.strokeColorBottom, alpha / 255f);

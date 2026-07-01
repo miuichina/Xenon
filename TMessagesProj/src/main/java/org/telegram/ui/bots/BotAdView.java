@@ -43,18 +43,20 @@ import org.telegram.ui.Stories.recorder.HintView2;
 
 public class BotAdView extends FrameLayout {
 
-    private final LinearLayout layout;
+    private LinearLayout layout;
     private final Theme.ResourcesProvider resourcesProvider;
-    public final BackupImageView imageView;
-    public final ImageView closeView;
-    public final TextView titleView;
-    public final TextView channelTitleView;
-    public final TextView removeView;
-    public final LinkSpanDrawable.LinksTextView textView;
+    public BackupImageView imageView;
+    public ImageView closeView;
+    public TextView titleView;
+    public TextView channelTitleView;
+    public TextView removeView;
+    public LinkSpanDrawable.LinksTextView textView;
 
     public BotAdView(Context context, Theme.ResourcesProvider resourcesProvider) {
         super(context);
         this.resourcesProvider = resourcesProvider;
+
+        if (zxc.iconic.xenon.helpers.NonIslandHelper.chatElements()) return;
 
         layout = new LinearLayout(context);
         layout.setOrientation(LinearLayout.HORIZONTAL);

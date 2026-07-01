@@ -341,6 +341,7 @@ import java.util.zip.ZipOutputStream;
 import zxc.iconic.xenon.BackButtonMenuRecent;
 import zxc.iconic.xenon.NekoConfig;
 import zxc.iconic.xenon.SimpleTextViewSwitcher;
+import zxc.iconic.xenon.helpers.NonIslandHelper;
 import zxc.iconic.xenon.helpers.PopupHelper;
 import zxc.iconic.xenon.helpers.remote.ConfigHelper;
 import zxc.iconic.xenon.settings.NekoSettingsActivity;
@@ -1859,7 +1860,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             textPaint.setColor(Color.WHITE);
             textPaint.setTypeface(Typeface.SANS_SERIF);
             textPaint.setTextAlign(Paint.Align.CENTER);
-            textPaint.setTextSize(AndroidUtilities.dpf2(15f));
+            textPaint.setTextSize(AndroidUtilities.dpf2(NonIslandHelper.chatElements() ? 14f : 15f));
             backgroundPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
             backgroundPaint.setColor(0x26000000);
             animator = ValueAnimator.ofFloat(0f, 1f);
@@ -3980,7 +3981,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         }
 
         ActionBarMenu menu = actionBar.createMenu();
-        menu.setTranslationX(-dp(5));
+        menu.setTranslationX(-dp(NonIslandHelper.chatElements() ? 0 : 5));
 
         if (userId == getUserConfig().clientUserId && !myProfile) {
             if (ContactsController.getInstance(currentAccount).getPrivacyRules(PRIVACY_RULES_TYPE_ADDED_BY_PHONE) == null) {
@@ -5175,7 +5176,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
 
             TextView textView = new TextView(context);
             textView.setTextColor(getThemedColor(Theme.key_text_RedRegular));
-            textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
+            textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, NonIslandHelper.chatElements() ? 13 : 15);
             textView.setGravity(Gravity.CENTER);
             textView.setTypeface(AndroidUtilities.bold());
             textView.setText(LocaleController.getString(R.string.BanFromTheGroupNoCaps));
@@ -5579,7 +5580,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                         onlineTextView[2].setTranslationY(translationY);
                         onlineTextView[3].setTranslationY(translationY);
                         if (ratingView != null) {
-                            ratingView.setTranslationY(translationY - dp(5));
+                            ratingView.setTranslationY(translationY - dp(NonIslandHelper.chatElements() ? 0 : 5));
                         }
                     }
 

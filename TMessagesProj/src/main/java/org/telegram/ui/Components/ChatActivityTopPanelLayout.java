@@ -15,6 +15,8 @@ import androidx.annotation.NonNull;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
 
+import zxc.iconic.xenon.helpers.NonIslandHelper;
+
 import me.vkryl.android.animator.ListAnimator;
 
 public class ChatActivityTopPanelLayout extends AnimatedLinearLayout {
@@ -62,18 +64,20 @@ public class ChatActivityTopPanelLayout extends AnimatedLinearLayout {
 
     private void checkBoundsAndClipping() {
         final float bgHeight = getMetadata().getTotalHeight();
-        final float bgAlpha = getMetadata().getTotalVisibility();
+        final float bgAlpha = NonIslandHelper.chatElements() ? 1 : getMetadata().getTotalVisibility();
 
         clipRectF.set(getPaddingLeft(), getPaddingTop(), getMeasuredWidth() - getPaddingRight(), getPaddingTop() + bgHeight);
 
-        final float r = Math.min(dp(18), Math.min(clipRectF.width(), clipRectF.height()) / 2f);
+        final float r = NonIslandHelper.chatElements() ? 0 : Math.min(dp(18), Math.min(clipRectF.width(), clipRectF.height()) / 2f);
         clipPath.rewind();
         clipPath.addRoundRect(clipRectF, r, r, Path.Direction.CW);
 
         if (backgroundDrawable != null) {
             backgroundDrawable.setAlpha((int) (bgAlpha * 255));
             backgroundDrawable.setBounds(getPaddingLeft() - dp(7), 0, getMeasuredWidth() - getPaddingRight() + dp(7), getPaddingTop() + getPaddingBottom() + (int) bgHeight);
-            backgroundDrawable.setRadius(Math.min(dp(18), bgHeight / 2));
+            if (!NonIslandHelper.chatElements()) {
+                backgroundDrawable.setRadius(Math.min(dp(18), bgHeight / 2));
+            }
         }
     }
 
@@ -118,6 +122,10 @@ public class ChatActivityTopPanelLayout extends AnimatedLinearLayout {
         }
 
         super.dispatchDraw(canvas);
+        if (NonIslandHelper.chatElements()) {
+            Theme.dividerPaint.setAlpha(255);
+            canvas.drawLine(getPaddingLeft(), getPaddingTop(), getWidth() - getPaddingRight(), getPaddingTop(), Theme.dividerPaint);
+        }
         canvas.restore();
     }
 }

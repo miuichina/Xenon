@@ -288,7 +288,9 @@ public class BotCommandsMenuContainer extends FrameLayout implements NestedScrol
 
     public void setBackgroundDrawable(@NonNull BlurredBackgroundDrawable backgroundDrawable) {
         this.backgroundDrawable = backgroundDrawable;
-        this.backgroundDrawable.setRadius(dp(22));
+        if (!zxc.iconic.xenon.helpers.NonIslandHelper.chatElements()) {
+            this.backgroundDrawable.setRadius(dp(22));
+        }
         this.backgroundDrawable.setPadding(dp(5));
 
         listView.setOutlineProvider(backgroundDrawable.getViewOutlineProvider());

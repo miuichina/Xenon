@@ -1620,6 +1620,7 @@ public class FilterTabsView extends FrameLayout {
     }
 
     private final Path clipPath = new Path();
+    public zxc.iconic.xenon.helpers.BlurBehindHelper inu_blurHelper;
 
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
@@ -1631,6 +1632,11 @@ public class FilterTabsView extends FrameLayout {
 
     @Override
     protected void dispatchDraw(@NonNull Canvas canvas) {
+        if (inu_blurHelper != null) {
+            inu_blurHelper.draw(canvas);
+            super.dispatchDraw(canvas);
+            return;
+        }
         canvas.save();
         canvas.clipPath(clipPath);
         super.dispatchDraw(canvas);

@@ -1163,6 +1163,8 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
 
         contentView.setOccupyStatusBar(!AndroidUtilities.isTablet());
         contentView.setBackgroundImage(Theme.getCachedWallpaper(), Theme.isWallpaperMotion());
+        boolean nonIsland = zxc.iconic.xenon.helpers.NonIslandHelper.chatElements();
+        actionBar.inu_nonIsland = nonIsland;
         actionBar.setupGlass(glassBackgroundDrawableFactory, BlurredBackgroundProviderImpl.topPanelChatActivity(resourceProvider));
         emptyViewContainer = new FrameLayout(context);
         emptyViewContainer.setVisibility(View.INVISIBLE);
@@ -1512,10 +1514,13 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
         bottomOverlayChat2 = new ChatActivityChannelButtonsLayout(context, resourceProvider,
             BlurredBackgroundProviderImpl.bottomPanelChatActivity(resourceProvider), glassBackgroundDrawableFactory);
         bottomOverlayChat2.setTotalVisibilityFactor(1f);
-        bottomOverlayChat2.setTranslationY(-AndroidUtilities.navigationBarHeight);
+        bottomOverlayChat2.setTranslationY(nonIsland ? 0 : -AndroidUtilities.navigationBarHeight);
         bottomOverlayChat2.showButton(ChatActivityChannelButtonsLayout.BUTTON_RECENT_ACTIONS_INFO, true, false);
         bottomOverlayChat2.setupDrawableForContainer();
-        contentView.addView(bottomOverlayChat2, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 56, Gravity.BOTTOM, 54, 0, 0, (44 - 56) / 2 + 9));
+        if (nonIsland) {
+            bottomOverlayChat2.setClipToPadding(false);
+        }
+        contentView.addView(bottomOverlayChat2, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 56, Gravity.BOTTOM, nonIsland ? 0 : 54, 0, 0, nonIsland ? 0 : (44 - 56) / 2 + 9));
 
         bottomOverlayChatText = new TextView(context);
         bottomOverlayChatText.setOnClickListener(view -> {
@@ -1540,8 +1545,12 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
         bottomOverlayChatText.setTypeface(AndroidUtilities.bold());
         bottomOverlayChatText.setTextColor(Theme.getColor(Theme.key_chat_fieldOverlayText));
         bottomOverlayChatText.setText(getString(R.string.SETTINGS));
+        bottomOverlayChatText.setGravity(Gravity.CENTER);
         bottomOverlayChatText.setPadding(dp(24), 0, dp(24), 0);
-        bottomOverlayChat2.getContainer().addView(bottomOverlayChatText, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER));
+        if (nonIsland) {
+            bottomOverlayChatText.setBackground(Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector)));
+        }
+        bottomOverlayChat2.getContainer().addView(bottomOverlayChatText, LayoutHelper.createFrame(nonIsland ? LayoutHelper.MATCH_PARENT : LayoutHelper.WRAP_CONTENT, nonIsland ? LayoutHelper.MATCH_PARENT : LayoutHelper.WRAP_CONTENT, Gravity.CENTER));
         bottomOverlayChat2.makeViewWrapContent(bottomOverlayChatText);
         bottomOverlayChat2.updateWrappingVisible(false);
 

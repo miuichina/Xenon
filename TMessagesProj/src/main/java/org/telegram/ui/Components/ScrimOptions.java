@@ -349,6 +349,14 @@ public class ScrimOptions extends Dialog {
     }
 
     public static void makeGlobalBlurBitmaps(Utilities.Callback2<Bitmap, Bitmap> bitmaps) {
+        if (zxc.iconic.xenon.NekoConfig.disableScrimBlur) {
+            Bitmap stubBg = Bitmap.createBitmap(2, 2, Bitmap.Config.ARGB_8888);
+            stubBg.eraseColor(0x60000000);
+            Bitmap stubOptions = Bitmap.createBitmap(2, 2, Bitmap.Config.ARGB_8888);
+            stubOptions.eraseColor(Theme.getColor(Theme.key_actionBarDefaultSubmenuBackground) | 0xFF000000);
+            bitmaps.run(stubBg, stubOptions);
+            return;
+        }
         AndroidUtilities.makeGlobalBlurBitmap(bitmap -> {
             final ColorMatrix colorMatrixBg = new ColorMatrix();
             AndroidUtilities.adjustSaturationColorMatrix(colorMatrixBg, Theme.isCurrentThemeDark() ? .04f : +.25f);
@@ -368,7 +376,7 @@ public class ScrimOptions extends Dialog {
     }
 
     public static void makeGlobalBlurBitmaps(View cutToContainer, Utilities.Callback2<Bitmap, Bitmap> bitmaps) {
-        if (cutToContainer == null) {
+        if (cutToContainer == null || zxc.iconic.xenon.NekoConfig.disableScrimBlur) {
             makeGlobalBlurBitmaps(bitmaps);
             return;
         }

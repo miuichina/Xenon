@@ -183,6 +183,8 @@ import me.vkryl.android.animator.ListAnimator;
 import me.vkryl.android.animator.ReplaceAnimator;
 import me.vkryl.core.BitwiseUtils;
 
+import zxc.iconic.xenon.helpers.NonIslandHelper;
+
 public class ChatAttachAlert extends BottomSheet implements NotificationCenter.NotificationCenterDelegate, BottomSheet.BottomSheetDelegateInterface, FactorAnimator.Target {
 
     public static final int LAYOUT_TYPE_PHOTO = 1;
@@ -2077,6 +2079,9 @@ public class ChatAttachAlert extends BottomSheet implements NotificationCenter.N
 
             @Override
             public void drawBlurRect(Canvas canvas, float y, Rect rectTmp, Paint blurScrimPaint, boolean top) {
+                if (NonIslandHelper.tabBars()) {
+                    canvas.drawRect(rectTmp, blurScrimPaint);
+                }
             }
 
             @Override
@@ -2569,6 +2574,16 @@ public class ChatAttachAlert extends BottomSheet implements NotificationCenter.N
                 super.setTranslationY(translationY);
                 currentAttachLayout.onButtonsTranslationYUpdated();
             }
+
+            private final zxc.iconic.xenon.helpers.BlurBehindHelper inu_blurHelper = NonIslandHelper.tabBars()
+                ? zxc.iconic.xenon.helpers.BlurBehindHelper.create(this, sizeNotifierFrameLayout, Theme.key_dialogBackground, false, NonIslandHelper.ATTACH_TAB_SHADOW_DP, 0f)
+                : null;
+
+            @Override
+            protected void dispatchDraw(@NonNull Canvas canvas) {
+                if (inu_blurHelper != null) inu_blurHelper.draw(canvas);
+                super.dispatchDraw(canvas);
+            }
         };
         buttonsRecyclerView = new RecyclerListView(context) {
             private final BoolAnimator hasFadeLeft = new BoolAnimator(this, CubicBezierInterpolator.EASE_OUT_QUINT, 320L);
@@ -2597,6 +2612,9 @@ public class ChatAttachAlert extends BottomSheet implements NotificationCenter.N
 
             @Override
             public boolean drawChild(Canvas canvas, View child, long drawingTime) {
+                if (NonIslandHelper.tabBars()) {
+                    return super.drawChild(canvas, child, drawingTime);
+                }
                 final float left = child.getX();
                 final float right = left + child.getWidth();
                 final boolean isFadedLeft = left < dp(10);
@@ -2715,6 +2733,7 @@ public class ChatAttachAlert extends BottomSheet implements NotificationCenter.N
         buttonsRecyclerView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
         buttonsRecyclerViewWrapper.addView(buttonsRecyclerView, LayoutHelper.createFrameMatchParent());
         containerView.addView(buttonsRecyclerViewWrapper, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 70, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL));
+        NonIslandHelper.applyChatAttachTabBar(buttonsRecyclerViewWrapper, buttonsRecyclerView);
         buttonsRecyclerView.setOnItemClickListener((view, position) -> {
             BaseFragment lastFragment = baseFragment;
             if (lastFragment == null) {

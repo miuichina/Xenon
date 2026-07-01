@@ -656,8 +656,8 @@ public class SharedPhotoVideoCell2 extends FrameLayout {
             blurImageReceiver.setImageCoords(leftpadding + padPlus, padding + padPlus, imageWidth, imageHeight);
         }
         imageReceiver.setRoundRadius(
-            lerp(isFirst && isTop ? dp(18) : dp(1), dp(8), checkBoxProgress),
-            lerp(isLast  && isTop ? dp(18) : dp(1), dp(8), checkBoxProgress),
+            lerp(isFirst && isTop && !zxc.iconic.xenon.helpers.NonIslandHelper.tabBars() ? dp(18) : dp(1), dp(8), checkBoxProgress),
+            lerp(isLast  && isTop && !zxc.iconic.xenon.helpers.NonIslandHelper.tabBars() ? dp(18) : dp(1), dp(8), checkBoxProgress),
             lerp(dp(1), dp(8), checkBoxProgress),
             lerp(dp(1), dp(8), checkBoxProgress)
         );

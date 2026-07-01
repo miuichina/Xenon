@@ -178,6 +178,7 @@ import zxc.iconic.xenon.NekoConfig;
 import zxc.iconic.xenon.forward.ForwardContext;
 import zxc.iconic.xenon.forward.ForwardDrawable;
 import zxc.iconic.xenon.forward.ForwardItem;
+import zxc.iconic.xenon.helpers.NonIslandHelper;
 
 @SuppressWarnings("unchecked")
 public class SharedMediaLayout extends FrameLayout implements NotificationCenter.NotificationCenterDelegate, DialogCell.DialogCellDelegate, ForwardContext {
@@ -2226,7 +2227,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
         }
         actionModeLayout = new BlurredLinearLayout(context, sizeNotifierFrameLayout);
 //        actionModeLayout.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
-        actionModeLayout.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundGray));
+        actionModeLayout.setBackgroundColor(getThemedColor(NonIslandHelper.tabBars() ? Theme.key_actionBarDefault : Theme.key_windowBackgroundGray));
         actionModeLayout.setAlpha(0.0f);
         actionModeLayout.setClickable(true);
         actionModeLayout.setVisibility(INVISIBLE);
@@ -2348,7 +2349,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
             savedMessagesContainer.chatActivity.setSavedDialog(dialog_id);
             savedMessagesContainer.chatActivity.reversed = true;
             savedMessagesContainer.setClipToOutline(true);
-            savedMessagesContainer.setOutlineProvider(new ViewOutlineProvider() {
+            savedMessagesContainer.setOutlineProvider(NonIslandHelper.tabBars() ? null : new ViewOutlineProvider() {
                 @Override
                 public void getOutline(View view, Outline outline) {
                     outline.setRoundRect(0, 0, view.getWidth(), view.getHeight() + dp(24), dp(24));
@@ -2625,7 +2626,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
                 }
             };
             giftsContainer.setPaddingTop(
-                dp(48) +
+                dp(NonIslandHelper.tabBars() ? 36 : 48) +
                 (topPanelLayout != null ? ((int) topPanelLayout.getAnimatedHeightWithPadding(0)) : 0)
             );
 
@@ -3132,7 +3133,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
             mediaPages[a].listView.setFastScrollEnabled(RecyclerListView.FastScroll.DATE_TYPE);
             mediaPages[a].listView.setScrollingTouchSlop(RecyclerView.TOUCH_SLOP_PAGING);
             mediaPages[a].listView.setPinnedSectionOffsetY(-dp(2));
-            mediaPages[a].listView.setPadding(0, dp(48 + 6), 0, 0);
+            mediaPages[a].listView.setPadding(0, dp((NonIslandHelper.tabBars() ? 36 : 48) + 6), 0, 0);
             mediaPages[a].listView.setItemAnimator(null);
             mediaPages[a].listView.setClipToPadding(false);
             mediaPages[a].listView.setSectionsType(RecyclerListView.SECTIONS_TYPE_DATE);
@@ -3703,7 +3704,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
             mediaPages[a].emptyView.button.setVisibility(View.GONE);
             mediaPages[a].emptyView.subtitle.setText(getString(R.string.SearchEmptyViewFilteredSubtitle2));
             mediaPages[a].emptyView.button.setVisibility(View.GONE);
-            mediaPages[a].emptyView.addView(mediaPages[a].progressView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.FILL, 12, 48 + 12, 12, 12));
+            mediaPages[a].emptyView.addView(mediaPages[a].progressView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.FILL, 12, (NonIslandHelper.tabBars() ? 36 : 48) + 12, 12, 12));
 
             mediaPages[a].listView.setEmptyView(mediaPages[a].emptyView);
             mediaPages[a].listView.setAnimateEmptyView(true, RecyclerListView.EMPTY_VIEW_ANIMATION_TYPE_ALPHA);
@@ -3712,15 +3713,15 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
         }
 
         if (storiesContainer != null) {
-            addView(storiesContainer, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 42, Gravity.TOP, 0, 48, 0, 0));
+            addView(storiesContainer, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 42, Gravity.TOP, 0, NonIslandHelper.tabBars() ? 36 : 48, 0, 0));
         }
 
         floatingDateView = new ChatActionCell(context);
         floatingDateView.setCustomDate((int) (System.currentTimeMillis() / 1000), false, false);
         floatingDateView.setAlpha(0.0f);
         floatingDateView.setOverrideColor(Theme.key_chat_mediaTimeBackground, Theme.key_chat_mediaTimeText);
-        floatingDateView.setTranslationY(-dp(48));
-        addView(floatingDateView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 48 + 4, 0, 0));
+        floatingDateView.setTranslationY(-dp(NonIslandHelper.tabBars() ? 36 : 48));
+        addView(floatingDateView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, (NonIslandHelper.tabBars() ? 36 : 48) + 4, 0, 0));
 
         if (!customTabs()) {
             if (SHOW_CONTEXT_VIEW_AS_BUBBLE) {
@@ -3736,10 +3737,10 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
                 topPanelLayout.addView(fragmentContextViewWrapper);
                 topPanelLayout.setViewVisible(fragmentContextViewWrapper, true, false);
                 topPanelLayout.setOnAnimatedHeightChangedListener(() -> {
-                    topLayoutPadding = (int) topPanelLayout.getAnimatedHeightWithPadding(dp(14));
+                    topLayoutPadding = (int) topPanelLayout.getAnimatedHeightWithPadding(NonIslandHelper.tabBars() ? 0 : dp(14));
 
                     if (giftsContainer != null) {
-                        giftsContainer.setPaddingTop(dp(48) + (int) topPanelLayout.getAnimatedHeightWithPadding(dp(7)));
+                        giftsContainer.setPaddingTop(dp(NonIslandHelper.tabBars() ? 36 : 48) + (int) topPanelLayout.getAnimatedHeightWithPadding(NonIslandHelper.tabBars() ? 0 : dp(7)));
                     }
                     if (mediaPages != null) {
                         for (MediaPage page : mediaPages) {
@@ -3767,9 +3768,13 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
                 };
                 fragmentContextView.isInsideBubble = true;
                 fragmentContextViewWrapper.addView(fragmentContextView);
-                addView(topPanelLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP, 0, 48 -14, 0, 0));
+                addView(topPanelLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP, 0, NonIslandHelper.tabBars() ? 36 : (48 -14), 0, 0));
+                if (NonIslandHelper.tabBars()) {
+                    topPanelLayout.inu_blurHelper = zxc.iconic.xenon.helpers.BlurBehindHelper.create(topPanelLayout, sizeNotifierFrameLayout, Theme.key_windowBackgroundWhite);
+                    topPanelLayout.setPadding(0, 0, 0, 0);
+                }
             } else {
-                addView(fragmentContextView = new FragmentContextView(context, parent, this, false, resourcesProvider), LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 38, Gravity.TOP | Gravity.LEFT, 0, 48, 0, 0));
+                addView(fragmentContextView = new FragmentContextView(context, parent, this, false, resourcesProvider), LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 38, Gravity.TOP | Gravity.LEFT, 0, NonIslandHelper.tabBars() ? 36 : 48, 0, 0));
             }
             fragmentContextView.setDelegate((start, show) -> {
                 if (!start) {
@@ -3790,6 +3795,10 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
                 addView(scrollSlidingTextTabStrip, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, 50, Gravity.CENTER_HORIZONTAL | Gravity.TOP, -2, 0, -2, 0));
             } else {
                 addView(scrollSlidingTextTabStrip, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 48, Gravity.LEFT | Gravity.TOP));
+                if (NonIslandHelper.tabBars()) {
+                    scrollSlidingTextTabStrip.setLayoutParams(LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 36, Gravity.LEFT | Gravity.TOP, 0, 0, 0, 0));
+                    scrollSlidingTextTabStrip.inu_makeNonIsland(zxc.iconic.xenon.helpers.BlurBehindHelper.create(scrollSlidingTextTabStrip, sizeNotifierFrameLayout, Theme.key_windowBackgroundWhite));
+                }
             }
             searchTagsList = new SearchTagsList(getContext(), profileActivity, profileActivity.getCurrentAccount(), includeSavedDialogs() ? 0 : dialog_id, resourcesProvider) {
                 @Override
@@ -3835,7 +3844,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
             };
             searchTagsList.setShown(0f);
             addView(searchTagsList, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 38, Gravity.LEFT | Gravity.TOP, 0, 4, 0, 0));
-            addView(actionModeLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 48, Gravity.LEFT | Gravity.TOP));
+                addView(actionModeLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, NonIslandHelper.tabBars() ? 36 : 48, Gravity.LEFT | Gravity.TOP));
         }
 
         updateTabs(false);
@@ -4743,7 +4752,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
             floatingDateAnimation.setDuration(180);
             floatingDateAnimation.playTogether(
                     ObjectAnimator.ofFloat(floatingDateView, View.ALPHA, 0.0f),
-                    ObjectAnimator.ofFloat(floatingDateView, View.TRANSLATION_Y, -dp(48) + additionalFloatingTranslation));
+                    ObjectAnimator.ofFloat(floatingDateView, View.TRANSLATION_Y, -dp(NonIslandHelper.tabBars() ? 36 : 48) + additionalFloatingTranslation));
             floatingDateAnimation.setInterpolator(CubicBezierInterpolator.EASE_OUT);
             floatingDateAnimation.addListener(new AnimatorListenerAdapter() {
                 @Override
@@ -5716,10 +5725,10 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
         if (topPanelLayout != null) {
             checkUi_topPanelLayoutY();
         } else if (fragmentContextView != null) {
-            fragmentContextView.setTranslationY(dp(48) + top);
+            fragmentContextView.setTranslationY(dp(NonIslandHelper.tabBars() ? 36 : 48) + top);
         }
         additionalFloatingTranslation = top;
-        floatingDateView.setTranslationY((floatingDateView.getTag() == null ? -dp(48) : 0) + additionalFloatingTranslation);
+        floatingDateView.setTranslationY((floatingDateView.getTag() == null ? -dp(NonIslandHelper.tabBars() ? 36 : 48) : 0) + additionalFloatingTranslation);
     }
 
     private void checkUi_topPanelLayoutY() {
@@ -5829,7 +5838,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
                     fwdRestrictedHint.hide();
                 }
             }
-            if (ev != null && ev.getAction() == MotionEvent.ACTION_DOWN && !startedTracking && !maybeStartTracking && ev.getY() >= dp(48 + 42)) {
+            if (ev != null && ev.getAction() == MotionEvent.ACTION_DOWN && !startedTracking && !maybeStartTracking && ev.getY() >= dp((NonIslandHelper.tabBars() ? 36 : 48) + 42)) {
                 startedTrackingPointerId = ev.getPointerId(0);
                 maybeStartTracking = true;
                 startedTrackingX = (int) ev.getX();
@@ -7411,7 +7420,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
                 }
                 if (savedMessagesContainer.getParent() != mediaPages[a]) {
                     AndroidUtilities.removeFromParent(savedMessagesContainer);
-                    mediaPages[a].addView(savedMessagesContainer, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.FILL, 0, 48 + 8, 0, 0));
+                    mediaPages[a].addView(savedMessagesContainer, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.FILL, 0, NonIslandHelper.tabBars() ? 36 : (48 + 8), 0, 0));
                 }
             } else if (mediaPages[a].selectedType == TAB_BOT_PREVIEWS) {
                 if (currentAdapter != null) {
@@ -7434,7 +7443,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
                 }
             }
             final boolean photos = mediaPages[a].selectedType == TAB_PHOTOVIDEO || isAnyStoryPageType(mediaPages[a].selectedType);
-            mediaPages[a].progressView.setLayoutParams(LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.FILL, photos ? 0 : 12, 48 + (photos ? 8 : 12), photos ? 0 : 12, photos ? 0 : 12));
+            mediaPages[a].progressView.setLayoutParams(LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.FILL, photos ? 0 : 12, (NonIslandHelper.tabBars() ? 36 : 48) + (photos ? 8 : 12), photos ? 0 : 12, photos ? 0 : 12));
             if (sections) {
                 mediaPages[a].listView.setSections(false);
             } else {
@@ -7449,7 +7458,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
                         Theme.isCurrentThemeDark()
                     )
                 );
-                mediaPages[a].setOutlineProvider(new ViewOutlineProvider() {
+                mediaPages[a].setOutlineProvider(NonIslandHelper.tabBars() ? null : new ViewOutlineProvider() {
                     @Override
                     public void getOutline(View view, Outline outline) {
                         outline.setRoundRect(0, dp(50), view.getWidth(), view.getHeight() + dp(24), dp(24));
@@ -11614,6 +11623,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
 
         @Override
         protected void dispatchDraw(@NonNull Canvas canvas) {
+            if (inu_nonIsland) { super.dispatchDraw(canvas); return; }
             if (backgroundColor != Color.TRANSPARENT) {
                 if (backgroundPaint == null) {
                     backgroundPaint = new Paint();
@@ -11806,7 +11816,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
                 final RecyclerListView listView = mediaPages[i].listView;
                 final View firstChild = listView.getChildCount() == 0 ? null : listView.getChildAt(0);
                 final int firstPosition = firstChild == null ? RecyclerView.NO_POSITION : listView.getChildAdapterPosition(firstChild);
-                final float ty = (firstPosition == 0 ? firstChild.getY() - listView.getPaddingTop() : listView.getChildCount() == 0 ? 0 : -dp(48));
+                final float ty = (firstPosition == 0 ? firstChild.getY() - listView.getPaddingTop() : listView.getChildCount() == 0 ? 0 : -dp(NonIslandHelper.tabBars() ? 36 : 48));
                 tabY += ty * Utilities.clamp01(1.0f - mediaPages[i].getTranslationX() / mediaPages[i].getMeasuredWidth());
             }
             final float tabAlpha = Utilities.clamp01(1.0f - -tabY / dpf2(48));
@@ -11980,10 +11990,10 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
 
     private int getPagePaddingTop(int type) {
         return (
-            dp(48 + 6) +
+            dp((NonIslandHelper.tabBars() ? 36 : 48) + 6) +
             topLayoutPadding +
-            (int) (storiesContainer != null && (isStoryAlbumPageType(type) || type == TAB_STORIES) ? storiesContainer.getVisibilityFactor() * dp(40) : 0) +
-            (type == TAB_ARCHIVED_STORIES ? dp(64) : 0)
+            (int) (storiesContainer != null && (isStoryAlbumPageType(type) || type == TAB_STORIES) ? storiesContainer.getVisibilityFactor() * (NonIslandHelper.tabBars() ? 0 : dp(40)) : 0) +
+            (type == TAB_ARCHIVED_STORIES ? (NonIslandHelper.tabBars() ? 0 : dp(64)) : 0)
         );
     }
 

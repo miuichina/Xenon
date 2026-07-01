@@ -78,6 +78,10 @@ public class ChatInputViewsContainer extends FrameLayout {
     private BlurredBackgroundDrawable underKeyboardBackgroundDrawable;
     public void setInputIslandBubbleDrawable(BlurredBackgroundDrawable drawable) {
         blurredBackgroundDrawable = drawable;
+        if (zxc.iconic.xenon.helpers.NonIslandHelper.chatElements()) {
+            blurredBackgroundDrawable.setStrokeWidth(0, 0);
+            return;
+        }
         blurredBackgroundDrawable.setPadding(dp(7));
         blurredBackgroundDrawable.setRadius(dp(INPUT_BUBBLE_RADIUS));
     }
@@ -85,7 +89,8 @@ public class ChatInputViewsContainer extends FrameLayout {
     public void setUnderKeyboardBackgroundDrawable(BlurredBackgroundDrawable drawable) {
         underKeyboardBackgroundDrawable = drawable;
         underKeyboardBackgroundDrawable.enableInAppKeyboardOptimization();
-        underKeyboardBackgroundDrawable.setRadius(dp(INPUT_KEYBOARD_RADIUS), dp(INPUT_KEYBOARD_RADIUS), 0, 0);
+        int r = zxc.iconic.xenon.helpers.NonIslandHelper.chatElements() ? 0 : dp(INPUT_KEYBOARD_RADIUS);
+        underKeyboardBackgroundDrawable.setRadius(r, r, 0, 0);
         underKeyboardBackgroundDrawable.setThickness(dp(32));
         underKeyboardBackgroundDrawable.setIntensity(0.4f);
     }
@@ -177,7 +182,7 @@ public class ChatInputViewsContainer extends FrameLayout {
                     rightBottomRadius = bottomRight == null ? 0 : bottomRight.getRadius();
                 }
             }
-            underKeyboardBackgroundDrawable.setRadius(dp(INPUT_KEYBOARD_RADIUS), dp(INPUT_KEYBOARD_RADIUS), rightBottomRadius, leftBottomRadius, true);
+            underKeyboardBackgroundDrawable.setRadius(zxc.iconic.xenon.helpers.NonIslandHelper.chatElements() ? 0 : dp(INPUT_KEYBOARD_RADIUS), zxc.iconic.xenon.helpers.NonIslandHelper.chatElements() ? 0 : dp(INPUT_KEYBOARD_RADIUS), rightBottomRadius, leftBottomRadius, true);
         }
     }
 
@@ -267,6 +272,13 @@ public class ChatInputViewsContainer extends FrameLayout {
         );
         tmpRect.inset(0, -dp(7));
         tmpRect.offset(0, blurTop + (int) bubbleInputTranlationY);
+
+        if (zxc.iconic.xenon.helpers.NonIslandHelper.chatElements()) {
+            tmpRect.top += dp(16);
+            tmpRect.bottom = getMeasuredHeight();
+            tmpRect.left = 0;
+            tmpRect.right = getMeasuredWidth();
+        }
 
         blurredBackgroundDrawable.setBounds(tmpRect);
         blurredBackgroundDrawable.draw(canvas);
