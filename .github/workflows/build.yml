@@ -266,6 +266,9 @@ jobs:
           MSG+="<b>APK-файлы:</b>${NL}"
 
           # Collect every release APK with size + SHA256.
+          # Telegram Bot API file limit: 50 MB. APKs above the limit will
+          # be included in the message as GitHub Release links instead.
+          TG_MAX_BYTES=$((50 * 1024 * 1024))
           shopt -s nullglob
           apks=(outputs/apk/release/*.apk)
           shopt -u nullglob
@@ -277,6 +280,24 @@ jobs:
           # Sort for a stable order.
           IFS=$'\n' sorted=($(sort <<<"${apks[*]}")); unset IFS
 
+          # Separate into sendable (>50 MB → link only) and append
+          # large-APK download links to the initial message.
+          for apk in "${sorted[@]}"; do
+            name=$(basename "$apk")
+            size_bytes=$(stat -c%s "$apk")
+            sha=$(sha256sum "$apk" | awk '{print $1}')
+            name_esc=$(printf '%s' "$name" | esc)
+
+            if [ "$size_bytes" -le "$TG_MAX_BYTES" ]; then
+              MSG+="📎 <b>${name_esc}</b> — отправлю файлом${NL}"
+            else
+              size_human=$(echo "$size_bytes" | numfmt --to=iec)
+              MSG+="📎 <b>${name_esc}</b> — ${size_human} (слишком большой для бота)${NL}"
+              MSG+="   📥 <a href=\"${RELEASE_URL}\">Скачать с GitHub Release</a>${NL}"
+              MSG+="   🔑 <code>${sha}</code>${NL}"
+            fi
+          done
+
           curl --fail --silent --show-error \
             --data-urlencode "chat_id=${TG_CHAT_ID}" \
             --data-urlencode "text=${MSG}" \
@@ -284,11 +305,16 @@ jobs:
             --data-urlencode "disable_web_page_preview=true" \
             "${API}/sendMessage" >/dev/null
 
-          # Send each APK as a document. Telegram Bot API limits files to ~50 MB;
-          # larger uploads (or any failure) will fail this step intentionally.
+          # Send each APK that fits within the Bot API limit as a document.
           for apk in "${sorted[@]}"; do
+            size_bytes=$(stat -c%s "$apk")
+            if [ "$size_bytes" -gt "$TG_MAX_BYTES" ]; then
+              echo "Skipping $(basename "$apk") — too large ($(echo "$size_bytes" | numfmt --to=iec))"
+              continue
+            fi
+
             name=$(basename "$apk")
-            size=$(stat -c%s "$apk" | numfmt --to=iec)
+            size=$(echo "$size_bytes" | numfmt --to=iec)
             sha=$(sha256sum "$apk" | awk '{print $1}')
             name_esc=$(printf '%s' "$name" | esc)
 
