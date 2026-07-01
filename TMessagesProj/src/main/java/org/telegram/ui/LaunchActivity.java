@@ -761,7 +761,27 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
 
 
         //RestrictedLanguagesSelectActivity.checkRestrictedLanguages(false);
-        if (Build.VERSION.SDK_INT >= 34 && NekoConfig.predictiveBackAnimation) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && NekoConfig.alternativeTransition && actionBarLayout != null) {
+            // Alternative transition opts predictive back into the Material 3 animation (ported from Inugram).
+            if (onBackAnimationCallback == null) {
+                onBackAnimationCallback = zxc.iconic.xenon.helpers.Material3PredictiveBack.createCallback(
+                    this,
+                    actionBarLayout,
+                    () -> {
+                        if (AndroidUtilities.isTablet()) {
+                            onBackPressed();
+                            return;
+                        }
+                        if (!onBackPressed(true)) return;
+                        onBackPressed();
+                    }
+                );
+            }
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                (OnBackAnimationCallback) onBackAnimationCallback
+            );
+        } else if (Build.VERSION.SDK_INT >= 34 && NekoConfig.predictiveBackAnimation) {
             if (onBackAnimationCallback == null) {
                 onBackAnimationCallback =  new OnBackAnimationCallback() {
                     private AnimationNotificationsLocker locker = new AnimationNotificationsLocker();
@@ -7236,7 +7256,9 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
 
         // Plugin Safe Mode: if the previous launch crashed or hung, disable
         // plugins and show the crash sheet before anything else plugin-related
-        // runs.
+        // runs. Also: if the user held a volume key at cold launch, activate
+        // Safe Mode manually.
+        zxc.iconic.xenon.plugins.PluginSafeMode.consumeVolumeKeySafeMode(this);
         zxc.iconic.xenon.plugins.PluginSafeMode.checkAndHandleCrash(this);
 
         // Plugin hook: any plugin that registered via xenon.on("onResume", ...)
@@ -8620,6 +8642,10 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         int keyCode = event.getKeyCode();
+        if (event.getAction() == android.view.KeyEvent.ACTION_DOWN && (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)) {
+            // Track volume key presses during launch for the Safe Mode gesture.
+            zxc.iconic.xenon.plugins.PluginSafeMode.onVolumeKeyDown(keyCode);
+        }
         if (event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_UP || event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_DOWN) {
             BaseFragment baseFragment = getLastFragment();
             if (baseFragment != null && baseFragment.getLastStoryViewer() != null) {

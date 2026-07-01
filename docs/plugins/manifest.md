@@ -18,11 +18,15 @@ function). The engine reads them after running your script.
 | `plugin_description` | string | One-line description shown under the name. |
 | `plugin_settings` | table | Settings schema — renders a native UI. See below. |
 | `plugin_scopes` | table | Security scopes the plugin needs (e.g. `{"MESSAGING"}`). See [security.md](./security.md). |
+| `plugin_author` | string | Author name. Shown as "by ..." in the plugin card and install sheet. |
+| `plugin_version` | string | Version in `N.M` format (e.g. `"1.0"`, `"2.13"`). Up to 5 digits after the dot; extra digits are truncated. Shown in the card and used for update detection. |
 
 ```lua
 plugin_id          = "my_cool_plugin"
 plugin_name        = "My Cool Plugin"
 plugin_description = "Does something cool"
+plugin_author      = "YourName"
+plugin_version     = "1.0"
 ```
 
 ### `plugin_id` — the rules
@@ -135,6 +139,29 @@ end}
 
 > The `action` closure captures the Lua environment at load time, so it can read
 > your plugin's locals and call any `xenon.*` function.
+
+---
+
+### `list`
+
+A selectable dropdown — tapping it opens a popup with options. Stores the
+**selected index** (0-based) as a string.
+
+| Key | Type | Required | Description |
+|-----|------|----------|-------------|
+| `options` | table | ✅ | Array of strings, e.g. `{"Text", "Icon", "Mix"}`. |
+| `default` | number | ❌ | Index of the initially selected option (0-based). Default `0`. |
+
+```lua
+{type = "list", key = "style", name = "Style",
+ options = {"Text", "Icon", "Mix"}, default = 0}
+```
+
+Read it back: `tonumber(xenon.getSetting("style", "0")) or 0` gives the index;
+map it to your options table to get the string.
+
+> The popup uses the native Telegram selector (`PopupHelper`), so it matches the
+> app's look and feel. The selected value is shown as a subtitle on the row.
 
 ---
 

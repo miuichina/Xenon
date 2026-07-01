@@ -176,6 +176,88 @@ public final class PluginSafeMode {
     }
 
     // ------------------------------------------------------------------
+    // Volume-key Safe Mode (cold launch)
+    // ------------------------------------------------------------------
+
+    /** Set by onVolumeKeyDown during the launch window. */
+    private static volatile boolean volumeKeyHeldAtLaunch;
+
+    /**
+     * Incremented each time markBootStarted is called (once per process start).
+     * consumeVolumeKeySafeMode uses this to only trigger Safe Mode on the very
+     * first resume after boot, preventing false triggers from volume key presses
+     * during normal use (which set volumeKeyHeldAtLaunch but should not cause a
+     * second Safe Mode activation).
+     */
+    private static volatile int bootSessionId;
+    private static volatile int lastConsumedBootSession = -1;
+
+    /**
+     * Called from LaunchActivity.dispatchKeyEvent when a volume key goes down.
+     * Records the press — the flag is consumed by consumeVolumeKeySafeMode on
+     * the next onResume, but only once per boot session.
+     */
+    public static void onVolumeKeyDown(int keyCode) {
+        if (keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP
+                || keyCode == android.view.KeyEvent.KEYCODE_VOLUME_DOWN) {
+            volumeKeyHeldAtLaunch = true;
+        }
+    }
+
+    /**
+     * If a volume key was held during launch, trigger Safe Mode: disable
+     * plugins and show the sheet. Called from onResume before plugins fire.
+     * Only fires once per boot session — subsequent volume key presses during
+     * normal use set volumeKeyHeldAtLaunch again, but we skip them because
+     * lastConsumedBootSession already matches bootSessionId.
+     * Clears the flag. Returns true if Safe Mode was activated.
+     */
+    public static boolean consumeVolumeKeySafeMode(Activity activity) {
+        // Only the very first call after a new boot (process start) may trigger.
+        if (lastConsumedBootSession == bootSessionId) return false;
+        lastConsumedBootSession = bootSessionId;
+        if (volumeKeyHeldAtLaunch) {
+            volumeKeyHeldAtLaunch = false;
+            triggerSafeModeManual(activity, "Volume key held at launch");
+            return true;
+        }
+        // Flag not set yet — key events may arrive after window gets focus
+        // (dispatchKeyEvent can't fire before onResume completes and the
+        // window is focused). Schedule a delayed check to catch them.
+        final Activity act = activity;
+        org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
+            if (volumeKeyHeldAtLaunch) {
+                volumeKeyHeldAtLaunch = false;
+                triggerSafeModeManual(act, "Volume key held at launch");
+            }
+        }, 2500);
+        return false;
+    }
+
+    private static void triggerSafeModeManual(Activity activity, String reason) {
+        try {
+            Context ctx = ApplicationLoader.applicationContext;
+            if (ctx != null) {
+                NekoConfig.pluginsEnabled = false;
+                ctx.getSharedPreferences("nekoconfig", Context.MODE_PRIVATE)
+                        .edit().putBoolean("pluginsEnabled", false).apply();
+            }
+            PluginManager.getInstance().onEnabledChanged();
+            writeCrashLog("Xenon plugin safe-mode report\n"
+                    + "Reason: " + reason + "\n"
+                    + "Time: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
+                        .format(new Date()) + "\n"
+                    + "Plugins disabled by user (safe mode).\n");
+            if (activity != null) {
+                org.telegram.messenger.AndroidUtilities.runOnUIThread(
+                        () -> showCrashSheet(activity, System.currentTimeMillis(), "safe"), 500);
+            }
+        } catch (Throwable t) {
+            FileLog.e(t);
+        }
+    }
+
+    // ------------------------------------------------------------------
     // Recovery
     // ------------------------------------------------------------------
 
@@ -187,6 +269,10 @@ public final class PluginSafeMode {
      * stays set, and the next launch knows the previous one never finished.
      */
     public static void markBootStarted() {
+        // Start a new boot session — volume key presses during this session
+        // (the first onResume) will trigger Safe Mode if any were detected.
+        bootSessionId++;
+        volumeKeyHeldAtLaunch = false;
         Context ctx = ApplicationLoader.applicationContext;
         if (ctx == null) return;
         // CAPTURE the previous launch's state BEFORE we overwrite it with our

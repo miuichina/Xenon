@@ -1,9 +1,11 @@
 package zxc.iconic.xenon.settings;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Handler;
+import android.util.TypedValue;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -21,8 +23,10 @@ import org.telegram.ui.Cells.TextCheckCell;
 import org.telegram.ui.Components.BackupImageView;
 import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.UniversalAdapter;
+import org.telegram.ui.Components.UniversalRecyclerView;
 
 import java.io.File;
 import java.io.InputStream;
@@ -68,7 +72,7 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
         if (infos.isEmpty()) {
             items.add(UItem.asShadow(LocaleController.getString(R.string.PluginsEmpty)));
         } else {
-            items.add(UItem.asHeader(LocaleController.getString(R.string.PluginsInstalled)));
+            // No "Installed" header — cards stand on their own.
             pluginRows.clear();
             nextPluginRow = rowId;
             int unnamedCount = 0;
@@ -79,32 +83,23 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
                 String desc = info.description != null
                         ? info.description
                         : LocaleController.getString(R.string.PluginsNoDescription);
-                // Reflect the stored toggle (plugin_enabled_<fileName>) so the
-                // check is accurate even with the engine off, and stays fully
-                // clickable so the user can pick which plugins run after
-                // re-enabling the engine.
                 boolean enabled = PluginSettingsActivity.getPrefs()
                         .getBoolean("plugin_enabled_" + info.fileName, true);
-                items.add(UItem.asCheck(rid, title, desc).setChecked(enabled));
+                // Card with toggle + description + settings/delete buttons.
+                items.add(PluginCardFactory.of(rid, title, desc, info.author, info.version, enabled, NekoConfig.pluginsEnabled));
                 if (info.name == null) unnamedCount++;
             }
             items.add(UItem.asShadow(null));
 
             if (firstLoad) {
                 firstLoad = false;
-                int count = infos.size();
                 int unnamed = unnamedCount;
-                AndroidUtilities.runOnUIThread(() -> {
-                    if (isFinishing()) return;
-                    BulletinFactory.of(this).createSimpleBulletin(R.raw.chats_infotip,
-                            LocaleController.formatString(R.string.PluginsLoadedCount, count)).show();
-                }, 300);
                 if (unnamed > 0) {
                     AndroidUtilities.runOnUIThread(() -> {
                         if (isFinishing()) return;
                         BulletinFactory.of(this).createErrorBulletin(
                                 LocaleController.getString(R.string.PluginsPluginNoName)).show();
-                    }, 1300);
+                    }, 300);
                 }
             }
         }
@@ -136,10 +131,9 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
             // Allow installing plugins regardless of the engine state. They'll
             // activate once the engine is enabled.
             launchFilePicker();
-        } else if (pluginRows.containsKey(id)) {
-            PluginManager.PluginInfo info = pluginRows.get(id);
-            showPluginBottomSheet(info);
         }
+        // Plugin cards handle their own clicks (toggle + settings + delete) in
+        // PluginCardFactory, so there's no top-level click for them here.
     }
 
     /**
@@ -377,8 +371,11 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
         String pluginName = meta != null && meta[0] != null ? meta[0] : (fileName != null ? fileName : "Plugin");
         boolean hasDesc = meta != null && meta[1] != null && !meta[1].isEmpty();
         String pluginDesc = hasDesc ? meta[1] : LocaleController.getString(R.string.PluginsNoDescription);
+        String pluginAuthor = meta != null && meta.length > 3 ? meta[3] : null;
+        String pluginVersion = meta != null && meta.length > 4 ? meta[4] : null;
         // Check if a plugin with the same pluginId is already installed
         PluginManager.LoadedPlugin existingSameId = pluginId != null ? PluginManager.getInstance().findByPluginId(pluginId) : null;
+        boolean isUpdate = existingSameId != null;
 
         BottomSheet.Builder builder = new BottomSheet.Builder(activity, false, resourcesProvider);
         LinearLayout layout = new LinearLayout(activity);
@@ -404,6 +401,27 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
         nameView.setTextColor(Theme.getColor(Theme.key_dialogTextBlack, resourcesProvider));
         nameView.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
         headerLine.addView(nameView, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT));
+
+        // Version next to the name (gray), like in PluginCardCell. For an update
+        // show "old → new".
+        if (pluginVersion != null && !pluginVersion.isEmpty()) {
+            TextView headerVersion = new TextView(activity);
+            String vText;
+            if (isUpdate && existingSameId.version != null && !existingSameId.version.isEmpty()) {
+                vText = existingSameId.version + " → " + pluginVersion;
+            } else {
+                vText = "v" + pluginVersion;
+            }
+            headerVersion.setText(vText);
+            headerVersion.setTextSize(13);
+            headerVersion.setTextColor(isUpdate
+                    ? Theme.getColor(Theme.key_text_RedBold, resourcesProvider)
+                    : Theme.getColor(Theme.key_windowBackgroundWhiteGrayText, resourcesProvider));
+            headerLine.addView(headerVersion, LayoutHelper.createLinear(
+                    LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, 0, 0, 0, 0));
+            // small gap between name and version
+            ((LinearLayout.LayoutParams) headerVersion.getLayoutParams()).leftMargin = AndroidUtilities.dp(6);
+        }
         layout.addView(headerLine);
 
         // Plugin ID line
@@ -421,6 +439,17 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
             idView.setGravity(android.view.Gravity.CENTER);
             idView.setPadding(0, 0, 0, AndroidUtilities.dp(12));
             layout.addView(idView);
+        }
+
+        // Author line
+        if (pluginAuthor != null && !pluginAuthor.isEmpty()) {
+            TextView authorTv = new TextView(activity);
+            authorTv.setText("by " + pluginAuthor);
+            authorTv.setTextSize(12);
+            authorTv.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText3, resourcesProvider));
+            authorTv.setGravity(android.view.Gravity.CENTER);
+            authorTv.setPadding(0, 0, 0, AndroidUtilities.dp(8));
+            layout.addView(authorTv);
         }
 
         // Description or placeholder
@@ -546,11 +575,73 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
     public void onResume() {
         super.onResume();
         PluginManager.setCurrentActivity(getParentActivity());
+        PluginCardHost.host = this;
+        maybeShowSafeModeIntro();
+    }
+
+    /**
+     * On the very first time the user opens the plugins screen, show a one-time
+     * BottomSheet explaining how to start in Safe Mode (hold a volume button at
+     * launch). Persisted via a pref flag so it only shows once.
+     */
+    private void maybeShowSafeModeIntro() {
+        if (PluginSettingsActivity.getPrefs().getBoolean("safe_mode_intro_shown", false)) {
+            return;
+        }
+        AndroidUtilities.runOnUIThread(() -> {
+            if (isFinishing()) return;
+            Activity activity = getParentActivity();
+            if (activity == null) return;
+            PluginSettingsActivity.getPrefs().edit().putBoolean("safe_mode_intro_shown", true).apply();
+
+            BottomSheet.Builder builder = new BottomSheet.Builder(activity, false, resourcesProvider);
+            LinearLayout sheet = new LinearLayout(activity);
+            sheet.setOrientation(LinearLayout.VERTICAL);
+            int pad = AndroidUtilities.dp(24);
+            sheet.setPadding(pad, AndroidUtilities.dp(20), pad, pad);
+
+            TextView title = new TextView(activity);
+            title.setText(LocaleController.getString(R.string.PluginsSafeModeTitle));
+            title.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 20);
+            title.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+            title.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText, resourcesProvider));
+            title.setPadding(0, 0, 0, AndroidUtilities.dp(12));
+            sheet.addView(title);
+
+            TextView desc = new TextView(activity);
+            desc.setText(LocaleController.getString(R.string.PluginsSafeModeDesc));
+            desc.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+            desc.setLineSpacing(AndroidUtilities.dp(2), 1f);
+            desc.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText, resourcesProvider));
+            desc.setPadding(0, 0, 0, AndroidUtilities.dp(16));
+            sheet.addView(desc);
+
+            final BottomSheet[] ref = new BottomSheet[1];
+            int accent = Theme.getColor(Theme.key_featuredStickers_addButton, resourcesProvider);
+            double lum = (0.299 * android.graphics.Color.red(accent) + 0.587 * android.graphics.Color.green(accent) + 0.114 * android.graphics.Color.blue(accent)) / 255.0;
+            int btnTextColor = lum > 0.5 ? 0xff000000 : 0xffffffff;
+            TextView gotBtn = new TextView(activity);
+            gotBtn.setText(LocaleController.getString(R.string.PluginsSafeModeGot));
+            gotBtn.setTextColor(btnTextColor);
+            gotBtn.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
+            gotBtn.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+            gotBtn.setGravity(android.view.Gravity.CENTER);
+            gotBtn.setBackground(Theme.createRoundRectDrawable(AndroidUtilities.dp(24), accent));
+            gotBtn.setPadding(0, AndroidUtilities.dp(14), 0, AndroidUtilities.dp(14));
+            gotBtn.setOnClickListener(v -> { if (ref[0] != null) ref[0].dismiss(); });
+            sheet.addView(gotBtn, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48));
+
+            builder.setCustomView(sheet);
+            ref[0] = builder.show();
+        }, 500);
     }
 
     @Override
     public void onPause() {
         super.onPause();
+        if (PluginCardHost.host == this) {
+            PluginCardHost.host = null;
+        }
     }
 
     @Override
@@ -561,5 +652,161 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
     @Override
     protected String getKey() {
         return "plugins";
+    }
+
+    // ------------------------------------------------------------------
+    // Plugin card factory: renders each plugin as a card with a toggle,
+    // description, and settings/delete action buttons.
+    // ------------------------------------------------------------------
+
+    protected static class PluginCardFactory extends UItem.UItemFactory<PluginCardCell> {
+        static {
+            setup(new PluginCardFactory());
+        }
+
+        private Theme.ResourcesProvider resourcesProvider;
+
+        @Override
+        public PluginCardCell createView(Context context, RecyclerListView listView, int currentAccount, int classGuid, Theme.ResourcesProvider resourcesProvider) {
+            this.resourcesProvider = resourcesProvider;
+            return new PluginCardCell(context, resourcesProvider);
+        }
+
+        @Override
+        public void bindView(View view, UItem item, boolean divider, UniversalAdapter adapter, UniversalRecyclerView listView) {
+            PluginCardCell cell = (PluginCardCell) view;
+            cell.bind(item);
+
+            // Resolve the plugin info this card represents.
+            final PluginManager.PluginInfo info = findInfoById(item.id);
+            if (info == null) return;
+
+            // Toggle: click on the whole toggle cell flips the switch. This
+            // TextCheckCell variant has no OnCheckedChangeListener — clicks go
+            // through the standard View OnClickListener, so we toggle manually.
+            cell.getToggleSwitch().setOnClickListener(v -> {
+                boolean newState = !PluginSettingsActivity.getPrefs()
+                        .getBoolean("plugin_enabled_" + info.fileName, true);
+                PluginSettingsActivity.getPrefs().edit()
+                        .putBoolean("plugin_enabled_" + info.fileName, newState).apply();
+                if (cell.getToggleSwitch() instanceof org.telegram.ui.Components.Switch) {
+                    ((org.telegram.ui.Components.Switch) cell.getToggleSwitch()).setChecked(newState, true);
+                }
+                if (NekoConfig.pluginsEnabled) {
+                    PluginManager.getInstance().reloadAll();
+                }
+            });
+
+            // Settings button: open the plugin's settings. Works even when the
+            // plugin (or the engine) is disabled — we load the plugin on demand
+            // so the user can tweak its values before enabling it.
+            cell.getSettingsButton().setOnClickListener(v -> {
+                PluginManager pm = PluginManager.getInstance();
+                PluginManager.LoadedPlugin loaded = pm.findPlugin(info.fileName);
+                if (loaded == null) {
+                    // Plugin not loaded (disabled) — load it on demand just to
+                    // edit settings. It won't receive hooks until enabled.
+                    loaded = pm.loadPluginForSettings(info.fileName);
+                }
+                if (loaded != null) {
+                    hostActivity().presentFragment(new PluginSettingsActivity().setPlugin(loaded));
+                }
+            });
+
+            // Delete button: confirm via BottomSheet, then remove.
+            cell.getDeleteButton().setOnClickListener(v -> {
+                Activity a = hostActivity().getParentActivity();
+                if (a == null) return;
+                BottomSheet.Builder builder = new BottomSheet.Builder(a, false, resourcesProvider);
+                LinearLayout sheet = new LinearLayout(a);
+                sheet.setOrientation(LinearLayout.VERTICAL);
+                int pad = AndroidUtilities.dp(24);
+                sheet.setPadding(pad, AndroidUtilities.dp(20), pad, pad);
+
+                TextView title = new TextView(a);
+                title.setText(LocaleController.getString(R.string.Delete));
+                title.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 20);
+                title.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+                title.setTextColor(Theme.getColor(Theme.key_text_RedBold, resourcesProvider));
+                title.setPadding(0, 0, 0, AndroidUtilities.dp(12));
+                sheet.addView(title);
+
+                TextView msg = new TextView(a);
+                msg.setText(LocaleController.formatString(R.string.PluginsDeleteConfirm,
+                        info.name != null ? info.name : info.fileName));
+                msg.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+                msg.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText, resourcesProvider));
+                msg.setPadding(0, 0, 0, AndroidUtilities.dp(16));
+                sheet.addView(msg);
+
+                final BottomSheet[] sheetRef = new BottomSheet[1];
+                TextView deleteBtn = new TextView(a);
+                deleteBtn.setText(LocaleController.getString(R.string.Delete));
+                deleteBtn.setTextColor(0xffffffff);
+                deleteBtn.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
+                deleteBtn.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
+                deleteBtn.setGravity(android.view.Gravity.CENTER);
+                deleteBtn.setBackground(Theme.createRoundRectDrawable(AndroidUtilities.dp(24),
+                        Theme.getColor(Theme.key_text_RedBold, resourcesProvider)));
+                deleteBtn.setPadding(0, AndroidUtilities.dp(14), 0, AndroidUtilities.dp(14));
+                deleteBtn.setOnClickListener(v2 -> {
+                    PluginManager.getInstance().remove(info.fileName);
+                    BulletinFactory.of(hostActivity()).createSimpleBulletin(R.raw.chats_infotip,
+                            LocaleController.getString(R.string.PluginsRemoved)).show();
+                    if (sheetRef[0] != null) sheetRef[0].dismiss();
+                    hostActivity().updateRows();
+                });
+                sheet.addView(deleteBtn, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48));
+
+                TextView cancelBtn = new TextView(a);
+                cancelBtn.setText(LocaleController.getString(R.string.Cancel));
+                cancelBtn.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText, resourcesProvider));
+                cancelBtn.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
+                cancelBtn.setGravity(android.view.Gravity.CENTER);
+                cancelBtn.setPadding(0, AndroidUtilities.dp(14), 0, AndroidUtilities.dp(4));
+                cancelBtn.setOnClickListener(v2 -> { if (sheetRef[0] != null) sheetRef[0].dismiss(); });
+                sheet.addView(cancelBtn);
+
+                builder.setCustomView(sheet);
+                sheetRef[0] = builder.show();
+            });
+        }
+
+        @Override
+        public boolean isClickable() {
+            // The card itself isn't clickable as a whole — the toggle and the
+            // two buttons handle their own clicks.
+            return false;
+        }
+
+        private PluginManager.PluginInfo findInfoById(int itemId) {
+            NekoPluginsActivity host = hostActivity();
+            if (host == null) return null;
+            for (Map.Entry<Integer, PluginManager.PluginInfo> e : host.pluginRows.entrySet()) {
+                if (e.getKey() == itemId) return e.getValue();
+            }
+            return null;
+        }
+
+        private NekoPluginsActivity hostActivity() {
+            return PluginCardHost.host;
+        }
+
+        public static UItem of(int id, CharSequence title, CharSequence desc, CharSequence author, CharSequence version, boolean checked, boolean enabled) {
+            UItem item = UItem.ofFactory(PluginCardFactory.class);
+            item.id = id;
+            item.text = title;
+            item.subtext = desc;
+            item.textValue = author;
+            item.texts = (version != null) ? new String[]{version.toString()} : null;
+            item.checked = checked;
+            item.enabled = enabled;
+            return item;
+        }
+    }
+
+    /** Lets the static factory reach the host activity's plugin map. */
+    private static class PluginCardHost {
+        static NekoPluginsActivity host;
     }
 }

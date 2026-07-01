@@ -216,13 +216,17 @@ public class PluginManager {
         public final String name;
         public final String description;
         public final String pluginId;
+        public final String author;
+        public final String version;
         public final boolean active;
 
-        public PluginInfo(String fileName, String name, String description, String pluginId, boolean active) {
+        public PluginInfo(String fileName, String name, String description, String pluginId, String author, String version, boolean active) {
             this.fileName = fileName;
             this.name = name;
             this.description = description;
             this.pluginId = pluginId;
+            this.author = author;
+            this.version = version;
             this.active = active;
         }
     }
@@ -242,9 +246,9 @@ public class PluginManager {
             String name = meta != null && meta[0] != null ? meta[0] : null;
             String desc = meta != null && meta[1] != null ? meta[1] : null;
             String id = meta != null && meta[2] != null ? meta[2] : null;
+            String author = meta != null && meta[3] != null ? meta[3] : null;
+            String version = meta != null && meta[4] != null ? meta[4] : null;
             boolean active = false;
-            // A plugin is "active" only if the engine is on, it's enabled in
-            // prefs, and it actually loaded.
             if (isEnabled()) {
                 for (LoadedPlugin p : plugins) {
                     if (p.fileName.equals(file.getName())) {
@@ -253,7 +257,7 @@ public class PluginManager {
                     }
                 }
             }
-            result.add(new PluginInfo(file.getName(), name, desc, id, active));
+            result.add(new PluginInfo(file.getName(), name, desc, id, author, version, active));
         }
         return result;
     }
@@ -264,6 +268,25 @@ public class PluginManager {
             if (p.fileName.equals(fileName)) return p;
         }
         return null;
+    }
+
+    /**
+     * Load a plugin on demand for editing its settings, even when the plugin is
+     * disabled or the engine is off. The plugin's Lua runs once (to build its
+     * settings schema), but it is NOT added to the active plugins list — so it
+     * won't receive hooks until properly enabled. Returns null if loading failed.
+     */
+    public LoadedPlugin loadPluginForSettings(String fileName) {
+        File dir = getPluginsDir();
+        File file = new File(dir, fileName);
+        if (!file.exists()) return null;
+        try {
+            return loadFile(file);
+        } catch (Throwable t) {
+            FileLog.e("loadPluginForSettings failed for " + fileName, t);
+            Log.e(TAG, "loadPluginForSettings: " + fileName + " threw: " + t.getMessage());
+            return null;
+        }
     }
 
     public LoadedPlugin findByPluginId(String pluginId) {
@@ -515,6 +538,17 @@ public class PluginManager {
             String s = idVal.tojstring().trim();
             if (!s.isEmpty()) pluginId = s;
         }
+        String pluginAuthor = null;
+        LuaValue authorVal = globals.get("plugin_author");
+        if (!authorVal.isnil()) {
+            pluginAuthor = authorVal.tojstring().trim();
+            if (pluginAuthor.isEmpty()) pluginAuthor = null;
+        }
+        String pluginVersion = null;
+        LuaValue versionVal = globals.get("plugin_version");
+        if (!versionVal.isnil()) {
+            pluginVersion = sanitizeVersion(versionVal.tojstring());
+        }
         // Read settings from Lua globals
         List<LoadedPlugin.PluginSetting> settings = new ArrayList<>();
         LuaValue settingsVal = globals.get("plugin_settings");
@@ -559,6 +593,25 @@ public class PluginManager {
                             setting = new LoadedPlugin.PluginSetting(LoadedPlugin.PluginSetting.Type.BUTTON, skey, sname, false, 0, null, 0, 0, 0, null, action != null && !action.isnil() ? action : null);
                             break;
                         }
+                        case "list": {
+                            // Parse the options array: { "Option A", "Option B", ... }
+                            LuaValue optsVal = entry.get("options");
+                            java.util.List<String> opts = new java.util.ArrayList<>();
+                            if (optsVal.istable()) {
+                                for (int oi = 1; oi <= optsVal.length(); oi++) {
+                                    LuaValue v = optsVal.get(oi);
+                                    if (!v.isnil()) opts.add(v.tojstring());
+                                }
+                            }
+                            String[] optionsArr = opts.toArray(new String[0]);
+                            // default is the index (0-based) of the selected option
+                            LuaValue defVal = entry.get("default");
+                            int defIdx = defVal.isnil() ? 0 : defVal.toint();
+                            if (defIdx < 0) defIdx = 0;
+                            if (optionsArr.length > 0 && defIdx >= optionsArr.length) defIdx = 0;
+                            setting = new LoadedPlugin.PluginSetting(LoadedPlugin.PluginSetting.Type.LIST, skey, sname, false, defIdx, null, 0, 0, 0, null, null, optionsArr);
+                            break;
+                        }
                     }
                     if (setting != null) {
                         settings.add(setting);
@@ -568,7 +621,7 @@ public class PluginManager {
                 }
             }
         }
-        return new LoadedPlugin(file.getName(), pluginName, pluginDesc, pluginId, settings, globals, hooks);
+        return new LoadedPlugin(file.getName(), pluginName, pluginDesc, pluginId, pluginAuthor, pluginVersion, settings, globals, hooks);
     }
 
     // ------------------------------------------------------------------
@@ -838,7 +891,11 @@ public class PluginManager {
             String name = extractStringAssignment(source, "plugin_name");
             String desc = extractStringAssignment(source, "plugin_description");
             String id = extractStringAssignment(source, "plugin_id");
-            return new String[]{name, desc, id};
+            String author = extractStringAssignment(source, "plugin_author");
+            String version = extractStringAssignment(source, "plugin_version");
+            // Sanitize version: keep "N.M" format, max 5 digits after the dot.
+            version = sanitizeVersion(version);
+            return new String[]{name, desc, id, author, version};
         } catch (Throwable t) {
             // Catch Throwable (not Exception) — even an OOM while reading must
             // not crash the app here.
@@ -980,6 +1037,44 @@ public class PluginManager {
     }
 
     /**
+     * Normalize a plugin version string to "N.M" form. Keeps digits and at most
+     * one dot; if there's a fractional part, limits it to 5 digits after the
+     * dot. Returns null for garbage / empty input.
+     */
+    private static String sanitizeVersion(String raw) {
+        if (raw == null) return null;
+        String s = raw.trim();
+        if (s.isEmpty()) return null;
+        // Keep only digits and the first dot.
+        StringBuilder sb = new StringBuilder();
+        boolean dotSeen = false;
+        int afterDot = 0;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '.' && !dotSeen) {
+                sb.append('.');
+                dotSeen = true;
+            } else if (Character.isDigit(c)) {
+                if (dotSeen) {
+                    if (afterDot < 5) {
+                        sb.append(c);
+                        afterDot++;
+                    }
+                    // else: truncate beyond 5 digits after dot.
+                } else {
+                    sb.append(c);
+                }
+            }
+            // Ignore anything else.
+        }
+        String result = sb.toString();
+        if (result.isEmpty()) return null;
+        // Strip a trailing dot.
+        if (result.endsWith(".")) result = result.substring(0, result.length() - 1);
+        return result.isEmpty() ? null : result;
+    }
+
+    /**
      * A loaded plugin: its file name plus the Lua globals it runs in.
      */
     public static class LoadedPlugin {
@@ -988,11 +1083,13 @@ public class PluginManager {
         public final String name;
         public final String description;
         public final String pluginId;
+        public final String author;
+        public final String version;
         public final List<PluginSetting> settings;
         private final Globals globals;
         private final LuaTable hooks;
 
-        LoadedPlugin(String fileName, String name, String description, String pluginId, List<PluginSetting> settings, Globals globals, LuaTable hooks) {
+        LoadedPlugin(String fileName, String name, String description, String pluginId, String author, String version, List<PluginSetting> settings, Globals globals, LuaTable hooks) {
             this.fileName = fileName;
             this.globals = globals;
             this.hooks = hooks;
@@ -1004,11 +1101,13 @@ public class PluginManager {
             this.name = name;
             this.description = description;
             this.pluginId = pluginId;
+            this.author = author;
+            this.version = version;
             this.settings = settings;
         }
 
         public static class PluginSetting {
-            public enum Type { TOGGLE, SEEKBAR, TEXT, BUTTON, HEADER }
+            public enum Type { TOGGLE, SEEKBAR, TEXT, BUTTON, HEADER, LIST }
             public final Type type;
             public final String key;
             public final String name;
@@ -1018,12 +1117,18 @@ public class PluginManager {
             public final int min, max, step;
             public final String hint;
             public final LuaValue action;
+            /** For LIST: the selectable option labels. */
+            public final String[] options;
 
             PluginSetting(Type type, String key, String name, boolean defaultBool, int defaultInt, String defaultString, int min, int max, int step, String hint, LuaValue action) {
+                this(type, key, name, defaultBool, defaultInt, defaultString, min, max, step, hint, action, null);
+            }
+
+            PluginSetting(Type type, String key, String name, boolean defaultBool, int defaultInt, String defaultString, int min, int max, int step, String hint, LuaValue action, String[] options) {
                 this.type = type; this.key = key; this.name = name;
                 this.defaultBool = defaultBool; this.defaultInt = defaultInt; this.defaultString = defaultString;
                 this.min = min; this.max = max; this.step = step;
-                this.hint = hint; this.action = action;
+                this.hint = hint; this.action = action; this.options = options;
             }
         }
 

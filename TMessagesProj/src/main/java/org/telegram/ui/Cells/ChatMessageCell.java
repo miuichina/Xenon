@@ -15216,6 +15216,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     }
 
     public void drawBlurredPhotoParticles(Canvas canvas) {
+        if (zxc.iconic.xenon.helpers.SpoilerHelper.drawMediaSpoilerIfOverridden(canvas, this)) {
+            return;
+        }
         if (mediaSpoilerEffect2 == null) {
             return;
         }

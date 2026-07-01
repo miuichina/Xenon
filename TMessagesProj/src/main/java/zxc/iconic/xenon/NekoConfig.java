@@ -66,6 +66,14 @@ public class NekoConfig {
     public static final int CAMERA_REAR = 1;
     public static final int CAMERA_ASK = 2;
 
+    public static final int TEXT_SPOILER_DEFAULT = 0;
+    public static final int TEXT_SPOILER_SIMPLE = 1;
+    public static final int TEXT_SPOILER_EPSTEIN = 2;
+
+    public static final int MEDIA_SPOILER_TELEGRAM = 0;
+    public static final int MEDIA_SPOILER_PILL = 1;
+    public static final int MEDIA_SPOILER_CIRCLE = 2;
+
     private static final Object sync = new Object();
     public static boolean preferIPv6 = false;
 
@@ -96,6 +104,9 @@ public class NekoConfig {
     public static String cfAccountID = "";
     public static String cfApiToken = "";
     public static int cameraInVideoMessages = CAMERA_FRONT;
+    public static int textSpoilerMode = TEXT_SPOILER_DEFAULT;
+    public static int mediaSpoilerMode = MEDIA_SPOILER_TELEGRAM;
+    public static boolean spoilerExtendToLineEnd = false;
 
     public static boolean showAddToSavedMessages = true;
     public static boolean showAddToSavedMessagesInGroups = false;
@@ -383,6 +394,9 @@ public class NekoConfig {
             advancedGlassTintBlackWhite = preferences.getBoolean("advancedGlassTintBlackWhite", DEFAULT_ADVANCED_GLASS_TINT_BLACK_WHITE);
             glassBottomSheet = preferences.getBoolean("glassBottomSheet", DEFAULT_GLASS_BOTTOM_SHEET);
             cameraInVideoMessages = preferences.getInt("cameraInVideoMessages", CAMERA_FRONT);
+            textSpoilerMode = preferences.getInt("textSpoilerMode", TEXT_SPOILER_DEFAULT);
+            mediaSpoilerMode = preferences.getInt("mediaSpoilerMode", MEDIA_SPOILER_TELEGRAM);
+            spoilerExtendToLineEnd = preferences.getBoolean("spoilerExtendToLineEnd", false);
             removeAds = preferences.getBoolean("removeAds", false);
             textAnimationEnabled = preferences.getBoolean("textAnimationEnabled", false);
             textAnimCursorSpeed = preferences.getInt("textAnimCursorSpeed", 80);
@@ -470,6 +484,30 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putInt("cameraInVideoMessages", cameraInVideoMessages);
+        editor.apply();
+    }
+
+    public static void setTextSpoilerMode(int mode) {
+        textSpoilerMode = mode;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("textSpoilerMode", textSpoilerMode);
+        editor.apply();
+    }
+
+    public static void setMediaSpoilerMode(int mode) {
+        mediaSpoilerMode = mode;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("mediaSpoilerMode", mediaSpoilerMode);
+        editor.apply();
+    }
+
+    public static void toggleSpoilerExtendToLineEnd() {
+        spoilerExtendToLineEnd = !spoilerExtendToLineEnd;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("spoilerExtendToLineEnd", spoilerExtendToLineEnd);
         editor.apply();
     }
 

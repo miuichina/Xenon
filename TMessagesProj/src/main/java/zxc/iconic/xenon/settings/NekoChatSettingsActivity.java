@@ -84,6 +84,10 @@ public class NekoChatSettingsActivity extends BaseNekoSettingsActivity implement
 
     private final int messageMenuRow = 100;
 
+    private final int textSpoilerModeRow = rowId++;
+    private final int mediaSpoilerModeRow = rowId++;
+    private final int spoilerExtendToLineEndRow = rowId++;
+
     @Override
     public boolean onFragmentCreate() {
         super.onFragmentCreate();
@@ -206,6 +210,13 @@ public class NekoChatSettingsActivity extends BaseNekoSettingsActivity implement
             default -> LocaleController.getString(R.string.FrontCamera);
         }).slug("cameraInVideoMessages"));
         items.add(UItem.asCheck(hideCameraInMediaPickerRow, LocaleController.getString(R.string.HideCameraInMediaPicker)).slug("hideCameraInMediaPicker").setChecked(NekoConfig.hideCameraInMediaPicker));
+        items.add(UItem.asShadow(null));
+
+        items.add(UItem.asHeader(LocaleController.getString(R.string.InuSpoilers)));
+        items.add(TextSettingsCellFactory.of(textSpoilerModeRow, LocaleController.getString(R.string.InuTextSpoilerMode), textSpoilerModeLabel()).slug("textSpoilerMode"));
+        items.add(TextSettingsCellFactory.of(mediaSpoilerModeRow, LocaleController.getString(R.string.InuMediaSpoilerMode), mediaSpoilerModeLabel()).slug("mediaSpoilerMode"));
+        items.add(UItem.asCheck(spoilerExtendToLineEndRow, LocaleController.getString(R.string.InuSpoilerExtendToLineEnd), LocaleController.getString(R.string.InuSpoilerExtendToLineEndInfo)).slug("spoilerExtendToLineEnd").setChecked(NekoConfig.spoilerExtendToLineEnd));
+        items.add(UItem.asShadow(LocaleController.getString(R.string.InuSpoilerExtendToLineEndInfoExtra)));
         items.add(UItem.asShadow(null));
 
         items.add(UItem.asHeader(LocaleController.getString(R.string.MessageMenu)));
@@ -528,7 +539,56 @@ public class NekoChatSettingsActivity extends BaseNekoSettingsActivity implement
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.showOnlineDotsInChat);
             }
+        } else if (id == textSpoilerModeRow) {
+            ArrayList<String> arrayList = new ArrayList<>();
+            ArrayList<Integer> types = new ArrayList<>();
+            arrayList.add(LocaleController.getString(R.string.InuTextSpoilerModeDefault));
+            types.add(NekoConfig.TEXT_SPOILER_DEFAULT);
+            arrayList.add(LocaleController.getString(R.string.InuTextSpoilerModeSimple));
+            types.add(NekoConfig.TEXT_SPOILER_SIMPLE);
+            arrayList.add(LocaleController.getString(R.string.InuTextSpoilerModeEpstein));
+            types.add(NekoConfig.TEXT_SPOILER_EPSTEIN);
+            PopupHelper.show(arrayList, LocaleController.getString(R.string.InuTextSpoilerMode), types.indexOf(NekoConfig.textSpoilerMode), getParentActivity(), view, i -> {
+                NekoConfig.setTextSpoilerMode(types.get(i));
+                item.textValue = textSpoilerModeLabel();
+                listView.adapter.notifyItemChanged(position, PARTIAL);
+            }, resourcesProvider);
+        } else if (id == mediaSpoilerModeRow) {
+            ArrayList<String> arrayList = new ArrayList<>();
+            ArrayList<Integer> types = new ArrayList<>();
+            arrayList.add(LocaleController.getString(R.string.InuMediaSpoilerModeTelegram));
+            types.add(NekoConfig.MEDIA_SPOILER_TELEGRAM);
+            arrayList.add(LocaleController.getString(R.string.InuMediaSpoilerModePill));
+            types.add(NekoConfig.MEDIA_SPOILER_PILL);
+            arrayList.add(LocaleController.getString(R.string.InuMediaSpoilerModeCircle));
+            types.add(NekoConfig.MEDIA_SPOILER_CIRCLE);
+            PopupHelper.show(arrayList, LocaleController.getString(R.string.InuMediaSpoilerMode), types.indexOf(NekoConfig.mediaSpoilerMode), getParentActivity(), view, i -> {
+                NekoConfig.setMediaSpoilerMode(types.get(i));
+                item.textValue = mediaSpoilerModeLabel();
+                listView.adapter.notifyItemChanged(position, PARTIAL);
+            }, resourcesProvider);
+        } else if (id == spoilerExtendToLineEndRow) {
+            NekoConfig.toggleSpoilerExtendToLineEnd();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.spoilerExtendToLineEnd);
+            }
         }
+    }
+
+    private String textSpoilerModeLabel() {
+        return switch (NekoConfig.textSpoilerMode) {
+            case NekoConfig.TEXT_SPOILER_SIMPLE -> LocaleController.getString(R.string.InuTextSpoilerModeSimple);
+            case NekoConfig.TEXT_SPOILER_EPSTEIN -> LocaleController.getString(R.string.InuTextSpoilerModeEpstein);
+            default -> LocaleController.getString(R.string.InuTextSpoilerModeDefault);
+        };
+    }
+
+    private String mediaSpoilerModeLabel() {
+        return switch (NekoConfig.mediaSpoilerMode) {
+            case NekoConfig.MEDIA_SPOILER_PILL -> LocaleController.getString(R.string.InuMediaSpoilerModePill);
+            case NekoConfig.MEDIA_SPOILER_CIRCLE -> LocaleController.getString(R.string.InuMediaSpoilerModeCircle);
+            default -> LocaleController.getString(R.string.InuMediaSpoilerModeTelegram);
+        };
     }
 
     @Override

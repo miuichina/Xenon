@@ -1,6 +1,8 @@
 plugin_id = "message_roulette_1"
 plugin_name = "Message Roulette"
 plugin_description = "Picks a random message (text/media) from each saved chat and sends its text as a reply to another random message."
+plugin_author = "miuichina"
+plugin_version = "1.0"
 
 local function get_setting(key, default)
     local val = xenon.getSetting(key, tostring(default))

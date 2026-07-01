@@ -553,6 +553,20 @@ public class PluginApi {
                 return LuaValue.NIL;
             }
         });
+        api.set("bulletinButton", new VarArgFunction() {
+            @Override
+            public LuaValue invoke(Varargs args) {
+                Varargs uargs = args.subargs(1);
+                if (uargs.narg() >= 3) {
+                    String text = uargs.arg(1).checkjstring();
+                    String button = uargs.arg(2).checkjstring();
+                    LuaValue cb = uargs.arg(3).isfunction() ? uargs.arg(3) : null;
+                    Log.d("XenonPlugin", "xenon.bulletinButton called: text=" + text + " button=" + button);
+                    showBulletinButton(text, button, cb);
+                }
+                return LuaValue.NIL;
+            }
+        });
         final String capturedPluginForSettings = currentPluginFileName;
         api.set("getSetting", new TwoArgFunction() {
             @Override
@@ -1737,6 +1751,31 @@ public class PluginApi {
         org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
             try {
                 BulletinFactory.global().createSimpleBulletin(R.raw.chats_infotip, text).show();
+            } catch (Exception e) {
+                FileLog.e(e);
+            }
+        });
+    }
+
+    /**
+     * Show a bulletin with a tappable button. When the user taps the button,
+     * the Lua callback is invoked (no args). Use it for actionable feedback
+     * like "Plugin updated. [Undo]" or "Done. [Open]".
+     */
+    static void showBulletinButton(final String text, final String button, final LuaValue callback) {
+        org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
+            try {
+                Runnable action = null;
+                if (callback != null && callback.isfunction()) {
+                    action = () -> {
+                        try {
+                            callback.call();
+                        } catch (Throwable t) {
+                            FileLog.e(t);
+                        }
+                    };
+                }
+                BulletinFactory.global().createSimpleBulletin(R.raw.chats_infotip, text, button, action).show();
             } catch (Exception e) {
                 FileLog.e(e);
             }

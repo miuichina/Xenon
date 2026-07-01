@@ -55,6 +55,40 @@ xenon.bulletin("Roulette done for 3 chats!")
 
 ---
 
+## `xenon.bulletinButton`
+
+```lua
+xenon.bulletinButton(text, button, callback)
+```
+
+Shows a **bulletin with a tappable button**. Like `bulletin`, but adds an
+actionable button on the right. Use it for feedback that invites a follow-up
+action, e.g. "Done. [Undo]" or "5 messages sent. [Open]".
+
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| `text` | string | ✅ | Message to show. |
+| `button` | string | ✅ | Label on the button (e.g. `"Undo"`, `"Open"`). |
+| `callback` | function | ✅ | `function()` — called (no args) when the button is tapped. |
+
+Returns: nothing.
+
+```lua
+xenon.bulletinButton("Settings saved.", "Open", function()
+    xenon.openPluginSettings()
+end)
+
+xenon.bulletinButton("Sent 5 messages.", "Undo", function()
+    -- undo logic here
+    xenon.toast("undone")
+end)
+```
+
+> The callback fires only if the user taps the button before the bulletin
+> auto-dismisses. If the bulletin times out, the callback is never called.
+
+---
+
 ## `xenon.createDialog`
 
 ```lua

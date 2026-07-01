@@ -135,6 +135,18 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
                     items.add(TextSettingsCellFactory.of(rid, s.name).accent());
                     break;
                 }
+                case LIST: {
+                    int currIdx;
+                    if (raw != null) {
+                        try { currIdx = Integer.parseInt(raw); } catch (NumberFormatException e) { currIdx = s.defaultInt; }
+                    } else {
+                        currIdx = s.defaultInt;
+                    }
+                    String currentVal = (s.options != null && currIdx >= 0 && currIdx < s.options.length)
+                            ? s.options[currIdx] : "";
+                    items.add(TextSettingsCellFactory.of(rid, s.name, currentVal));
+                    break;
+                }
                 case HEADER: {
                     items.add(UItem.asHeader(s.name));
                     break;
@@ -196,6 +208,26 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
                 } else {
                     updateRows();
                 }
+                break;
+            }
+            case LIST: {
+                if (s.options == null || s.options.length == 0) break;
+                String raw = getPrefs().getString(settingKey(s.key), null);
+                int currIdx;
+                if (raw != null) {
+                    try { currIdx = Integer.parseInt(raw); } catch (NumberFormatException e) { currIdx = s.defaultInt; }
+                } else {
+                    currIdx = s.defaultInt;
+                }
+                if (currIdx < 0 || currIdx >= s.options.length) currIdx = 0;
+                java.util.ArrayList<String> opts = new java.util.ArrayList<>();
+                for (String o : s.options) opts.add(o);
+                final int finalIdx = currIdx;
+                zxc.iconic.xenon.helpers.PopupHelper.show(opts, s.name, finalIdx,
+                        getParentActivity(), view, selectedIdx -> {
+                            getPrefs().edit().putString(settingKey(s.key), String.valueOf(selectedIdx)).apply();
+                            updateRows();
+                        }, resourcesProvider);
                 break;
             }
         }

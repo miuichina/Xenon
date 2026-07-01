@@ -51,6 +51,8 @@ import org.telegram.ui.Components.QuoteSpan;
 import org.telegram.ui.Components.SizeNotifierFrameLayout;
 import org.telegram.ui.Components.TextStyleSpan;
 
+import zxc.iconic.xenon.helpers.SpoilerHelper;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -697,6 +699,7 @@ public class SpoilerEffect extends Drawable {
         if (v instanceof TextView && spoilersPool != null) {
             spoilersPool.clear();
         }
+        SpoilerHelper.linkNeighbors(spoilers);
     }
 
     private static void addSpoilerRangesInternal(@Nullable View v, @NonNull Layout textLayout, int mostleft, int mostright, int start, int end, @Nullable Stack<SpoilerEffect> spoilersPool, List<SpoilerEffect> spoilers, ArrayList<QuoteSpan.Block> quoteBlocks) {
@@ -898,7 +901,9 @@ public class SpoilerEffect extends Drawable {
                 } else {
                     eff.setColor(spoilersColor);
                 }
-                eff.draw(canvas);
+                if (!SpoilerHelper.drawSolidIfOverridden(canvas, eff, v, spoilersColor, 255)) {
+                    eff.draw(canvas);
+                }
             }
 
             if (useAlphaLayer) {
@@ -1018,7 +1023,9 @@ public class SpoilerEffect extends Drawable {
                 } else {
                     eff.setColor(spoilersColor);
                 }
-                eff.draw(canvas);
+                if (!SpoilerHelper.drawSolidIfOverridden(canvas, eff, v, spoilersColor, 255)) {
+                    eff.draw(canvas);
+                }
             }
             if (useAlphaLayer) {
                 tempPath.rewind();
