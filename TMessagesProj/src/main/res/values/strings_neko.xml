@@ -442,10 +442,6 @@
     <string name="BlurSettingsHeader">Blur</string>
     <string name="SaveDeletedMessages">Deleted messages</string>
     <string name="SaveDeletedMessagesDesc">Save messages when they are deleted</string>
-    <string name="SaveEditsHistory">Edit history</string>
-    <string name="SaveEditsHistoryDesc">Save the original text when a message is edited</string>
-    <string name="EditsHistoryMenuText">Edit history</string>
-    <string name="EditsHistoryEmpty">No saved revisions</string>
     <string name="DeletedMessage">deleted</string>
     <string name="RoundedBulletin">Round bulletin</string>
     <string name="TestBottomSheet">Test BottomSheet</string>
@@ -471,11 +467,19 @@
     <string name="PluginsSettings">Plugin settings</string>
     <string name="PluginsOpenSettings">Open settings</string>
     <string name="PluginsUpdate">Update</string>
+    <string name="PluginPermissions">Permissions</string>
+    <string name="PluginScopeGeneral">General</string>
+    <string name="PluginScopeMessaging">Messaging</string>
+    <string name="PluginGodMode">God Mode</string>
+    <string name="PluginGodModeDesc">Grant all plugins every scope. Does NOT weaken the sandbox.</string>
+    <string name="PluginGodModeWarn">God Mode lets every plugin send, delete and read messages regardless of its declared scopes. The Lua sandbox (filesystem, processes, code loading) stays locked. Only enable this for plugins you fully trust. Continue?</string>
+    <string name="PluginGodModeCountdown">Wait %ds…</string>
+    <string name="PluginGodModeEnable">Enable</string>
     <string name="PluginsVersion">Version</string>
     <string name="PluginsSafeModeTitle">Safe Mode</string>
     <string name="PluginsSafeModeDesc">If a plugin ever breaks the app, you can always start in Safe Mode: hold a volume button while the app is opening. Plugins will be disabled so you can fix or remove the problematic one.</string>
     <string name="PluginsSafeModeGot">Got it</string>
-    <string name="PluginsSafeModeActivated">Safe Mode activated � plugins disabled</string>
+    <string name="PluginsSafeModeActivated">Safe Mode activated — plugins disabled</string>
     <string name="HideCameraInMediaPicker">Hide camera in media picker</string>
     <string name="ShowOnlineDotsInChat">Show online dots in chat</string>
     <string name="SwitchToAyu">Switch to ayu-features (posral)</string>
@@ -514,22 +518,22 @@
     <string name="InuMaterial3">Material Design 3</string>
     <string name="InuMaterial3Switches">Switches</string>
     <string name="InuMaterial3Sections">List items</string>
+    <string name="SaveEditsHistory">Edit history</string>
+    <string name="SaveEditsHistoryDesc">Save the original text when a message is edited</string>
+    <string name="EditsHistoryMenuText">Edit history</string>
+    <string name="EditsHistoryEmpty">No saved revisions</string>
     <string name="InuNonIslandUI">Non-island UI</string>
     <string name="InuNonIslandTabBars">Tab bars</string>
     <string name="InuNonIslandGlobalSearch">Global search</string>
     <string name="InuNonIslandChatElements">Chat elements</string>
-    <string name="InuHideFadeView">Hide fade view</string>
-    <string name="InuDisableGlassGlare">Disable glass glare</string>
-    <string name="InuDisableScrimBlur">Disable scrim blur</string>
-    <string name="InuDisableScrimBlurInfo">Removes blur from the bottom sheet background</string>
     <string name="InuNonIslandBottomBar">Bottom bar (wip)</string>
     <string name="InuNonIslandHint">(copied from inugram)\nIsland UI (aka \"Liquid Glass\") is the new (>12.6) UI design, obviously inspired by iOS. Here you can revert some of those changes (best-effort).\nThere are probably a bunch of visual bugs, so be advised.</string>
-    <string name="PluginPermissions">Permissions</string>
-    <string name="PluginScopeGeneral">General</string>
-    <string name="PluginScopeMessaging">Messaging</string>
-    <string name="PluginGodMode">God Mode</string>
-    <string name="PluginGodModeDesc">Grant all plugins every scope. Does NOT weaken the sandbox.</string>
-    <string name="PluginGodModeWarn">God Mode lets every plugin send, delete and read messages regardless of its declared scopes. The Lua sandbox (filesystem, processes, code loading) stays locked. Only enable this for plugins you fully trust. Continue?</string>
-    <string name="PluginGodModeCountdown">Wait %dsGǪ</string>
+    <string name="InuHideFadeView">Hide fade view</string>
+    <string name="InuDisableScrimBlur">Disable scrim blur</string>
+    <string name="InuDisableScrimBlurInfo">Removes blur from the bottom sheet background</string>
+    <string name="InuDisableGlassGlare">Disable glass glare</string>
 </resources>
+
+
+
 
