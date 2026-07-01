@@ -1571,6 +1571,17 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
 
     @RequiresApi(api = Build.VERSION_CODES.S)
     private void setupGpuBlur(Activity activity, int radius) {
+        // Immediately remove any lingering popup blur overlay to prevent it
+        // from being captured in our own PixelCopy and shifting the blur.
+        ViewGroup contentRoot = (ViewGroup) activity.findViewById(android.R.id.content);
+        if (contentRoot != null) {
+            View popupOverlay = contentRoot.findViewWithTag("popup_blur_overlay");
+            if (popupOverlay != null) {
+                contentRoot.removeView(popupOverlay);
+                FileLog.d("XenonBlur: removed lingering popup blur overlay before BottomSheet capture");
+            }
+        }
+
         Window window = activity.getWindow();
         if (window == null) {
             FileLog.d("XenonBlur: window is null, skipping GPU blur");
@@ -1596,7 +1607,7 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
                 bitmap.recycle();
                 return;
             }
-            attachBlurView(bitmap, radius, bw, bh);
+            attachBlurView(bitmap, radius, bw, bh, dh);
             if (zxc.iconic.xenon.NekoConfig.blurOverlayRefresh && !dismissed) {
                 setupGpuBlurRefresh(activity, window, dw, dh);
             }
@@ -1604,14 +1615,16 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.S)
-    private void attachBlurView(Bitmap bitmap, int radius, int bw, int bh) {
+    private void attachBlurView(Bitmap bitmap, int radius, int bw, int bh, int captureDh) {
         blurOverlayBitmap = bitmap;
         ImageView imageView = new ImageView(getContext());
         imageView.setScaleType(ImageView.ScaleType.FIT_XY);
         imageView.setImageBitmap(bitmap);
         blurOverlayView = imageView;
+        // Match the capture area exactly — with gesture nav the decor height
+        // can differ from the container height, causing FIT_XY to shift the blur.
         blurOverlayView.setLayoutParams(new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+                ViewGroup.LayoutParams.MATCH_PARENT, captureDh));
         boolean disableBlur = zxc.iconic.xenon.NekoConfig.disableBlurBs;
         float targetBlur = disableBlur ? 0f : radius * 8f;
         if (zxc.iconic.xenon.NekoConfig.blurSmoothly && !disableBlur) {
@@ -2162,25 +2175,6 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
         if (blurOverlayView != null) {
             if (zxc.iconic.xenon.NekoConfig.blurSmoothly && !zxc.iconic.xenon.NekoConfig.disableBlurBs) {
                 float currentBlur = zxc.iconic.xenon.NekoConfig.blurOverlayRadius * 8f;
-                Activity blurActivity = AndroidUtilities.findActivity(getContext());
-                if (blurActivity != null && !blurActivity.isFinishing() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    Window blurWindow = blurActivity.getWindow();
-                    if (blurWindow != null) {
-                        View blurDecor = blurWindow.getDecorView();
-                        int fw = blurDecor.getWidth();
-                        int fh = blurDecor.getHeight();
-                        if (fw > 0 && fh > 0) {
-                            Bitmap fullResBitmap = Bitmap.createBitmap(fw, fh, Bitmap.Config.ARGB_8888);
-                            PixelCopy.request(blurWindow, fullResBitmap, copyResult -> {
-                                if (copyResult == PixelCopy.SUCCESS && blurOverlayView instanceof ImageView && !dismissed) {
-                                    ((ImageView) blurOverlayView).setImageBitmap(fullResBitmap);
-                                } else {
-                                    fullResBitmap.recycle();
-                                }
-                            }, new Handler(Looper.getMainLooper()));
-                        }
-                    }
-                }
                 ValueAnimator reverseBlurAnim = ValueAnimator.ofFloat(currentBlur, 0f);
                 reverseBlurAnim.setDuration(zxc.iconic.xenon.NekoConfig.blurAnimationDuration);
                 reverseBlurAnim.setInterpolator(new CubicBezierInterpolator(0.3f, 0.8f, 0f, 1f));

@@ -31107,6 +31107,7 @@ public class ChatActivity extends BaseFragment implements
                     targetBlur, targetBlur, Shader.TileMode.CLAMP
                 ));
             }
+            imageView.setTag("popup_blur_overlay");
             imageView.setLayoutParams(new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
             ));
