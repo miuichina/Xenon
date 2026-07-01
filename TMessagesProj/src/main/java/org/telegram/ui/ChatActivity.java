@@ -32816,6 +32816,9 @@ public class ChatActivity extends BaseFragment implements
                 public void dismiss() {
                     removePopupBlur(true);
                     super.dismiss(true);
+                    if (finalReactionsLayout1 != null) {
+                        finalReactionsLayout1.dismissParent(true);
+                    }
                     if (scrimPopupWindow != this) {
                         return;
                     }
