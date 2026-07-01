@@ -1019,18 +1019,25 @@ public class PluginManager {
     }
 
     /**
-     * Auto-grant every scope a plugin declares in its manifest, persisting them
-     * to prefs. {@link #SCOPE_GENERAL} is forced on unconditionally. Called when
-     * a plugin loads so the declared permissions take effect without a prompt.
+     * Auto-grant every scope a plugin declares in its manifest. {@link #SCOPE_GENERAL}
+     * is forced on unconditionally. Declared scopes are granted only on FIRST
+     * install/encounter: once the pref key exists (true or false), the user's
+     * explicit choice is preserved — so revoking a scope from the Permissions
+     * screen sticks across reloads. Called when a plugin loads.
      */
     private static void grantScopes(String fileName, File file) {
         if (fileName == null || file == null) return;
         List<String> scopes = parseScopes(file);
-        SharedPreferences.Editor ed = getPrefs().edit();
+        SharedPreferences prefs = getPrefs();
+        SharedPreferences.Editor ed = prefs.edit();
         ed.putBoolean("plugin_scope_" + fileName + "_" + SCOPE_GENERAL, true);
         for (String s : scopes) {
             if (!SCOPE_GENERAL.equals(s)) {
-                ed.putBoolean("plugin_scope_" + fileName + "_" + s, true);
+                String key = "plugin_scope_" + fileName + "_" + s;
+                // Only grant if the user has never decided — preserve revocation.
+                if (!prefs.contains(key)) {
+                    ed.putBoolean(key, true);
+                }
             }
         }
         ed.apply();

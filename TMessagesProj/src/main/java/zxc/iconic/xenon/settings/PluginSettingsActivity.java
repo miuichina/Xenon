@@ -162,8 +162,8 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
     protected void onItemClick(UItem item, View view, int position, float x, float y) {
         if (plugin == null) return;
         // Permissions section: only MESSAGING is interactive (GENERAL is locked
-        // on). Toggling it persists the scope flag and reloads the engine so the
-        // change takes effect immediately.
+        // on). Toggling persists the scope flag; hasScope() reads it live on
+        // every API call, so no engine reload is needed for it to take effect.
         if (item.id == permMessagingRow) {
             String key = "plugin_scope_" + plugin.fileName + "_" + PluginManager.SCOPE_MESSAGING;
             boolean newVal = !getPrefs().getBoolean(key, false);
