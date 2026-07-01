@@ -515,6 +515,10 @@
     <string name="InuMaterial3">Material Design 3</string>
     <string name="InuMaterial3Switches">Switches</string>
     <string name="InuMaterial3Sections">List items</string>
+    <string name="SaveEditsHistory">Edit history</string>
+    <string name="SaveEditsHistoryDesc">Save the original text when a message is edited</string>
+    <string name="EditsHistoryMenuText">Edit history</string>
+    <string name="EditsHistoryEmpty">No saved revisions</string>
     <string name="InuNonIslandUI">Non-island UI</string>
     <string name="InuNonIslandTabBars">Tab bars</string>
     <string name="InuNonIslandGlobalSearch">Global search</string>
