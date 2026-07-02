@@ -72,6 +72,25 @@ public class RadialProgress {
     private boolean disableUpdate;
     private boolean roundRectProgress;
 
+    private float indetSweep = INDET_MIN_SWEEP;
+    private long indetPhaseStartTime;
+    private int indetPhase;
+    private static final float INDET_MIN_SWEEP = 10;
+    private static final float INDET_MAX_SWEEP = 324;
+    private static final int INDET_GROW = 0;
+    private static final int INDET_MAX = 1;
+    private static final int INDET_SHRINK = 2;
+    private static final int INDET_PAUSE = 3;
+    private static final long INDET_GROW_DURATION = 3000;
+    private static final long INDET_MAX_DURATION = 500;
+    private static final long INDET_SHRINK_DURATION = 1000;
+    private static final long INDET_PAUSE_DURATION = 2500;
+
+    private long kickPhaseStartTime;
+    private static final long KICK_INTERVAL = 1750;
+    private static final long KICK_DURATION = 300;
+    private static final float KICK_SPEED_MULTIPLIER = 3f;
+
     public float getAnimatedProgress() {
         return animatedProgressValue;
     }
@@ -161,6 +180,7 @@ public class RadialProgress {
         if (decelerateInterpolator == null) {
             decelerateInterpolator = new DecelerateInterpolator();
         }
+        kickPhaseStartTime = System.currentTimeMillis();
         progressPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         progressPaint.setStyle(Paint.Style.STROKE);
         progressPaint.setStrokeCap(Paint.Cap.ROUND);
@@ -217,7 +237,20 @@ public class RadialProgress {
 
         if (progress) {
             if (animatedProgressValue != 1) {
-                radOffset += 360 * dt / rotationSpeed;
+                if (currentProgress < 0.05f) {
+                    long kickElapsed = newTime - kickPhaseStartTime;
+                    if (kickElapsed >= KICK_INTERVAL) {
+                        kickPhaseStartTime = newTime;
+                        kickElapsed = 0;
+                    }
+                    float rotSpeed = 360 * dt / rotationSpeed;
+                    if (kickElapsed < KICK_DURATION) {
+                        rotSpeed *= KICK_SPEED_MULTIPLIER;
+                    }
+                    radOffset += rotSpeed;
+                } else {
+                    radOffset = -90;
+                }
                 float progressDiff = currentProgress - animationProgressStart;
                 if (progressDiff > 0) {
                     currentProgressTime += dt;
@@ -231,6 +264,58 @@ public class RadialProgress {
                 }
                 invalidateParent();
             }
+
+            if (currentProgress < 0.05f) {
+                if (indetPhaseStartTime == 0) {
+                    indetPhaseStartTime = newTime;
+                    kickPhaseStartTime = newTime;
+                }
+                long elapsed = newTime - indetPhaseStartTime;
+                switch (indetPhase) {
+                    case INDET_GROW: {
+                        float t = Math.min(1f, (float) elapsed / INDET_GROW_DURATION);
+                        float smooth = t * t * (3 - 2 * t);
+                        indetSweep = INDET_MIN_SWEEP + (INDET_MAX_SWEEP - INDET_MIN_SWEEP) * smooth;
+                        if (t >= 1f) {
+                            indetPhase = INDET_MAX;
+                            indetPhaseStartTime = newTime;
+                        }
+                        break;
+                    }
+                    case INDET_MAX: {
+                        indetSweep = INDET_MAX_SWEEP;
+                        if (elapsed >= INDET_MAX_DURATION) {
+                            indetPhase = INDET_SHRINK;
+                            indetPhaseStartTime = newTime;
+                        }
+                        break;
+                    }
+                    case INDET_SHRINK: {
+                        float t = Math.min(1f, (float) elapsed / INDET_SHRINK_DURATION);
+                        float smooth = t * t * (3 - 2 * t);
+                        indetSweep = INDET_MAX_SWEEP - (INDET_MAX_SWEEP - INDET_MIN_SWEEP) * smooth;
+                        if (t >= 1f) {
+                            indetPhase = INDET_PAUSE;
+                            indetPhaseStartTime = newTime;
+                        }
+                        break;
+                    }
+                    case INDET_PAUSE: {
+                        if (elapsed >= INDET_PAUSE_DURATION) {
+                            indetPhase = INDET_GROW;
+                            indetPhaseStartTime = newTime;
+                        }
+                        break;
+                    }
+                }
+            } else {
+                if (indetPhaseStartTime != 0) {
+                    indetPhaseStartTime = 0;
+                    indetPhase = INDET_GROW;
+                    indetSweep = INDET_MIN_SWEEP;
+                }
+            }
+
             if (drawMiniProgress) {
                 if (animatedProgressValue >= 1 && previousMiniDrawable != null) {
                     animatedAlphaValue -= dt / 200.0f;
@@ -495,8 +580,9 @@ public class RadialProgress {
                 } else {
                     miniProgressPaint.setAlpha((int) (255 * overrideAlpha));
                 }
+                float miniSweep = currentProgress < 0.02f ? Math.max(4, indetSweep) : Math.max(4, 360 * animatedProgressValue);
                 cicleRect.set(cx - AndroidUtilities.dp(halfSize - 2) * alpha, cy - AndroidUtilities.dp(halfSize - 2) * alpha, cx + AndroidUtilities.dp(halfSize - 2) * alpha, cy + AndroidUtilities.dp(halfSize - 2) * alpha);
-                canvas.drawArc(cicleRect, -90 + radOffset, Math.max(4, 360 * animatedProgressValue), false, miniProgressPaint);
+                canvas.drawArc(cicleRect, -90 + radOffset, miniSweep, false, miniProgressPaint);
                 updateAnimation(true);
             } else {
                 updateAnimation(false);
@@ -535,8 +621,9 @@ public class RadialProgress {
                     }
                     finalPaint = progressPaint;
                 }
+                float mainSweep = currentProgress < 0.02f ? Math.max(4, indetSweep) : Math.max(4, 360 * animatedProgressValue);
                 cicleRect.set(progressRect.left + diff, progressRect.top + diff, progressRect.right - diff, progressRect.bottom - diff);
-                drawArc(canvas, cicleRect, -90 + radOffset, Math.max(4, 360 * animatedProgressValue), false, finalPaint);
+                drawArc(canvas, cicleRect, -90 + radOffset, mainSweep, false, finalPaint);
                 updateAnimation(true);
             } else {
                 updateAnimation(false);

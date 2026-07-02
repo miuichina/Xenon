@@ -70,6 +70,25 @@ public class MediaActionDrawable extends Drawable {
     private float downloadProgressAnimationStart;
     private float downloadProgressTime;
 
+    private float indeterminateArcLength = 10;
+    private long indeterminatePhaseStartTime;
+    private int indeterminatePhase;
+    private static final float INDETERMINATE_MIN_ARC = 10;
+    private static final float INDETERMINATE_MAX_ARC = 324;
+    private static final int INDET_GROW = 0;
+    private static final int INDET_MAX = 1;
+    private static final int INDET_SHRINK = 2;
+    private static final int INDET_PAUSE = 3;
+    private static final long INDET_GROW_DURATION = 3000;
+    private static final long INDET_MAX_DURATION = 500;
+    private static final long INDET_SHRINK_DURATION = 1000;
+    private static final long INDET_PAUSE_DURATION = 2500;
+
+    private long kickPhaseStartTime;
+    private static final long KICK_INTERVAL = 1750;
+    private static final long KICK_DURATION = 300;
+    private static final float KICK_SPEED_MULTIPLIER = 3f;
+
     private final static float EPS = 0.001f;
 
     private final static float DOWNLOAD_TO_CANCEL_STAGE1 = 0.5f;
@@ -193,6 +212,7 @@ public class MediaActionDrawable extends Drawable {
             animatedDownloadProgress = 0.0f;
             downloadProgressAnimationStart = 0.0f;
             downloadProgressTime = 0.0f;
+            kickPhaseStartTime = System.currentTimeMillis();
         }
         invalidateSelf();
         return true;
@@ -219,8 +239,14 @@ public class MediaActionDrawable extends Drawable {
             }
             downloadProgressAnimationStart = animatedDownloadProgress;
         }
+        boolean wasDeterminate = downloadProgress >= 0.02f;
         downloadProgress = value;
         downloadProgressTime = 0;
+        if (value < 0.02f && wasDeterminate) {
+            indeterminatePhaseStartTime = 0;
+            indeterminateArcLength = INDETERMINATE_MIN_ARC;
+            indeterminatePhase = INDET_GROW;
+        }
         invalidateSelf();
     }
 
@@ -555,7 +581,12 @@ public class MediaActionDrawable extends Drawable {
                 canvas.scale(progressScale, progressScale, progressScaleX, progressScaleY);
             }
             if ((currentIcon == ICON_CANCEL || currentIcon == ICON_CANCEL_FILL || currentIcon == ICON_NONE && (nextIcon == ICON_CANCEL_FILL || nextIcon == ICON_CANCEL)) && alpha != 0) {
-                float rad = Math.max(4, 360 * animatedDownloadProgress);
+                float rad;
+                if (downloadProgress < 0.02f) {
+                    rad = Math.max(4, indeterminateArcLength);
+                } else {
+                    rad = Math.max(4, 360 * animatedDownloadProgress);
+                }
                 int diff = AndroidUtilities.dp(isMini ? 2 : 4);
                 rect.set(bounds.left + diff, bounds.top + diff, bounds.right - diff, bounds.bottom - diff);
 
@@ -582,7 +613,12 @@ public class MediaActionDrawable extends Drawable {
             if (alpha != 0) {
                 applyShaderMatrix(false);
                 paint.setAlpha((int) (alpha * overrideAlpha));
-                float rad = Math.max(4, 360 * animatedDownloadProgress);
+                float rad;
+                if (downloadProgress < 0.02f) {
+                    rad = Math.max(4, indeterminateArcLength);
+                } else {
+                    rad = Math.max(4, 360 * animatedDownloadProgress);
+                }
                 int diff = AndroidUtilities.dp(isMini ? 2 : 4);
                 rect.set(bounds.left + diff, bounds.top + diff, bounds.right - diff, bounds.bottom - diff);
                 canvas.drawArc(rect, downloadRadOffset, rad, false, paint);
@@ -863,8 +899,21 @@ public class MediaActionDrawable extends Drawable {
         lastAnimationTime = newTime;
 
         if (currentIcon == ICON_CANCEL || currentIcon == ICON_CANCEL_FILL || currentIcon == ICON_NONE && nextIcon == ICON_CANCEL_FILL || currentIcon == ICON_EMPTY || currentIcon == ICON_CANCEL_PERCENT) {
-            downloadRadOffset += 360 * dt / 2500.0f;
-            downloadRadOffset = getCircleValue(downloadRadOffset);
+            if (downloadProgress >= 0.05f) {
+                downloadRadOffset = -90;
+            } else {
+                long kickElapsed = newTime - kickPhaseStartTime;
+                if (kickElapsed >= KICK_INTERVAL) {
+                    kickPhaseStartTime = newTime;
+                    kickElapsed = 0;
+                }
+                float rotSpeed = 360 / 2500.0f;
+                if (kickElapsed < KICK_DURATION) {
+                    rotSpeed *= KICK_SPEED_MULTIPLIER;
+                }
+                downloadRadOffset += rotSpeed * dt;
+                downloadRadOffset = getCircleValue(downloadRadOffset);
+            }
 
             if (nextIcon != ICON_DOWNLOAD) {
                 float progressDiff = downloadProgress - downloadProgressAnimationStart;
@@ -879,6 +928,52 @@ public class MediaActionDrawable extends Drawable {
                     }
                 }
             }
+
+            if (downloadProgress < 0.05f) {
+                if (indeterminatePhaseStartTime == 0) {
+                    indeterminatePhaseStartTime = newTime;
+                    kickPhaseStartTime = newTime;
+                }
+                long elapsed = newTime - indeterminatePhaseStartTime;
+                switch (indeterminatePhase) {
+                    case INDET_GROW: {
+                        float t = Math.min(1f, (float) elapsed / INDET_GROW_DURATION);
+                        float smooth = t * t * (3 - 2 * t);
+                        indeterminateArcLength = INDETERMINATE_MIN_ARC + (INDETERMINATE_MAX_ARC - INDETERMINATE_MIN_ARC) * smooth;
+                        if (t >= 1f) {
+                            indeterminatePhase = INDET_MAX;
+                            indeterminatePhaseStartTime = newTime;
+                        }
+                        break;
+                    }
+                    case INDET_MAX: {
+                        indeterminateArcLength = INDETERMINATE_MAX_ARC;
+                        if (elapsed >= INDET_MAX_DURATION) {
+                            indeterminatePhase = INDET_SHRINK;
+                            indeterminatePhaseStartTime = newTime;
+                        }
+                        break;
+                    }
+                    case INDET_SHRINK: {
+                        float t = Math.min(1f, (float) elapsed / INDET_SHRINK_DURATION);
+                        float smooth = t * t * (3 - 2 * t);
+                        indeterminateArcLength = INDETERMINATE_MAX_ARC - (INDETERMINATE_MAX_ARC - INDETERMINATE_MIN_ARC) * smooth;
+                        if (t >= 1f) {
+                            indeterminatePhase = INDET_PAUSE;
+                            indeterminatePhaseStartTime = newTime;
+                        }
+                        break;
+                    }
+                    case INDET_PAUSE: {
+                        if (elapsed >= INDET_PAUSE_DURATION) {
+                            indeterminatePhase = INDET_GROW;
+                            indeterminatePhaseStartTime = newTime;
+                        }
+                        break;
+                    }
+                }
+            }
+
             invalidateSelf();
         }
 
