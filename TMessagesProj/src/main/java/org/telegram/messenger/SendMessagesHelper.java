@@ -4110,14 +4110,16 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
 
         // --- Plugin hook: onSendMessage -----------------------------------
         // Lets plugins rewrite the outgoing text/peer or cancel the send.
-        // Handler receives {message=string, peer=number} and may return:
+        // Handler receives {message=string, peer=number, sender_id=number} and may return:
         //   { cancel = true }              -> abort the send
         //   { message = "...", peer = N }  -> override message and/or peer
+        //   { sender_id = N }              -> send from a different logged-in account
         //   nil                            -> leave unchanged
         if (message != null && NekoConfig.pluginsEnabled) {
             org.luaj.vm2.LuaValue ctx = org.luaj.vm2.LuaValue.tableOf(new org.luaj.vm2.LuaValue[]{
                     org.luaj.vm2.LuaValue.valueOf("message"), org.luaj.vm2.LuaValue.valueOf(message),
-                    org.luaj.vm2.LuaValue.valueOf("peer"), org.luaj.vm2.LuaValue.valueOf(peer)
+                    org.luaj.vm2.LuaValue.valueOf("peer"), org.luaj.vm2.LuaValue.valueOf(peer),
+                    org.luaj.vm2.LuaValue.valueOf("sender_id"), org.luaj.vm2.LuaValue.valueOf(getUserConfig().getClientUserId())
             });
             org.luaj.vm2.LuaValue res = zxc.iconic.xenon.plugins.PluginManager.getInstance().fireReturn("onSendMessage", ctx);
             if (res != null && res.istable()) {
@@ -4131,6 +4133,18 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                 if (!res.get("peer").isnil()) {
                     peer = res.get("peer").tolong();
                     sendMessageParams.peer = peer;
+                }
+                if (!res.get("sender_id").isnil()) {
+                    long targetUserId = res.get("sender_id").tolong();
+                    long currentUserId = getUserConfig().getClientUserId();
+                    if (targetUserId > 0 && targetUserId != currentUserId) {
+                        for (int i = 0; i < UserConfig.MAX_ACCOUNT_COUNT; i++) {
+                            if (UserConfig.getInstance(i).isClientActivated() && UserConfig.getInstance(i).getClientUserId() == targetUserId) {
+                                SendMessagesHelper.getInstance(i).sendMessage(sendMessageParams);
+                                return;
+                            }
+                        }
+                    }
                 }
             }
         }
