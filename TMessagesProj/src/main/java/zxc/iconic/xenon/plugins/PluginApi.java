@@ -427,8 +427,14 @@ public class PluginApi {
                     long peer = uargs.arg(2).checklong();
                     int replyTo = n >= 3 && uargs.arg(3).isnumber() ? (int) uargs.arg(3).todouble() : 0;
                     LuaValue cb = n >= 4 && uargs.arg(4).isfunction() ? uargs.arg(4) : null;
-                    Log.d("XenonPlugin", "xenon.sendMessage called: text=" + text + " peer=" + peer + " replyTo=" + replyTo + " hasCb=" + (cb != null));
-                    sendMessage(text, peer, replyTo, cb);
+                    long senderId = 0;
+                    if (n >= 4 && uargs.arg(4).isnumber() && !uargs.arg(4).isfunction()) {
+                        senderId = (long) uargs.arg(4).todouble();
+                    } else if (n >= 5 && uargs.arg(5).isnumber()) {
+                        senderId = (long) uargs.arg(5).todouble();
+                    }
+                    Log.d("XenonPlugin", "xenon.sendMessage called: text=" + text + " peer=" + peer + " replyTo=" + replyTo + " hasCb=" + (cb != null) + " senderId=" + senderId);
+                    sendMessage(text, peer, replyTo, cb, senderId);
                 }
                 return LuaValue.NIL;
             }
@@ -730,13 +736,26 @@ public class PluginApi {
     }
 
     static void sendMessage(final String text, final long peerId, final int replyToMsgId) {
-        sendMessage(text, peerId, replyToMsgId, null);
+        sendMessage(text, peerId, replyToMsgId, null, 0);
     }
 
     static void sendMessage(final String text, final long peerId, final int replyToMsgId, final LuaValue callback) {
+        sendMessage(text, peerId, replyToMsgId, callback, 0);
+    }
+
+    static void sendMessage(final String text, final long peerId, final int replyToMsgId, final LuaValue callback, final long senderId) {
         org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
             try {
-                int account = UserConfig.selectedAccount;
+                int acc = UserConfig.selectedAccount;
+                if (senderId > 0 && senderId != UserConfig.getInstance(acc).getClientUserId()) {
+                    for (int i = 0; i < UserConfig.MAX_ACCOUNT_COUNT; i++) {
+                        if (UserConfig.getInstance(i).isClientActivated() && UserConfig.getInstance(i).getClientUserId() == senderId) {
+                            acc = i;
+                            break;
+                        }
+                    }
+                }
+                final int account = acc;
                 final MessagesController mc = MessagesController.getInstance(account);
                 // dialogId convention: positive = user, negative = chat/channel.
                 final long dialogId = peerId;
