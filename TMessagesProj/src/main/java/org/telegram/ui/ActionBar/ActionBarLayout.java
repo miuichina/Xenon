@@ -387,7 +387,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
             if ((passivePreview || transitionAnimationPreviewMode) && (ev.getActionMasked() == MotionEvent.ACTION_DOWN || ev.getActionMasked() == MotionEvent.ACTION_POINTER_DOWN)) {
                 return false;
             }
-            if (m3PredictiveActive && this == containerView) {
+            if (m3PredictiveActive) {
                 return false;
             }
             try {
@@ -1570,6 +1570,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
 
     public boolean predictiveInput;
     public boolean predictiveBackInProgress;
+    public Runnable m3PredictiveCallbackCancelRunnable;
     // When true, an M3-style predictive back gesture (Inugram) is driving the transition directly;
     // the stock clip/translate path in drawChild and touch dispatch on containerView are suppressed.
     public boolean m3PredictiveActive;
@@ -1794,6 +1795,47 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         return lastFragment;
     }
 
+    public void cancelAndResetAnimations() {
+        if (m3PredictiveCallbackCancelRunnable != null) {
+            try {
+                m3PredictiveCallbackCancelRunnable.run();
+            } catch (Exception e) {
+                FileLog.e(e);
+            }
+        }
+        if (backAnimator != null) {
+            try {
+                backAnimator.cancel();
+            } catch (Exception e) {
+                FileLog.e(e);
+            }
+            backAnimator = null;
+        }
+        if (currentAnimation != null) {
+            try {
+                currentAnimation.cancel();
+            } catch (Exception e) {
+                FileLog.e(e);
+            }
+            currentAnimation = null;
+        }
+        if (waitingForKeyboardCloseRunnable != null) {
+            AndroidUtilities.cancelRunOnUIThread(waitingForKeyboardCloseRunnable);
+            waitingForKeyboardCloseRunnable = null;
+        }
+        if (delayedOpenAnimationRunnable != null) {
+            AndroidUtilities.cancelRunOnUIThread(delayedOpenAnimationRunnable);
+            delayedOpenAnimationRunnable = null;
+        }
+        onAnimationEndCheck(true);
+
+        transitionAnimationInProgress = false;
+        predictiveBackInProgress = false;
+        animationInProgress = false;
+        startedTracking = false;
+        m3PredictiveActive = false;
+    }
+
     @Override
     public boolean checkTransitionAnimation() {
         if (transitionAnimationPreviewMode) {
@@ -1802,7 +1844,15 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         if (transitionAnimationInProgress && (transitionAnimationStartTime < System.currentTimeMillis() - 1500 || inPreviewMode)) {
             onAnimationEndCheck(true);
         }
-        return transitionAnimationInProgress;
+        // The Material3 predictive-back commit/cancel finish animation (see
+        // zxc.iconic.xenon.helpers.Material3PredictiveBack) keeps predictiveBackInProgress set for
+        // up to ~450ms while it plays its own AnimatorSet and holds a custom scrim/background on
+        // containerViewBack. That window isn't covered by transitionAnimationInProgress, so a quick
+        // presentFragment() (e.g. tapping a chat right after a back-swipe) used to slip through this
+        // guard and get pushed mid-animation, leaving the stale scrim (dimming) or solid background
+        // fill stuck on screen since the finish animation's cleanup targets the wrong/already-swapped
+        // container. Block it here too.
+        return transitionAnimationInProgress || predictiveBackInProgress;
     }
 
     @Override
@@ -2053,6 +2103,22 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
 
     @Override
     public boolean presentFragment(NavigationParams params) {
+        if (waitingForKeyboardCloseRunnable != null || delayedOpenAnimationRunnable != null) {
+            if (waitingForKeyboardCloseRunnable != null) {
+                AndroidUtilities.cancelRunOnUIThread(waitingForKeyboardCloseRunnable);
+                waitingForKeyboardCloseRunnable = null;
+            }
+            if (delayedOpenAnimationRunnable != null) {
+                AndroidUtilities.cancelRunOnUIThread(delayedOpenAnimationRunnable);
+                delayedOpenAnimationRunnable = null;
+            }
+            transitionAnimationInProgress = false;
+        }
+
+        if (predictiveBackInProgress) {
+            cancelAndResetAnimations();
+        }
+
         BaseFragment fragment = params.fragment;
         boolean removeLast = params.removeLast;
         boolean forceWithoutAnimation = params.noAnimation;

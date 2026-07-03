@@ -499,7 +499,13 @@ public class MainTabsLayout extends AnimatedLinearLayout {
 
         @Override
         public long getLongPressDuration() {
-            return 0;
+            // Was 0, which made ClickHelper schedule the "hold and slide to switch tabs"
+            // gesture essentially instantly on ACTION_DOWN (with slop-cancel disabled via
+            // needCancelTouchBySlopMove() == false below). That meant any plain drag/swipe
+            // across the tab bar - not just a genuine long-press-and-slide - was interpreted
+            // as a request to switch the active tab. Use the standard system long-press
+            // timeout so a real hold is required before drag-to-switch engages.
+            return android.view.ViewConfiguration.getLongPressTimeout();
         }
 
         @Override
