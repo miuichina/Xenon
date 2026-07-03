@@ -29,7 +29,7 @@ import zxc.iconic.xenon.NekoConfig;
 public class RadialProgressView extends View {
 
     private long lastUpdateTime;
-    private float radOffset;
+    private float radOffset = -90;
     private float currentCircleLength;
     private boolean risingCircleLength;
     private float currentProgressTime;
@@ -54,7 +54,7 @@ public class RadialProgressView extends View {
     private float toCircleProgress;
 
     private boolean noProgress = true;
-    private boolean rotationEnabled = true;
+    private boolean rotationEnabled = false;
     private long kickPhaseStartTime;
     private long lastAnimationNewTime;
     private final Theme.ResourcesProvider resourcesProvider;
@@ -215,35 +215,20 @@ public class RadialProgressView extends View {
                 if (risingCircleLength) {
                     currentCircleLength = 4 + 266 * accelerateInterpolator.getInterpolation(currentProgressTime / risingTime);
                 } else {
-                    currentCircleLength = 4 - 270 * (1.0f - decelerateInterpolator.getInterpolation(currentProgressTime / risingTime));
+                    currentCircleLength = 4 + 266 * (1.0f - decelerateInterpolator.getInterpolation(currentProgressTime / risingTime));
                 }
 
                 if (currentProgressTime == risingTime) {
-                    if (risingCircleLength) {
-                        radOffset += 270;
-                        currentCircleLength = -266;
-                    }
                     risingCircleLength = !risingCircleLength;
                     currentProgressTime = 0;
                 }
             } else {
                 if (risingCircleLength) {
-                    float old = currentCircleLength;
                     currentCircleLength = 4 + 266 * accelerateInterpolator.getInterpolation(currentProgressTime / risingTime);
-                    currentCircleLength += 360 * toCircleProgress;
-                    float dx = old - currentCircleLength;
-                    if (dx > 0) {
-                        radOffset += old - currentCircleLength;
-                    }
                 } else {
-                    float old = currentCircleLength;
-                    currentCircleLength = 4 - 270 * (1.0f - decelerateInterpolator.getInterpolation(currentProgressTime / risingTime));
-                    currentCircleLength -= 364 * toCircleProgress;
-                    float dx = old - currentCircleLength;
-                    if (dx > 0) {
-                        radOffset += old - currentCircleLength;
-                    }
+                    currentCircleLength = 4 + 266 * (1.0f - decelerateInterpolator.getInterpolation(currentProgressTime / risingTime));
                 }
+                currentCircleLength += (360 - currentCircleLength) * toCircleProgress;
             }
         } else {
             float progressDiff = currentProgress - progressAnimationStart;
