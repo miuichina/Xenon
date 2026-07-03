@@ -97,8 +97,13 @@ public class GlassTabView extends FrameLayout implements MainTabsLayout.Tab, Fac
         defaultTextPaint = new TextPaint(textView.getPaint());
 
         if (zxc.iconic.xenon.helpers.NonIslandHelper.bottomBar()) {
-            addView(imageView, LayoutHelper.createFrame(44, 44, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 10, 0, 0));
-            addView(textView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 28.33f, 0, 0));
+            // The non-island bar is DialogsActivity.MAIN_TABS_MARGIN (8dp) taller on each
+            // side than the island one (no inner padding is applied to MainTabsLayout here),
+            // so the icon+text block needs the same +8dp offset on both children to stay
+            // vertically centered instead of only shifting the icon and leaving the text
+            // pinned to its old (island) position, which used to look bottom-heavy/off-center.
+            addView(imageView, LayoutHelper.createFrame(44, 44, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 2, 0, 0));
+            addView(textView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 36.33f, 0, 0));
         } else {
             addView(imageView, LayoutHelper.createFrame(44, 44, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, -6, 0, 0));
             addView(textView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 28.33f, 0, 0));

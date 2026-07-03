@@ -1574,14 +1574,18 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
         // Immediately remove any lingering popup blur overlay to prevent it
         // from being captured in our own PixelCopy and shifting the blur.
         ViewGroup contentRoot = (ViewGroup) activity.findViewById(android.R.id.content);
+        boolean wasPopupBlurShowing = false;
         if (contentRoot != null) {
             View popupOverlay = contentRoot.findViewWithTag("popup_blur_overlay");
             if (popupOverlay != null) {
+                wasPopupBlurShowing = true;
                 contentRoot.removeView(popupOverlay);
                 FileLog.d("XenonBlur: removed lingering popup blur overlay before BottomSheet capture");
             }
         }
 
+        // Screen behind was already blurred by the popup; skip our fade/ramp-in below.
+        final boolean skipFadeIn = wasPopupBlurShowing;
         Window window = activity.getWindow();
         if (window == null) {
             FileLog.d("XenonBlur: window is null, skipping GPU blur");
@@ -1607,7 +1611,7 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
                 bitmap.recycle();
                 return;
             }
-            attachBlurView(bitmap, radius, bw, bh, dh);
+            attachBlurView(bitmap, radius, bw, bh, dh, skipFadeIn);
             if (zxc.iconic.xenon.NekoConfig.blurOverlayRefresh && !dismissed) {
                 setupGpuBlurRefresh(activity, window, dw, dh);
             }
@@ -1615,7 +1619,7 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.S)
-    private void attachBlurView(Bitmap bitmap, int radius, int bw, int bh, int captureDh) {
+    private void attachBlurView(Bitmap bitmap, int radius, int bw, int bh, int captureDh, boolean skipFadeIn) {
         blurOverlayBitmap = bitmap;
         ImageView imageView = new ImageView(getContext());
         imageView.setScaleType(ImageView.ScaleType.FIT_XY);
@@ -1627,7 +1631,9 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
                 ViewGroup.LayoutParams.MATCH_PARENT, captureDh));
         boolean disableBlur = zxc.iconic.xenon.NekoConfig.disableBlurBs;
         float targetBlur = disableBlur ? 0f : radius * 8f;
-        if (zxc.iconic.xenon.NekoConfig.blurSmoothly && !disableBlur) {
+        if (skipFadeIn) {
+            imageView.setRenderEffect(RenderEffect.createBlurEffect(targetBlur, targetBlur, Shader.TileMode.CLAMP));
+        } else if (zxc.iconic.xenon.NekoConfig.blurSmoothly && !disableBlur) {
             imageView.setRenderEffect(RenderEffect.createBlurEffect(0f, 0f, Shader.TileMode.CLAMP));
         } else {
             imageView.setRenderEffect(RenderEffect.createBlurEffect(
@@ -1637,7 +1643,9 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
         if (container != null) {
             container.post(() -> {
                 if (blurOverlayView != null && container != null && blurOverlayView.getParent() == null) {
-                    if (zxc.iconic.xenon.NekoConfig.blurSmoothly && !disableBlur) {
+                    if (skipFadeIn) {
+                        container.addView(blurOverlayView, 0);
+                    } else if (zxc.iconic.xenon.NekoConfig.blurSmoothly && !disableBlur) {
                         container.addView(blurOverlayView, 0);
                         ValueAnimator animator = ValueAnimator.ofFloat(0f, targetBlur);
                         animator.setDuration(zxc.iconic.xenon.NekoConfig.blurAnimationDuration);

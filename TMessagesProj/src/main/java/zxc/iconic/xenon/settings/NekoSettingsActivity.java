@@ -503,7 +503,7 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity implements Fa
                     }));
                 }));
             }
-            searchResultList.add(new SearchResult(10000 + i, fragmentTitle, icon, () -> presentFragment(fragment)));
+            searchResultList.add(new SearchResult(10000 + i, fragmentTitle, icon, () -> presentFragment(createFragment(icon))));
         }
         searchResultList.add(new SearchResult(8000, LocaleController.getString(R.string.EmojiUseDefault), null, LocaleController.getString(R.string.Chat), LocaleController.getString(R.string.EmojiSets), R.drawable.msg_theme, () -> {
             var fragment = new NekoEmojiSettingsActivity();

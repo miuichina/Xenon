@@ -79,7 +79,9 @@ public final class Material3PredictiveBack {
     }
 
     public static OnBackAnimationCallback createCallback(Activity activity, ActionBarLayout layout, Runnable plainBack) {
-        return new Callback(activity, layout, plainBack);
+        Callback callback = new Callback(activity, layout, plainBack);
+        layout.m3PredictiveCallbackCancelRunnable = () -> callback.cancelAndCleanup();
+        return callback;
     }
 
     private interface ChildAction {
@@ -440,6 +442,19 @@ public final class Material3PredictiveBack {
             savedCvbBackground = null;
             savedCvbForeground = null;
             scrim.setAlpha(SCRIM_ALPHA_BYTE);
+        }
+
+        public void cancelAndCleanup() {
+            if (runningAnim != null) {
+                runningAnim.removeAllListeners();
+                runningAnim.cancel();
+                runningAnim = null;
+            }
+            if (attached) {
+                finalizeStock(true);
+            } else if (layout.predictiveInput) {
+                undoStockPrep();
+            }
         }
     }
 }
