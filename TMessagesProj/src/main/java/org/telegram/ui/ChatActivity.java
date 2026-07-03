@@ -25392,12 +25392,45 @@ public class ChatActivity extends BaseFragment implements
     }
 
     private void loadSendAsPeers(boolean animatedUpdate) {
-        if (sendAsPeersObj != null || currentChat == null || !ChatObject.canSendAsPeers(currentChat) || chatActivityEnterView == null || ChatObject.isMonoForum(currentChat)) {
+        if (sendAsPeersObj != null || chatActivityEnterView == null) {
             return;
         }
         sendAsPeersObj = getMessagesController().getSendAsPeers(dialog_id);
         if (sendAsPeersObj != null) {
+            injectAccountSendAsEntries();
             chatActivityEnterView.updateSendAsButton(animatedUpdate);
+        } else {
+            sendAsPeersObj = new TLRPC.TL_channels_sendAsPeers();
+            sendAsPeersObj.peers = new ArrayList<>();
+            injectAccountSendAsEntries();
+            chatActivityEnterView.updateSendAsButton(animatedUpdate);
+        }
+    }
+
+    private void injectAccountSendAsEntries() {
+        if (sendAsPeersObj == null) return;
+        for (int i = 0; i < UserConfig.MAX_ACCOUNT_COUNT; i++) {
+            if (UserConfig.getInstance(i).isClientActivated()) {
+                TLRPC.User user = UserConfig.getInstance(i).getCurrentUser();
+                if (user != null) {
+                    getMessagesController().putUser(user, false);
+                    boolean alreadyAdded = false;
+                    for (TLRPC.TL_sendAsPeer p : sendAsPeersObj.peers) {
+                        if (p.peer.user_id == user.id) {
+                            alreadyAdded = true;
+                            break;
+                        }
+                    }
+                    if (!alreadyAdded) {
+                        TLRPC.TL_sendAsPeer peer = new TLRPC.TL_sendAsPeer();
+                        TLRPC.TL_peerUser peerUser = new TLRPC.TL_peerUser();
+                        peerUser.user_id = user.id;
+                        peer.peer = peerUser;
+                        peer.premium_required = false;
+                        sendAsPeersObj.peers.add(peer);
+                    }
+                }
+            }
         }
     }
 
