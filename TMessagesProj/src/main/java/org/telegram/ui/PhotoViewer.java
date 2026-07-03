@@ -43,6 +43,7 @@ import android.graphics.Matrix;
 import android.graphics.Outline;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.PathMeasure;
 import android.graphics.PixelFormat;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
@@ -2514,6 +2515,15 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
         private float[] alphas = new float[3];
         private float scale = 1.0f;
         private boolean visible;
+        private float wavePhaseAngle;
+        private float wavyAmplitudeSmooth;
+        private float bgThicknessScale = 1f;
+        private RectF wavyLastOval = new RectF();
+        private Path wavyProgressPath = new Path();
+        private PathMeasure wavyProgressPathMeasure = new PathMeasure();
+        private Path wavySegmentPath = new Path();
+        private float wavyLastAmplitudeSmooth;
+        private int wavyLastGeneration;
 
         private final CombinedDrawable playDrawable;
         private final PlayPauseDrawable playPauseDrawable;
@@ -2545,11 +2555,21 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             }
             lastUpdateTime = newTime;
 
+            wavePhaseAngle += (dt * NekoConfig.wavySpeed) / 1000f;
+            wavePhaseAngle %= 360f;
+
+            float targetScale = (animatedProgressValue > 0.05f && animatedProgressValue < 0.90f) ? 1f : 0f;
+            wavyAmplitudeSmooth += (targetScale - wavyAmplitudeSmooth) * Math.min(1f, dt / 80f);
+
+            float progressFade = (animatedProgressValue > 0.90f) ? Math.max(0f, (1f - animatedProgressValue) / 0.05f) : 1f;
+            bgThicknessScale += (progressFade - bgThicknessScale) * Math.min(1f, dt / 50f);
+
+            radOffset = -90;
+
             boolean postInvalidate = false;
 
             if (withProgressAnimation) {
                 if (animatedProgressValue != 1 || currentProgress != 1) {
-                    radOffset += 360 * dt / 3000.0f;
                     float progressDiff = currentProgress - animationProgressStart;
                     if (Math.abs(progressDiff) > 0) {
                         currentProgressTime += dt;
@@ -2587,6 +2607,61 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             if (postInvalidate) {
                 parent.postInvalidateOnAnimation();
             }
+        }
+
+        private void drawWavyArc(Canvas canvas, RectF oval, float startAngle, float sweepAngle, Paint paint) {
+            if (!oval.equals(wavyLastOval) || wavyLastGeneration != NekoConfig.wavyGeneration || wavyLastAmplitudeSmooth != wavyAmplitudeSmooth) {
+                wavyLastOval.set(oval);
+                wavyProgressPath.rewind();
+
+                float cx = oval.centerX();
+                float cy = oval.centerY();
+                float baseRadius = Math.min(oval.width(), oval.height()) / 2f;
+
+                float amplitude = baseRadius * NekoConfig.wavyAmplitudeFactor * wavyAmplitudeSmooth;
+                int waves = NekoConfig.wavyWaves;
+                int steps = 180;
+
+                for (int i = 0; i <= steps; i++) {
+                    float angle = (i * 360f) / steps;
+                    float rad = (float) Math.toRadians(angle);
+                    float r = baseRadius + amplitude * (float) Math.sin(waves * rad);
+                    float x = cx + r * (float) Math.cos(rad);
+                    float y = cy + r * (float) Math.sin(rad);
+
+                    if (i == 0) {
+                        wavyProgressPath.moveTo(x, y);
+                    } else {
+                        wavyProgressPath.lineTo(x, y);
+                    }
+                }
+                wavyProgressPath.close();
+                wavyProgressPathMeasure.setPath(wavyProgressPath, false);
+                wavyLastGeneration = NekoConfig.wavyGeneration;
+                wavyLastAmplitudeSmooth = wavyAmplitudeSmooth;
+            }
+
+            float length = wavyProgressPathMeasure.getLength();
+            float sweepDist = (Math.abs(sweepAngle) / 360f) * length;
+
+            float startDist = (wavePhaseAngle / 360f) * length;
+            startDist = (startDist % length + length) % length;
+            float stopDist = startDist + sweepDist;
+
+            wavySegmentPath.reset();
+
+            if (stopDist <= length) {
+                wavyProgressPathMeasure.getSegment(startDist, stopDist, wavySegmentPath, true);
+            } else {
+                wavyProgressPathMeasure.getSegment(startDist, length, wavySegmentPath, true);
+                wavyProgressPathMeasure.getSegment(0, stopDist - length, wavySegmentPath, false);
+            }
+            wavySegmentPath.rLineTo(0, 0);
+
+            canvas.save();
+            canvas.rotate(startAngle - wavePhaseAngle, oval.centerX(), oval.centerY());
+            canvas.drawPath(wavySegmentPath, paint);
+            canvas.restore();
         }
 
         public void setProgress(float value, boolean animated) {
@@ -2748,7 +2823,26 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                     progressPaint.setAlpha((int) (255 * alpha));
                 }
                 progressRect.set(x + diff, y + diff, x + sizeScaled - diff, y + sizeScaled - diff);
-                canvas.drawArc(progressRect, -90 + radOffset, Math.max(4, 360 * animatedProgressValue), false, progressPaint);
+                float sweep = Math.max(4, 360 * animatedProgressValue);
+                float absSweep = Math.abs(sweep);
+                if (absSweep < 360) {
+                    int bgAlpha = progressPaint.getAlpha();
+                    progressPaint.setAlpha(bgAlpha * 40 / 100);
+                    float saveWidth = progressPaint.getStrokeWidth();
+                    progressPaint.setStrokeWidth(saveWidth * bgThicknessScale);
+                    float gap = 16;
+                    float dir = sweep >= 0 ? 1 : -1;
+                    float bgSweep = 360 - absSweep - 2 * gap;
+                    if (bgSweep > 0) {
+                        canvas.drawArc(progressRect, radOffset + sweep + dir * gap, dir * bgSweep, false, progressPaint);
+                    }
+                    progressPaint.setStrokeWidth(saveWidth);
+                    progressPaint.setAlpha(bgAlpha);
+                }
+                float inset = AndroidUtilities.dp(1f);
+                RectF insetRect = new RectF(progressRect);
+                insetRect.inset(inset, inset);
+                drawWavyArc(canvas, insetRect, radOffset, sweep, progressPaint);
                 updateAnimation(true);
             } else {
                 updateAnimation(false);

@@ -3,9 +3,13 @@ package org.telegram.ui.Components;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.PathMeasure;
 import android.graphics.RectF;
 
 import org.telegram.messenger.AndroidUtilities;
+
+import zxc.iconic.xenon.NekoConfig;
 
 public class InfiniteProgress {
 
@@ -22,6 +26,16 @@ public class InfiniteProgress {
     private static final float rotationTime = 2000;
     private static final float risingTime = 500;
     private int radius;
+
+    private final Path wavyProgressPath = new Path();
+    private final PathMeasure wavyProgressPathMeasure = new PathMeasure();
+    private final Path wavySegmentPath = new Path();
+    private RectF wavyLastOval = new RectF();
+    private int wavyLastGeneration;
+    private float wavePhaseAngle;
+    private float wavyAmplitudeSmooth = 1f;
+    private float wavyLastAmplitudeSmooth = 1f;
+    private float bgThicknessScale;
 
     public InfiniteProgress(int rad) {
         radius = rad;
@@ -52,6 +66,10 @@ public class InfiniteProgress {
         int count = (int) (radOffset / 360);
         radOffset -= count * 360;
 
+        wavePhaseAngle += (dt * NekoConfig.wavySpeed) / 1000f;
+        wavePhaseAngle %= 360f;
+        wavyAmplitudeSmooth += (1f - wavyAmplitudeSmooth) * Math.min(1f, dt / 80f);
+
         currentProgressTime += dt;
         if (currentProgressTime >= risingTime) {
             currentProgressTime = risingTime;
@@ -74,7 +92,80 @@ public class InfiniteProgress {
     public void draw(Canvas canvas, float cx, float cy, float scale) {
         cicleRect.set(cx - radius * scale, cy - radius * scale, cx + radius * scale, cy + radius * scale);
         progressPaint.setStrokeWidth(AndroidUtilities.dp(2) * scale);
-        canvas.drawArc(cicleRect, radOffset, currentCircleLength, false, progressPaint);
+        float inset = AndroidUtilities.dp(1f);
+        RectF insetOval = new RectF(cicleRect);
+        insetOval.inset(inset, inset);
+        float absSweep = Math.abs(currentCircleLength);
+        if (absSweep < 360) {
+            int alpha = progressPaint.getAlpha();
+            progressPaint.setAlpha(alpha * 40 / 100);
+            float saveWidth = progressPaint.getStrokeWidth();
+            progressPaint.setStrokeWidth(saveWidth * bgThicknessScale);
+            float gap = 16;
+            float dir = currentCircleLength >= 0 ? 1 : -1;
+            float bgSweep = 360 - absSweep - 2 * gap;
+            if (bgSweep > 0) {
+                canvas.drawArc(insetOval, radOffset + currentCircleLength + dir * gap, dir * bgSweep, false, progressPaint);
+            }
+            progressPaint.setStrokeWidth(saveWidth);
+            progressPaint.setAlpha(alpha);
+        }
+        drawWavyArc(canvas, insetOval, radOffset, currentCircleLength, progressPaint);
         updateAnimation();
+    }
+
+    private void drawWavyArc(Canvas canvas, RectF oval, float startAngle, float sweepAngle, Paint paint) {
+        if (!oval.equals(wavyLastOval) || wavyLastGeneration != NekoConfig.wavyGeneration || wavyLastAmplitudeSmooth != wavyAmplitudeSmooth) {
+            wavyLastOval.set(oval);
+            wavyProgressPath.rewind();
+
+            float cx = oval.centerX();
+            float cy = oval.centerY();
+            float baseRadius = Math.min(oval.width(), oval.height()) / 2f;
+
+            float amplitude = baseRadius * NekoConfig.wavyAmplitudeFactor * wavyAmplitudeSmooth;
+            int waves = NekoConfig.wavyWaves;
+            int steps = 180;
+
+            for (int i = 0; i <= steps; i++) {
+                float angle = (i * 360f) / steps;
+                float rad = (float) Math.toRadians(angle);
+                float r = baseRadius + amplitude * (float) Math.sin(waves * rad);
+                float x = cx + r * (float) Math.cos(rad);
+                float y = cy + r * (float) Math.sin(rad);
+
+                if (i == 0) {
+                    wavyProgressPath.moveTo(x, y);
+                } else {
+                    wavyProgressPath.lineTo(x, y);
+                }
+            }
+            wavyProgressPath.close();
+            wavyProgressPathMeasure.setPath(wavyProgressPath, false);
+            wavyLastGeneration = NekoConfig.wavyGeneration;
+            wavyLastAmplitudeSmooth = wavyAmplitudeSmooth;
+        }
+
+        float length = wavyProgressPathMeasure.getLength();
+        float sweepDist = (Math.abs(sweepAngle) / 360f) * length;
+
+        float startDist = (wavePhaseAngle / 360f) * length;
+        startDist = (startDist % length + length) % length;
+        float stopDist = startDist + sweepDist;
+
+        wavySegmentPath.reset();
+
+        if (stopDist <= length) {
+            wavyProgressPathMeasure.getSegment(startDist, stopDist, wavySegmentPath, true);
+        } else {
+            wavyProgressPathMeasure.getSegment(startDist, length, wavySegmentPath, true);
+            wavyProgressPathMeasure.getSegment(0, stopDist - length, wavySegmentPath, false);
+        }
+        wavySegmentPath.rLineTo(0, 0);
+
+        canvas.save();
+        canvas.rotate(startAngle - wavePhaseAngle, oval.centerX(), oval.centerY());
+        canvas.drawPath(wavySegmentPath, paint);
+        canvas.restore();
     }
 }

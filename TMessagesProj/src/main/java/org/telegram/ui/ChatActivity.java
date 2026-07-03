@@ -7218,6 +7218,10 @@ public class ChatActivity extends BaseFragment implements
         progressBar = new RadialProgressView(context, themeDelegate);
         progressBar.setSize(AndroidUtilities.dp(28));
         progressBar.setProgressColor(getThemedColor(Theme.key_chat_serviceText));
+        progressBar.setNoProgress(false);
+        progressBar.setProgressImmediately(0.25f);
+        progressBar.setRadOffset(-90);
+        progressBar.setRotationEnabled(false);
         progressView.addView(progressBar, LayoutHelper.createFrame(32, 32, Gravity.CENTER));
 
         floatingTopicSeparator = new TopicSeparator.Cell(context, currentAccount, themeDelegate) {

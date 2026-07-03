@@ -251,6 +251,12 @@ public class NekoConfig {
     public static boolean disableGlassGlare = true;
     public static boolean disableScrimBlur = false;
     public static boolean nonIslandBottomBar = false;
+    public static boolean wavyEnabled = true;
+
+    public static float wavyAmplitudeFactor = 0.05f;
+    public static int wavyWaves = 11;
+    public static float wavySpeed = 60f;
+    public static int wavyGeneration;
 
     public static int userMcc = 0;
 
@@ -429,6 +435,11 @@ public class NekoConfig {
             disableGlassGlare = preferences.getBoolean("disableGlassGlare", true);
             disableScrimBlur = preferences.getBoolean("disableScrimBlur", false);
             nonIslandBottomBar = preferences.getBoolean("nonIslandBottomBar", false);
+            wavyEnabled = preferences.getBoolean("wavyEnabled", true);
+
+            wavyAmplitudeFactor = preferences.getFloat("wavyAmplitudeFactor", 0.05f);
+            wavyWaves = preferences.getInt("wavyWaves", 11);
+            wavySpeed = preferences.getFloat("wavySpeed", 60f);
 
             LensHelper.checkLensSupportAsync();
             preferences.registerOnSharedPreferenceChangeListener(listener);
@@ -1734,6 +1745,40 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putInt("textAnimBlurDuration", textAnimBlurDuration);
+        editor.apply();
+    }
+
+    public static void toggleWavyEnabled() {
+        wavyEnabled = !wavyEnabled;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("wavyEnabled", wavyEnabled);
+        editor.apply();
+    }
+
+    public static void setWavyAmplitudeFactor(float value) {
+        wavyAmplitudeFactor = value;
+        wavyGeneration++;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putFloat("wavyAmplitudeFactor", wavyAmplitudeFactor);
+        editor.apply();
+    }
+
+    public static void setWavyWaves(int value) {
+        wavyWaves = value;
+        wavyGeneration++;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("wavyWaves", wavyWaves);
+        editor.apply();
+    }
+
+    public static void setWavySpeed(float value) {
+        wavySpeed = value;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putFloat("wavySpeed", wavySpeed);
         editor.apply();
     }
 

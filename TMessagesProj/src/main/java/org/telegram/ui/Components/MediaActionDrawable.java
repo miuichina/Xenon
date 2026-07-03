@@ -6,6 +6,7 @@ import android.graphics.LinearGradient;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.PathMeasure;
 import android.graphics.PixelFormat;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
@@ -17,6 +18,7 @@ import android.view.animation.DecelerateInterpolator;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.ui.ActionBar.Theme;
+import zxc.iconic.xenon.NekoConfig;
 
 public class MediaActionDrawable extends Drawable {
 
@@ -88,6 +90,71 @@ public class MediaActionDrawable extends Drawable {
     private static final long KICK_INTERVAL = 1750;
     private static final long KICK_DURATION = 300;
     private static final float KICK_SPEED_MULTIPLIER = 3f;
+
+    private final Path wavyProgressPath = new Path();
+    private final PathMeasure wavyProgressPathMeasure = new PathMeasure();
+    private final Path wavySegmentPath = new Path();
+    private RectF wavyLastOval = new RectF();
+    private int wavyLastGeneration;
+    private float wavePhaseAngle;
+    private float wavyAmplitudeSmooth = 1f;
+    private float wavyLastAmplitudeSmooth = 1f;
+    private float bgThicknessScale;
+
+    private void drawWavyArc(Canvas canvas, RectF oval, float startAngle, float sweepAngle, Paint paint) {
+        if (!oval.equals(wavyLastOval) || wavyLastGeneration != NekoConfig.wavyGeneration || wavyLastAmplitudeSmooth != wavyAmplitudeSmooth) {
+            wavyLastOval.set(oval);
+            wavyProgressPath.rewind();
+
+            float cx = oval.centerX();
+            float cy = oval.centerY();
+            float baseRadius = Math.min(oval.width(), oval.height()) / 2f;
+
+            float amplitude = baseRadius * NekoConfig.wavyAmplitudeFactor * wavyAmplitudeSmooth;
+            int waves = NekoConfig.wavyWaves;
+            int steps = 180;
+
+            for (int i = 0; i <= steps; i++) {
+                float angle = (i * 360f) / steps;
+                float rad = (float) Math.toRadians(angle);
+                float r = baseRadius + amplitude * (float) Math.sin(waves * rad);
+                float x = cx + r * (float) Math.cos(rad);
+                float y = cy + r * (float) Math.sin(rad);
+
+                if (i == 0) {
+                    wavyProgressPath.moveTo(x, y);
+                } else {
+                    wavyProgressPath.lineTo(x, y);
+                }
+            }
+            wavyProgressPath.close();
+            wavyProgressPathMeasure.setPath(wavyProgressPath, false);
+            wavyLastGeneration = NekoConfig.wavyGeneration;
+            wavyLastAmplitudeSmooth = wavyAmplitudeSmooth;
+        }
+
+        float length = wavyProgressPathMeasure.getLength();
+        float sweepDist = (Math.abs(sweepAngle) / 360f) * length;
+
+        float startDist = (wavePhaseAngle / 360f) * length;
+        startDist = (startDist % length + length) % length;
+        float stopDist = startDist + sweepDist;
+
+        wavySegmentPath.reset();
+
+        if (stopDist <= length) {
+            wavyProgressPathMeasure.getSegment(startDist, stopDist, wavySegmentPath, true);
+        } else {
+            wavyProgressPathMeasure.getSegment(startDist, length, wavySegmentPath, true);
+            wavyProgressPathMeasure.getSegment(0, stopDist - length, wavySegmentPath, false);
+        }
+        wavySegmentPath.rLineTo(0, 0);
+
+        canvas.save();
+        canvas.rotate(startAngle - wavePhaseAngle, oval.centerX(), oval.centerY());
+        canvas.drawPath(wavySegmentPath, paint);
+        canvas.restore();
+    }
 
     private final static float EPS = 0.001f;
 
@@ -582,7 +649,7 @@ public class MediaActionDrawable extends Drawable {
             }
             if ((currentIcon == ICON_CANCEL || currentIcon == ICON_CANCEL_FILL || currentIcon == ICON_NONE && (nextIcon == ICON_CANCEL_FILL || nextIcon == ICON_CANCEL)) && alpha != 0) {
                 float rad;
-                if (downloadProgress < 0.02f) {
+                if (downloadProgress < 0.05f) {
                     rad = Math.max(4, indeterminateArcLength);
                 } else {
                     rad = Math.max(4, 360 * animatedDownloadProgress);
@@ -595,7 +662,23 @@ public class MediaActionDrawable extends Drawable {
                     canvas.drawArc(rect, 0, 360, false, paint);
                     paint.setAlpha(alpha);
                 }
-                canvas.drawArc(rect, downloadRadOffset, rad, false, paint);
+                float inset = AndroidUtilities.dp(1f);
+                RectF insetRect = new RectF(rect);
+                insetRect.inset(inset, inset);
+                if (Math.abs(rad) < 360) {
+                    int bgAlpha = paint.getAlpha();
+                    paint.setAlpha(bgAlpha * 40 / 100);
+                    float saveWidth = paint.getStrokeWidth();
+                    paint.setStrokeWidth(saveWidth * bgThicknessScale);
+                    float gap = 22;
+                    float bgSweep = 360 - rad - 2 * gap;
+                    if (bgSweep > 0) {
+                        canvas.drawArc(insetRect, downloadRadOffset + rad + gap, bgSweep, false, paint);
+                    }
+                    paint.setStrokeWidth(saveWidth);
+                    paint.setAlpha(bgAlpha);
+                }
+                drawWavyArc(canvas, insetRect, downloadRadOffset, rad, paint);
             }
             if (progressScale != 1.0f) {
                 canvas.restore();
@@ -614,14 +697,30 @@ public class MediaActionDrawable extends Drawable {
                 applyShaderMatrix(false);
                 paint.setAlpha((int) (alpha * overrideAlpha));
                 float rad;
-                if (downloadProgress < 0.02f) {
+                if (downloadProgress < 0.05f) {
                     rad = Math.max(4, indeterminateArcLength);
                 } else {
                     rad = Math.max(4, 360 * animatedDownloadProgress);
                 }
                 int diff = AndroidUtilities.dp(isMini ? 2 : 4);
                 rect.set(bounds.left + diff, bounds.top + diff, bounds.right - diff, bounds.bottom - diff);
-                canvas.drawArc(rect, downloadRadOffset, rad, false, paint);
+                float inset = AndroidUtilities.dp(1f);
+                RectF insetRect = new RectF(rect);
+                insetRect.inset(inset, inset);
+                if (Math.abs(rad) < 360) {
+                    int bgAlpha = paint.getAlpha();
+                    paint.setAlpha(bgAlpha * 40 / 100);
+                    float saveWidth = paint.getStrokeWidth();
+                    paint.setStrokeWidth(saveWidth * bgThicknessScale);
+                    float gap = 22;
+                    float bgSweep = 360 - rad - 2 * gap;
+                    if (bgSweep > 0) {
+                        canvas.drawArc(insetRect, downloadRadOffset + rad + gap, bgSweep, false, paint);
+                    }
+                    paint.setStrokeWidth(saveWidth);
+                    paint.setAlpha(bgAlpha);
+                }
+                drawWavyArc(canvas, insetRect, downloadRadOffset, rad, paint);
             }
         }
 
@@ -898,23 +997,32 @@ public class MediaActionDrawable extends Drawable {
         }
         lastAnimationTime = newTime;
 
-        if (currentIcon == ICON_CANCEL || currentIcon == ICON_CANCEL_FILL || currentIcon == ICON_NONE && nextIcon == ICON_CANCEL_FILL || currentIcon == ICON_EMPTY || currentIcon == ICON_CANCEL_PERCENT) {
-            if (downloadProgress >= 0.05f) {
-                downloadRadOffset = -90;
-            } else {
-                long kickElapsed = newTime - kickPhaseStartTime;
-                if (kickElapsed >= KICK_INTERVAL) {
-                    kickPhaseStartTime = newTime;
-                    kickElapsed = 0;
-                }
-                float rotSpeed = 360 / 2500.0f;
-                if (kickElapsed < KICK_DURATION) {
-                    rotSpeed *= KICK_SPEED_MULTIPLIER;
-                }
-                downloadRadOffset += rotSpeed * dt;
-                downloadRadOffset = getCircleValue(downloadRadOffset);
-            }
+        wavePhaseAngle += (dt * NekoConfig.wavySpeed) / 1000f;
+        wavePhaseAngle %= 360f;
 
+        float targetScale = (downloadProgress > 0.05f && downloadProgress < 0.90f) ? 1f : 0f;
+        wavyAmplitudeSmooth += (targetScale - wavyAmplitudeSmooth) * Math.min(1f, dt / 80f);
+
+        float progressFade = (downloadProgress > 0.90f) ? Math.max(0f, (1f - downloadProgress) / 0.05f) : 1f;
+        bgThicknessScale += (progressFade - bgThicknessScale) * Math.min(1f, dt / 50f);
+
+        if (downloadProgress >= 0.05f) {
+            downloadRadOffset = -90;
+        } else if (currentIcon == ICON_CANCEL || currentIcon == ICON_CANCEL_FILL || currentIcon == ICON_NONE && nextIcon == ICON_CANCEL_FILL || currentIcon == ICON_EMPTY || currentIcon == ICON_CANCEL_PERCENT) {
+            long kickElapsed = newTime - kickPhaseStartTime;
+            if (kickElapsed >= KICK_INTERVAL) {
+                kickPhaseStartTime = newTime;
+                kickElapsed = 0;
+            }
+            float rotSpeed = 360 / 2500.0f;
+            if (kickElapsed < KICK_DURATION) {
+                rotSpeed *= KICK_SPEED_MULTIPLIER;
+            }
+            downloadRadOffset += rotSpeed * dt;
+            downloadRadOffset = getCircleValue(downloadRadOffset);
+        }
+
+        if (currentIcon == ICON_CANCEL || currentIcon == ICON_CANCEL_FILL || currentIcon == ICON_NONE && nextIcon == ICON_CANCEL_FILL || currentIcon == ICON_EMPTY || currentIcon == ICON_CANCEL_PERCENT) {
             if (nextIcon != ICON_DOWNLOAD) {
                 float progressDiff = downloadProgress - downloadProgressAnimationStart;
                 if (progressDiff > 0) {

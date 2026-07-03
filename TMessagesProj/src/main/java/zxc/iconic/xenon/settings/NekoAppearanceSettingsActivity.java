@@ -64,7 +64,6 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int aospTransitionRow = rowId++;
     private final int material3SwitchesRow = rowId++;
     private final int m3SectionsStyleRow = rowId++;
-
     private final int nonIslandTabBarsRow = rowId++;
     private final int nonIslandGlobalSearchRow = rowId++;
     private final int nonIslandChatElementsRow = rowId++;

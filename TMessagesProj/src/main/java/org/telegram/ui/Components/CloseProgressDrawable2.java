@@ -33,27 +33,6 @@ public class CloseProgressDrawable2 extends Drawable {
     private int globalColorAlpha = 255;
     private int currentColor;
 
-    private float progress = -1;
-    private float arcLength;
-    private long phaseStartTime;
-    private int animPhase;
-
-    private static final float MIN_ARC = 10;
-    private static final float MAX_ARC = 324;
-    private static final int PHASE_GROW = 0;
-    private static final int PHASE_MAX = 1;
-    private static final int PHASE_SHRINK = 2;
-    private static final int PHASE_PAUSE = 3;
-    private static final long GROW_DURATION = 3000;
-    private static final long MAX_DURATION = 500;
-    private static final long SHRINK_DURATION = 1000;
-    private static final long PAUSE_DURATION = 2500;
-
-    private long kickPhaseStartTime;
-    private static final long KICK_INTERVAL = 1750;
-    private static final long KICK_DURATION = 300;
-    private static final float KICK_SPEED_MULTIPLIER = 3f;
-
     public CloseProgressDrawable2() {
         this(2);
     }
@@ -65,17 +44,11 @@ public class CloseProgressDrawable2 extends Drawable {
         paint.setStrokeCap(Paint.Cap.ROUND);
         paint.setStyle(Paint.Style.STROKE);
         side = AndroidUtilities.dp(8);
-        arcLength = MIN_ARC;
     }
 
     public void startAnimation() {
-        if (animating) return;
         animating = true;
         lastFrameTime = System.currentTimeMillis();
-        phaseStartTime = lastFrameTime;
-        kickPhaseStartTime = lastFrameTime;
-        animPhase = PHASE_GROW;
-        arcLength = MIN_ARC;
         invalidateSelf();
     }
 
@@ -85,11 +58,6 @@ public class CloseProgressDrawable2 extends Drawable {
 
     public boolean isAnimating() {
         return animating;
-    }
-
-    public void setProgress(float p) {
-        progress = p;
-        invalidateSelf();
     }
 
     private void setColor(int value) {
@@ -104,76 +72,21 @@ public class CloseProgressDrawable2 extends Drawable {
         side = value;
     }
 
-    private float easeInOut(float t) {
-        return t * t * (3 - 2 * t);
-    }
-
     @Override
     public void draw(Canvas canvas) {
         long newTime = System.currentTimeMillis();
         setColor(getCurrentColor());
         if (lastFrameTime != 0) {
             long dt = (newTime - lastFrameTime);
-            if (progress >= 0 && progress > 5) {
-                angle = -90;
-            } else if (animating || angle != 0) {
-                    long kickElapsed = newTime - kickPhaseStartTime;
-                    if (kickElapsed >= KICK_INTERVAL) {
-                        kickPhaseStartTime = newTime;
-                        kickElapsed = 0;
-                    }
-                    float speedMul = kickElapsed < KICK_DURATION ? KICK_SPEED_MULTIPLIER : 1f;
-                    angle += 360 * dt / 500.0f * speedMul;
+            if (animating || angle != 0) {
+                angle += 360 * dt / 500.0f;
+                if (!animating && angle >= 720) {
+                    angle = 0;
+                } else {
                     angle -= (int) (angle / 720) * 720;
-                    invalidateSelf();
+                }
+                invalidateSelf();
             }
-        }
-
-        if (progress >= 0 && progress > 5) {
-            arcLength = progress / 100f * 360;
-        } else if (animating) {
-            long elapsed = newTime - phaseStartTime;
-            switch (animPhase) {
-                case PHASE_GROW: {
-                    float t = Math.min(1f, (float) elapsed / GROW_DURATION);
-                    arcLength = MIN_ARC + (MAX_ARC - MIN_ARC) * easeInOut(t);
-                    if (t >= 1f) {
-                        animPhase = PHASE_MAX;
-                        phaseStartTime = newTime;
-                    }
-                    invalidateSelf();
-                    break;
-                }
-                case PHASE_MAX: {
-                    arcLength = MAX_ARC;
-                    if (elapsed >= MAX_DURATION) {
-                        animPhase = PHASE_SHRINK;
-                        phaseStartTime = newTime;
-                    }
-                    invalidateSelf();
-                    break;
-                }
-                case PHASE_SHRINK: {
-                    float t = Math.min(1f, (float) elapsed / SHRINK_DURATION);
-                    arcLength = MAX_ARC - (MAX_ARC - MIN_ARC) * easeInOut(t);
-                    if (t >= 1f) {
-                        animPhase = PHASE_PAUSE;
-                        phaseStartTime = newTime;
-                    }
-                    invalidateSelf();
-                    break;
-                }
-                case PHASE_PAUSE: {
-                    if (elapsed >= PAUSE_DURATION) {
-                        animPhase = PHASE_GROW;
-                        phaseStartTime = newTime;
-                    }
-                    invalidateSelf();
-                    break;
-                }
-            }
-        } else {
-            arcLength = MIN_ARC;
         }
 
         if (globalColorAlpha == 255 || getBounds() == null || getBounds().isEmpty()) {
@@ -229,8 +142,7 @@ public class CloseProgressDrawable2 extends Drawable {
         int cx = getBounds().centerX();
         int cy = getBounds().centerY();
         rect.set(cx - side, cy - side, cx + side, cy + side);
-        float startAngle = (angle < 360 ? 0 : angle - 360) - 90;
-        canvas.drawArc(rect, startAngle, arcLength, false, paint);
+        canvas.drawArc(rect, (angle < 360 ? 0 : angle - 360) - 45, (angle < 360 ? angle : 720 - angle), false, paint);
 
         lastFrameTime = newTime;
     }

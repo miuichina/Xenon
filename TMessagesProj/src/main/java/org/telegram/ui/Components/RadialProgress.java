@@ -23,6 +23,7 @@ import android.view.animation.DecelerateInterpolator;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.ui.ActionBar.Theme;
+import zxc.iconic.xenon.NekoConfig;
 
 public class RadialProgress {
 
@@ -229,6 +230,16 @@ public class RadialProgress {
         long newTime = System.currentTimeMillis();
         long dt = newTime - lastUpdateTime;
         lastUpdateTime = newTime;
+        if (wavyProgress) {
+            wavePhaseAngle += (dt * NekoConfig.wavySpeed) / 1000f;
+            wavePhaseAngle %= 360f;
+
+            float targetScale = animatedProgressValue > 0.90f ? 0f : 1f;
+            wavyAmplitudeSmooth += (targetScale - wavyAmplitudeSmooth) * Math.min(1f, dt / 80f);
+
+            float progressFade = animatedProgressValue > 0.90f ? Math.max(0f, (1f - animatedProgressValue) / 0.05f) : 1f;
+            bgThicknessScale += (progressFade - bgThicknessScale) * Math.min(1f, dt / 50f);
+        }
         if (checkBackgroundDrawable != null && (currentDrawable == checkBackgroundDrawable || previousDrawable == checkBackgroundDrawable)) {
             if (checkDrawable.updateAnimation(dt)) {
                 invalidateParent();
@@ -636,8 +647,98 @@ public class RadialProgress {
     private final PathMeasure roundProgressRectPathMeasure = new PathMeasure();
     private final Path roundRectProgressPath = new Path();
 
+    private boolean wavyProgress;
+    private float wavePhaseAngle;
+    private float wavyAmplitudeSmooth = 1f;
+    private float bgThicknessScale;
+    private final Path wavyProgressPath = new Path();
+    private final PathMeasure wavyProgressPathMeasure = new PathMeasure();
+    private final Path wavySegmentPath = new Path();
+    private RectF wavyLastOval = new RectF();
+    private int wavyLastGeneration;
+    private float wavyLastAmplitudeSmooth = 1f;
+
+    private void drawWavyArc(Canvas canvas, RectF oval, float startAngle, float sweepAngle, Paint paint) {
+        if (!oval.equals(wavyLastOval) || wavyLastGeneration != NekoConfig.wavyGeneration || wavyLastAmplitudeSmooth != wavyAmplitudeSmooth) {
+            wavyLastOval.set(oval);
+            wavyProgressPath.rewind();
+
+            float cx = oval.centerX();
+            float cy = oval.centerY();
+            float baseRadius = Math.min(oval.width(), oval.height()) / 2f;
+
+            float amplitude = baseRadius * NekoConfig.wavyAmplitudeFactor * wavyAmplitudeSmooth;
+            int waves = NekoConfig.wavyWaves;
+            int steps = 180;
+
+            for (int i = 0; i <= steps; i++) {
+                float angle = (i * 360f) / steps;
+                float rad = (float) Math.toRadians(angle);
+                float r = baseRadius + amplitude * (float) Math.sin(waves * rad);
+                float x = cx + r * (float) Math.cos(rad);
+                float y = cy + r * (float) Math.sin(rad);
+
+                if (i == 0) {
+                    wavyProgressPath.moveTo(x, y);
+                } else {
+                    wavyProgressPath.lineTo(x, y);
+                }
+            }
+            wavyProgressPath.close();
+            wavyProgressPathMeasure.setPath(wavyProgressPath, false);
+            wavyLastGeneration = NekoConfig.wavyGeneration;
+            wavyLastAmplitudeSmooth = wavyAmplitudeSmooth;
+        }
+
+        float length = wavyProgressPathMeasure.getLength();
+        float sweepDist = (Math.abs(sweepAngle) / 360f) * length;
+
+        float startDist = (wavePhaseAngle / 360f) * length;
+        startDist = (startDist % length + length) % length;
+        float stopDist = startDist + sweepDist;
+
+        wavySegmentPath.reset();
+
+        if (stopDist <= length) {
+            wavyProgressPathMeasure.getSegment(startDist, stopDist, wavySegmentPath, true);
+        } else {
+            wavyProgressPathMeasure.getSegment(startDist, length, wavySegmentPath, true);
+            wavyProgressPathMeasure.getSegment(0, stopDist - length, wavySegmentPath, false);
+        }
+        wavySegmentPath.rLineTo(0, 0);
+
+        canvas.save();
+        canvas.rotate(startAngle - wavePhaseAngle, oval.centerX(), oval.centerY());
+        canvas.drawPath(wavySegmentPath, paint);
+        canvas.restore();
+
+        if (Math.abs(sweepAngle) > 0 && Math.abs(sweepAngle) < 360) {
+            invalidateParent();
+        }
+    }
+
     private void drawArc(Canvas canvas, RectF oval, float startAngle, float sweepAngle, boolean useCenter, Paint paint) {
-        if (roundRectProgress) {
+        if (wavyProgress) {
+            float inset = AndroidUtilities.dp(1f);
+            RectF insetOval = new RectF(oval);
+            insetOval.inset(inset, inset);
+            float absSweep = Math.abs(sweepAngle);
+            if (absSweep < 360) {
+                int alpha = paint.getAlpha();
+                paint.setAlpha(alpha * 40 / 100);
+                float saveWidth = paint.getStrokeWidth();
+                paint.setStrokeWidth(saveWidth * bgThicknessScale);
+                float gap = 16;
+                float dir = sweepAngle >= 0 ? 1 : -1;
+                float bgSweep = 360 - absSweep - 2 * gap;
+                if (bgSweep > 0) {
+                    canvas.drawArc(insetOval, startAngle + sweepAngle + dir * gap, dir * bgSweep, useCenter, paint);
+                }
+                paint.setStrokeWidth(saveWidth);
+                paint.setAlpha(alpha);
+            }
+            drawWavyArc(canvas, insetOval, startAngle, sweepAngle, paint);
+        } else if (roundRectProgress) {
             float r = oval.height() * 0.32f;
             if (Math.abs(sweepAngle) == 360) {
                 canvas.drawRoundRect(oval, r, r, paint);
@@ -677,5 +778,9 @@ public class RadialProgress {
 
     public void setRoundRectProgress(boolean roundRectProgress) {
         this.roundRectProgress = roundRectProgress;
+    }
+
+    public void setWavyProgress(boolean wavyProgress) {
+        this.wavyProgress = wavyProgress;
     }
 }
