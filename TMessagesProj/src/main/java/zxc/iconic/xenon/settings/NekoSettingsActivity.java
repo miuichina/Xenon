@@ -758,8 +758,6 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity implements Fa
             StringBuilder result = new StringBuilder();
             JSONArray arr = new JSONArray(json);
             Log.d("XENON_CMT", "commits array length: " + arr.length());
-            String localLower = sinceHash.trim().toLowerCase();
-            String releaseLower = releaseRef.trim().toLowerCase();
             boolean collecting = false;
             for (int i = 0; i < arr.length(); i++) {
                 JSONObject obj = arr.getJSONObject(i);
