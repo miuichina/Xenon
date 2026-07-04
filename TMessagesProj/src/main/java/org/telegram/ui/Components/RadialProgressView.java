@@ -54,7 +54,7 @@ public class RadialProgressView extends View {
     private float toCircleProgress;
 
     private boolean noProgress = true;
-    private boolean rotationEnabled = false;
+    private boolean rotationEnabled = true;
     private long kickPhaseStartTime;
     private long lastAnimationNewTime;
     private final Theme.ResourcesProvider resourcesProvider;
