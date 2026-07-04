@@ -1492,6 +1492,7 @@ public class ReactionsContainerLayout extends FrameLayout implements Notificatio
                 performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING);
             } catch (Exception ignore) {}
         }
+        dismissParent(false);
     }
 
     private boolean prepareAnimation;
