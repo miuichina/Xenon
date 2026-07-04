@@ -4123,6 +4123,16 @@ public class ChatActivityEnterView extends FrameLayout implements
                 if (defPeer == null && delegate.getSendAsPeers() != null && !delegate.getSendAsPeers().peers.isEmpty()) {
                     defPeer = delegate.getSendAsPeers().peers.get(0).peer;
                 }
+                // If there's a send-as account override, use that user as the default peer
+                int createOverrideAcc = SendMessagesHelper.getSendAsAccountOverride(dialog_id);
+                if (createOverrideAcc >= 0) {
+                    TLRPC.User overrideUser = UserConfig.getInstance(createOverrideAcc).getCurrentUser();
+                    if (overrideUser != null) {
+                        TLRPC.TL_peerUser overridePeer = new TLRPC.TL_peerUser();
+                        overridePeer.user_id = overrideUser.id;
+                        defPeer = overridePeer;
+                    }
+                }
                 final boolean isChannel = ChatObject.isChannelAndNotMegaGroup(controller.getChat(-dialog_id));
 
                 ViewGroup fl;
@@ -4137,10 +4147,24 @@ public class ChatActivityEnterView extends FrameLayout implements
                     if (chatFull != null) {
                         chatFull.default_send_as = peer;
                     }
+
+                    int overrideAcc = -1;
+                    if (peer.user_id != 0) {
+                        for (int i = 0; i < UserConfig.MAX_ACCOUNT_COUNT; i++) {
+                            if (i != currentAccount && UserConfig.getInstance(i).isClientActivated()
+                                    && UserConfig.getInstance(i).getClientUserId() == peer.user_id) {
+                                overrideAcc = i;
+                                break;
+                            }
+                        }
+                    }
+                    SendMessagesHelper.setSendAsAccountOverride(dialog_id, overrideAcc);
                     updateSendAsButton();
 
-                    if (delegate == null || !delegate.setDefaultSendAs(dialog_id, DialogObject.getPeerDialogId(peer))) {
-                        controller.setDefaultSendAs(dialog_id, DialogObject.getPeerDialogId(peer));
+                    if (overrideAcc < 0) {
+                        if (delegate == null || !delegate.setDefaultSendAs(dialog_id, DialogObject.getPeerDialogId(peer))) {
+                            controller.setDefaultSendAs(dialog_id, DialogObject.getPeerDialogId(peer));
+                        }
                     }
 
                     int[] loc = new int[2];
@@ -4261,6 +4285,7 @@ public class ChatActivityEnterView extends FrameLayout implements
                                                     senderSelectView.setScaleY(1);
                                                 }
                                                 senderSelectView.setAlpha(1);
+                                                updateSendAsButton();
 
                                                 senderSelectView.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
                                                     @Override
@@ -4309,6 +4334,7 @@ public class ChatActivityEnterView extends FrameLayout implements
                                                     senderSelectView.setScaleY(1);
                                                 }
                                                 senderSelectView.setAlpha(1);
+                                                updateSendAsButton();
 
                                                 senderSelectView.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
                                                     @Override
@@ -10596,13 +10622,19 @@ public class ChatActivityEnterView extends FrameLayout implements
         if (defPeer == null && delegate.getSendAsPeers() != null && !delegate.getSendAsPeers().peers.isEmpty()) {
             defPeer = delegate.getSendAsPeers().peers.get(0).peer;
         }
-        boolean isVisible = !forceHide && defPeer != null && (delegate.getSendAsPeers() == null || delegate.getSendAsPeers().peers.size() > 1) &&
-            !isEditingMessage() && !isRecordingAudioVideo() && (recordedAudioPanel == null || recordedAudioPanel.getVisibility() != View.VISIBLE) &&
-            (isLiveComment || (!ChatObject.isChannelAndNotMegaGroup(chat) || ChatObject.canSendAsPeers(chat)) && !ChatObject.isMonoForum(chat));
+        boolean isVisible = !forceHide && defPeer != null &&
+            !isEditingMessage() && !isRecordingAudioVideo() && (recordedAudioPanel == null || recordedAudioPanel.getVisibility() != View.VISIBLE);
         if (isVisible) {
             createSenderSelectView();
         }
-        if (defPeer != null) {
+        int overrideAcc = SendMessagesHelper.getSendAsAccountOverride(dialog_id);
+        if (overrideAcc >= 0) {
+            TLRPC.User user = UserConfig.getInstance(overrideAcc).getCurrentUser();
+            if (user != null && senderSelectView != null) {
+                senderSelectView.setAvatar(user);
+                senderSelectView.setContentDescription(LocaleController.formatString(R.string.AccDescrSendAs, ContactsController.formatName(user.first_name, user.last_name)));
+            }
+        } else if (defPeer != null) {
             if (defPeer.channel_id != 0) {
                 TLRPC.Chat ch = MessagesController.getInstance(currentAccount).getChat(defPeer.channel_id);
                 if (ch != null && senderSelectView != null) {

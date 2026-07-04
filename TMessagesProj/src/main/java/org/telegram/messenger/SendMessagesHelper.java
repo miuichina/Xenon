@@ -116,6 +116,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -955,6 +956,19 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
             }
         }
         return localInstance;
+    }
+
+    private static final ConcurrentHashMap<Long, Integer> sendAsAccountOverrides = new ConcurrentHashMap<>();
+    public static void setSendAsAccountOverride(long dialogId, int account) {
+        if (account < 0) {
+            sendAsAccountOverrides.remove(dialogId);
+        } else {
+            sendAsAccountOverrides.put(dialogId, account);
+        }
+    }
+    public static int getSendAsAccountOverride(long dialogId) {
+        Integer acc = sendAsAccountOverrides.get(dialogId);
+        return acc != null ? acc : -1;
     }
 
     public SendMessagesHelper(int instance) {
@@ -1881,6 +1895,12 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
 
     public void sendSticker(TLRPC.Document document, String query, long peer, CharSequence caption, VideoEditedInfo videoEditedInfo, MessageObject replyToMsg, MessageObject replyToTopMsg, TL_stories.StoryItem storyItem, ChatActivity.ReplyQuote quote, MessageObject.SendAnimationData sendAnimationData, boolean notify, int scheduleDate, int scheduleRepeatPeriod, boolean updateStickersOrder, Object parentObject, String quick_reply_shortcut, int quick_reply_shortcut_id, long stars, long monoForumPeerId, MessageSuggestionParams suggestionParams, boolean invertMedia) {
         if (document == null) {
+            return;
+        }
+        // Cross-account send-as override for stickers/GIFs
+        int overrideAcc = getSendAsAccountOverride(peer);
+        if (overrideAcc >= 0 && overrideAcc != currentAccount) {
+            getInstance(overrideAcc).sendSticker(document, query, peer, caption, videoEditedInfo, replyToMsg, replyToTopMsg, storyItem, quote, sendAnimationData, notify, scheduleDate, scheduleRepeatPeriod, updateStickersOrder, parentObject, quick_reply_shortcut, quick_reply_shortcut_id, stars, monoForumPeerId, suggestionParams, invertMedia);
             return;
         }
         if (DialogObject.isEncryptedDialog(peer)) {
@@ -4108,13 +4128,16 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
             caption = "";
         }
 
+        // --- Cross-account send-as override --------------------------------
+        int overrideAccount = getSendAsAccountOverride(peer);
+        boolean hasOverride = overrideAccount >= 0 && overrideAccount != currentAccount;
+        Log.d("XENON_OVERRIDE", "peer=" + peer + " override=" + overrideAccount + " currentAcc=" + currentAccount + " hasOverride=" + hasOverride + " msg=" + (message != null ? message : "null") + " doc=" + (sendMessageParams.document != null ? "yes" : "no"));
+        if (hasOverride) {
+            getInstance(overrideAccount).sendMessage(sendMessageParams);
+            return;
+        }
+
         // --- Plugin hook: onSendMessage -----------------------------------
-        // Lets plugins rewrite the outgoing text/peer or cancel the send.
-        // Handler receives {message=string, peer=number, sender_id=number} and may return:
-        //   { cancel = true }              -> abort the send
-        //   { message = "...", peer = N }  -> override message and/or peer
-        //   { sender_id = N }              -> send from a different logged-in account
-        //   nil                            -> leave unchanged
         if (message != null && NekoConfig.pluginsEnabled) {
             org.luaj.vm2.LuaValue ctx = org.luaj.vm2.LuaValue.tableOf(new org.luaj.vm2.LuaValue[]{
                     org.luaj.vm2.LuaValue.valueOf("message"), org.luaj.vm2.LuaValue.valueOf(message),
@@ -4138,10 +4161,14 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                     long targetUserId = res.get("sender_id").tolong();
                     long currentUserId = getUserConfig().getClientUserId();
                     if (targetUserId > 0 && targetUserId != currentUserId) {
-                        for (int i = 0; i < UserConfig.MAX_ACCOUNT_COUNT; i++) {
-                            if (UserConfig.getInstance(i).isClientActivated() && UserConfig.getInstance(i).getClientUserId() == targetUserId) {
-                                SendMessagesHelper.getInstance(i).sendMessage(sendMessageParams);
-                                return;
+                        // Don't redirect via plugin if a native override is set for this peer
+                        // (avoids infinite loop between native override and plugin hook)
+                        if (getSendAsAccountOverride(peer) < 0) {
+                            for (int i = 0; i < UserConfig.MAX_ACCOUNT_COUNT; i++) {
+                                if (UserConfig.getInstance(i).isClientActivated() && UserConfig.getInstance(i).getClientUserId() == targetUserId) {
+                                    SendMessagesHelper.getInstance(i).sendMessage(sendMessageParams);
+                                    return;
+                                }
                             }
                         }
                     }
