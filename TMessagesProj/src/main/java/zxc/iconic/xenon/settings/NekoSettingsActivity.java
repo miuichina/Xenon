@@ -710,9 +710,8 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity implements Fa
             return null;
         }
 
-        boolean posral = zxc.iconic.xenon.helpers.remote.GitHubUpdateHelper.CHANNEL_POSRAL.equalsIgnoreCase(BuildConfig.BUILD_CHANNEL);
         if (TextUtils.isEmpty(branch)) {
-            branch = posral ? "ayu-features" : "master";
+            branch = "master";
             Log.d("XENON_CMT", "branch fallback: " + branch);
         }
 

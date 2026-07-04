@@ -24,27 +24,13 @@ import java.util.List;
 /**
  * Checks for app updates against GitHub Releases for sinkclose/Xenon.
  *
- * <p>Two release channels coexist in the same repo, and the channel a given
- * build belongs to is baked in at compile time via
- * {@link BuildConfig#BUILD_CHANNEL}:
+ * <p>Polls {@code /releases/latest}. Release scheme:
  * <ul>
- *   <li><b>stable</b> (default): polls {@code /releases/latest}. Release scheme:
- *     <ul>
- *       <li>tag_name = short commit hash of the build</li>
- *       <li>name     = first line of the commit message</li>
- *     </ul>
- *   </li>
- *   <li><b>posral</b>: polls {@code /releases} and keeps only tags starting with
- *     {@link #POSRAL_TAG_PREFIX} ({@code posral-<shorthash>}). These are
- *     published by the ayu-features CI as <i>prereleases</i>, which makes them
- *     invisible to GitHub's {@code /releases/latest} endpoint — so the two
- *     channels can never cross-update one another: a posral build will never be
- *     offered a stable APK and vice versa.</li>
+ *   <li>tag_name = (optional posral-) + short commit hash of the build</li>
+ *   <li>name     = first line of the commit message</li>
+ *   <li>body     = structured release notes (commit hash, checksums, etc.)</li>
+ *   <li>assets   = APK files (Xenon-{version}-{code}-{abi}.apk)</li>
  * </ul>
- *
- * <p>Common release fields:
- *   - body     = structured release notes (commit hash, checksums, etc.)
- *   - assets   = APK files (Xenon-{version}-{code}-{abi}.apk)
  *
  * <p>Version comparison: current build's GIT_COMMIT_SHORT (embedded at compile
  * time) is compared against the latest release's tag_name (with any posral-
@@ -66,10 +52,6 @@ public class GitHubUpdateHelper {
      * while the <i>tag</i> uses this dash form.
      */
     public static final String POSRAL_TAG_PREFIX = "posral-";
-    /**
-     * Value of {@link BuildConfig#BUILD_CHANNEL} that selects the posral stream.
-     */
-    public static final String CHANNEL_POSRAL = "posral";
     private static final Gson GSON = new Gson();
 
     private GitHubUpdateHelper() {
@@ -111,12 +93,8 @@ public class GitHubUpdateHelper {
     public static void checkForUpdates(UpdateCallback callback, boolean force) {
         new Thread(() -> {
             try {
-                boolean posral = CHANNEL_POSRAL.equalsIgnoreCase(BuildConfig.BUILD_CHANNEL);
-                FileLog.d(TAG + ": checking for updates (channel="
-                        + BuildConfig.BUILD_CHANNEL + ", posral=" + posral + ")...");
-                GitHubRelease release = posral
-                        ? fetchLatestPrefixedRelease(POSRAL_TAG_PREFIX)
-                        : fetchLatestRelease();
+                FileLog.d(TAG + ": checking for updates...");
+                GitHubRelease release = fetchLatestRelease();
                 if (release == null || TextUtils.isEmpty(release.tagName)) {
                     FileLog.d(TAG + ": release is null or has no tag");
                     AndroidUtilities.runOnUIThread(callback::onNoUpdate);
@@ -147,7 +125,7 @@ public class GitHubUpdateHelper {
                 // Strip the posral- prefix before comparing so the embedded hash
                 // (bare short hash) matches the tag body (posral-<shorthash>).
                 String tagBody = release.tagName;
-                if (posral && tagBody.toLowerCase().startsWith(POSRAL_TAG_PREFIX)) {
+                if (tagBody.toLowerCase().startsWith(POSRAL_TAG_PREFIX)) {
                     tagBody = tagBody.substring(POSRAL_TAG_PREFIX.length());
                 }
 
@@ -192,8 +170,7 @@ public class GitHubUpdateHelper {
      * {@code /releases/latest} endpoint) and <strong>always</strong> reports the
      * release as an available update — no hash comparison.
      *
-     * <p>Intended for the "Switch to main" button that lets posral (ayu-features)
-     * users escape back to the main channel.
+     * <p>Intended for the "Switch to main" button.
      */
     public static void checkForMainUpdate(UpdateCallback callback) {
         new Thread(() -> {
@@ -225,12 +202,9 @@ public class GitHubUpdateHelper {
     }
 
     /**
-     * Fetches the latest <b>ayu-features</b> (posral) release regardless of the
-     * current build channel. This calls {@link #fetchLatestPrefixedRelease(String)}
-     * with {@link #POSRAL_TAG_PREFIX} and always reports the release as available.
-     *
-     * <p>Intended for the "Switch to ayu-features" button that lets main/stable
-     * users switch to the posral channel.
+     * Fetches the latest <b>ayu-features</b> (posral) release. This calls
+     * {@link #fetchLatestPrefixedRelease(String)} with {@link #POSRAL_TAG_PREFIX}
+     * and always reports the release as available.
      */
     public static void checkForAyuUpdate(UpdateCallback callback) {
         new Thread(() -> {
@@ -401,8 +375,7 @@ public class GitHubUpdateHelper {
         // Fallback: use tag name (strip posral- prefix)
         if (TextUtils.isEmpty(releaseRef) && !TextUtils.isEmpty(tagName)) {
             String tag = tagName;
-            boolean posral = CHANNEL_POSRAL.equalsIgnoreCase(BuildConfig.BUILD_CHANNEL);
-            if (posral && tag.toLowerCase().startsWith(POSRAL_TAG_PREFIX)) {
+            if (tag.toLowerCase().startsWith(POSRAL_TAG_PREFIX)) {
                 tag = tag.substring(POSRAL_TAG_PREFIX.length());
             }
             releaseRef = tag.trim();
@@ -411,9 +384,8 @@ public class GitHubUpdateHelper {
             return null;
         }
 
-        boolean posral = CHANNEL_POSRAL.equalsIgnoreCase(BuildConfig.BUILD_CHANNEL);
         if (TextUtils.isEmpty(branch)) {
-            branch = posral ? "ayu-features" : "master";
+            branch = "master";
         }
 
         // If release ref matches embedded hash, no new commits
