@@ -6,6 +6,7 @@ import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.style.ForegroundColorSpan;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -25,6 +26,15 @@ import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.BuildConfig;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.LocaleController;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
 import org.telegram.messenger.R;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.Utilities;
@@ -332,72 +342,82 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity implements Fa
                         }, 500);
                         return;
                     }
-                    TLRPC.TL_help_appUpdate appUpdate = new TLRPC.TL_help_appUpdate();
-                    appUpdate.version = title;
-                    appUpdate.text = release.body != null ? release.body : "";
-                    appUpdate.can_not_skip = false;
-                    appUpdate.url = apkUrl;
-                    appUpdate.flags |= 4;
-                    UpdateAppAlertDialog dialog = new UpdateAppAlertDialog(activity, appUpdate, UserConfig.selectedAccount);
-                    dialog.setOnDownloadClickListener(() -> {
-                        final Bulletin[] progBulletin = new Bulletin[1];
+                    // Fetch commit log on background thread, then show dialog
+                    String tagName = release.tagName;
+                    String bodyText = release.body;
+                    Activity act = activity;
+                    new Thread(() -> {
+                        String commitLog = fetchCommitLog(tagName, bodyText);
+                        String finalText = commitLog != null ? commitLog : (bodyText != null ? bodyText : "");
                         AndroidUtilities.runOnUIThread(() -> {
-                            try {
-                                Bulletin b = BulletinFactory.global()
-                                        .createSimpleBulletin(R.raw.ic_download, LocaleController.getString(R.string.DownloadingUpdate) + NekoConfig.getChannelLabel(), LocaleController.getString(R.string.Cancel), Integer.MAX_VALUE, () -> impl.cancelDownloadingUpdate());
-                                if (b.getLayout() instanceof Bulletin.LottieLayout) {
-                                    ((Bulletin.LottieLayout) b.getLayout()).setIconPaddingBottom(2);
-                                }
-                                b.show();
-                                progBulletin[0] = b;
-                            } catch (Throwable ignored) {}
-                        }, 100);
-                        impl.downloadUpdate(apkUrl, () -> {
-                            AndroidUtilities.runOnUIThread(() -> {
-                                try { if (progBulletin[0] != null) progBulletin[0].hide(); } catch (Throwable ignored) {}
-                            });
-                            File apkFile = impl.getDownloadedUpdateFile();
-                            if (apkFile != null && apkFile.exists()) {
+                            TLRPC.TL_help_appUpdate appUpdate = new TLRPC.TL_help_appUpdate();
+                            appUpdate.version = title;
+                            appUpdate.text = finalText;
+                            appUpdate.can_not_skip = false;
+                            appUpdate.url = apkUrl;
+                            appUpdate.flags |= 4;
+                            UpdateAppAlertDialog dialog = new UpdateAppAlertDialog(act, appUpdate, UserConfig.selectedAccount);
+                            dialog.setOnDownloadClickListener(() -> {
+                                final Bulletin[] progBulletin = new Bulletin[1];
                                 AndroidUtilities.runOnUIThread(() -> {
                                     try {
-                                        Bulletin b2 = BulletinFactory.global()
-                                                .createSimpleBulletin(R.raw.ic_download,
-                                                        LocaleController.getString(R.string.UpdateDownloaded),
-                                                        LocaleController.getString(R.string.NekoUpdate),
-                                                        Integer.MAX_VALUE,
-                                                        () -> zxc.iconic.xenon.helpers.ApkInstaller.installUpdate(activity, apkFile));
-                                        if (b2.getLayout() instanceof Bulletin.LottieLayout) {
-                                            ((Bulletin.LottieLayout) b2.getLayout()).setIconPaddingBottom(2);
+                                        Bulletin b = BulletinFactory.global()
+                                                .createSimpleBulletin(R.raw.ic_download, LocaleController.getString(R.string.DownloadingUpdate) + NekoConfig.getChannelLabel(), LocaleController.getString(R.string.Cancel), Integer.MAX_VALUE, () -> impl.cancelDownloadingUpdate());
+                                        if (b.getLayout() instanceof Bulletin.LottieLayout) {
+                                            ((Bulletin.LottieLayout) b.getLayout()).setIconPaddingBottom(2);
                                         }
-                                        b2.show();
+                                        b.show();
+                                        progBulletin[0] = b;
                                     } catch (Throwable ignored) {}
+                                }, 100);
+                                impl.downloadUpdate(apkUrl, () -> {
+                                    AndroidUtilities.runOnUIThread(() -> {
+                                        try { if (progBulletin[0] != null) progBulletin[0].hide(); } catch (Throwable ignored) {}
+                                    });
+                                    File apkFile = impl.getDownloadedUpdateFile();
+                                    if (apkFile != null && apkFile.exists()) {
+                                        AndroidUtilities.runOnUIThread(() -> {
+                                            try {
+                                                Bulletin b2 = BulletinFactory.global()
+                                                        .createSimpleBulletin(R.raw.ic_download,
+                                                                LocaleController.getString(R.string.UpdateDownloaded),
+                                                                LocaleController.getString(R.string.NekoUpdate),
+                                                                Integer.MAX_VALUE,
+                                                                () -> zxc.iconic.xenon.helpers.ApkInstaller.installUpdate(activity, apkFile));
+                                                if (b2.getLayout() instanceof Bulletin.LottieLayout) {
+                                                    ((Bulletin.LottieLayout) b2.getLayout()).setIconPaddingBottom(2);
+                                                }
+                                                b2.show();
+                                            } catch (Throwable ignored) {}
+                                        });
+                                    }
                                 });
-                            }
-                        });
-                        AndroidUtilities.runOnUIThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                if (impl.isDownloadingUpdate() && progBulletin[0] != null) {
-                                    try {
-                                        float prog = impl.getDownloadingUpdateProgress();
-                                        long total = impl.getDownloadTotalSize();
-                                        long downloaded = impl.getDownloadBytesDownloaded();
-                                        String text;
-                                        if (total > 0) {
-                                            String d = android.text.format.Formatter.formatShortFileSize(activity, downloaded);
-                                            String t = android.text.format.Formatter.formatShortFileSize(activity, total);
-                                            text = LocaleController.getString(R.string.DownloadingUpdate) + NekoConfig.getChannelLabel() + " " + d + " / " + t;
-                                        } else {
-                                            text = LocaleController.getString(R.string.DownloadingUpdate) + NekoConfig.getChannelLabel() + " " + (int)(prog * 100) + "%";
+                                AndroidUtilities.runOnUIThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        if (impl.isDownloadingUpdate() && progBulletin[0] != null) {
+                                            try {
+                                                float prog = impl.getDownloadingUpdateProgress();
+                                                long total = impl.getDownloadTotalSize();
+                                                long downloaded = impl.getDownloadBytesDownloaded();
+                                                String text;
+                                                if (total > 0) {
+                                                    String d = android.text.format.Formatter.formatShortFileSize(activity, downloaded);
+                                                    String t = android.text.format.Formatter.formatShortFileSize(activity, total);
+                                                    text = LocaleController.getString(R.string.DownloadingUpdate) + NekoConfig.getChannelLabel() + " " + d + " / " + t;
+                                                } else {
+                                                    text = LocaleController.getString(R.string.DownloadingUpdate) + NekoConfig.getChannelLabel() + " " + (int)(prog * 100) + "%";
+                                                }
+                                                ((Bulletin.LottieLayout) progBulletin[0].getLayout()).textView.setText(text);
+                                            } catch (Throwable ignored) {}
+                                            AndroidUtilities.runOnUIThread(this, 500);
                                         }
-                                        ((Bulletin.LottieLayout) progBulletin[0].getLayout()).textView.setText(text);
-                                    } catch (Throwable ignored) {}
-                                    AndroidUtilities.runOnUIThread(this, 500);
-                                }
-                            }
-                        }, 500);
-                    });
-                    dialog.show();
+                                    }
+                                }, 500);
+                            });
+                            dialog.show();
+                        });
+                    }, "CommitLog").start();
                 }
 
                 @Override
@@ -648,4 +668,135 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity implements Fa
             }
         }, 500);
     }
+
+    private static String fetchCommitLog(String tagName, String releaseBody) {
+        String sinceHash = BuildConfig.GIT_COMMIT_SHORT;
+        Log.d("XENON_CMT", "sinceHash=" + sinceHash);
+        if (TextUtils.isEmpty(sinceHash) || "unknown".equals(sinceHash)) {
+            Log.d("XENON_CMT", "sinceHash empty, returning null");
+            return null;
+        }
+
+        String releaseRef = null;
+        String branch = null;
+        if (!TextUtils.isEmpty(releaseBody)) {
+            Log.d("XENON_CMT", "releaseBody=" + releaseBody.substring(0, Math.min(200, releaseBody.length())));
+            for (String line : releaseBody.split("\n")) {
+                String trimmed = line.trim();
+                // Handle both plain "Short Hash:" and Markdown "- **Short Hash:**"
+                if (trimmed.contains("Short Hash:")) {
+                    int colonIdx = trimmed.indexOf("Short Hash:") + "Short Hash:".length();
+                    releaseRef = trimmed.substring(colonIdx).trim().replace("`", "");
+                    Log.d("XENON_CMT", "found Short Hash: " + releaseRef);
+                } else if (trimmed.contains("Branch:")) {
+                    int colonIdx = trimmed.indexOf("Branch:") + "Branch:".length();
+                    branch = trimmed.substring(colonIdx).trim().replace("`", "");
+                    Log.d("XENON_CMT", "found Branch: " + branch);
+                }
+            }
+        } else {
+            Log.d("XENON_CMT", "releaseBody is null");
+        }
+        if (TextUtils.isEmpty(releaseRef) && !TextUtils.isEmpty(tagName)) {
+            String tag = tagName;
+            if (tag.toLowerCase().startsWith(zxc.iconic.xenon.helpers.remote.GitHubUpdateHelper.POSRAL_TAG_PREFIX)) {
+                tag = tag.substring(zxc.iconic.xenon.helpers.remote.GitHubUpdateHelper.POSRAL_TAG_PREFIX.length());
+            }
+            releaseRef = tag.trim();
+            Log.d("XENON_CMT", "fallback to tag: " + releaseRef);
+        }
+        if (TextUtils.isEmpty(releaseRef)) {
+            Log.d("XENON_CMT", "releaseRef empty, returning null");
+            return null;
+        }
+
+        boolean posral = zxc.iconic.xenon.helpers.remote.GitHubUpdateHelper.CHANNEL_POSRAL.equalsIgnoreCase(BuildConfig.BUILD_CHANNEL);
+        if (TextUtils.isEmpty(branch)) {
+            branch = posral ? "ayu-features" : "master";
+            Log.d("XENON_CMT", "branch fallback: " + branch);
+        }
+
+        Log.d("XENON_CMT", "fetching commits: sha=" + branch + " ref=" + releaseRef);
+
+        // If release ref equals embedded hash, no new commits
+        String localLower = sinceHash.trim().toLowerCase();
+        String releaseLower = releaseRef.trim().toLowerCase();
+        if (localLower.startsWith(releaseLower) || releaseLower.startsWith(localLower)) {
+            Log.d("XENON_CMT", "release ref matches embedded hash, no new commits");
+            return null;
+        }
+
+        try {
+            URL url = new URL("https://api.github.com/repos/sinkclose/Xenon/commits"
+                    + "?sha=" + URLEncoder.encode(branch, "UTF-8")
+                    + "&per_page=100");
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("Accept", "application/vnd.github+json");
+            connection.setRequestProperty("User-Agent", "Xenon-Updater/" + BuildConfig.VERSION_NAME);
+            connection.setConnectTimeout(10000);
+            connection.setReadTimeout(10000);
+            int code = connection.getResponseCode();
+            Log.d("XENON_CMT", "HTTP response code: " + code);
+            if (code != 200) {
+                connection.disconnect();
+                return null;
+            }
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(connection.getInputStream(), "UTF-8"));
+            StringBuilder sb = new StringBuilder(4096);
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+            reader.close();
+            connection.disconnect();
+
+            String json = sb.toString();
+            Log.d("XENON_CMT", "response length: " + json.length());
+
+            StringBuilder result = new StringBuilder();
+            JSONArray arr = new JSONArray(json);
+            Log.d("XENON_CMT", "commits array length: " + arr.length());
+            String localLower = sinceHash.trim().toLowerCase();
+            String releaseLower = releaseRef.trim().toLowerCase();
+            boolean collecting = false;
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject obj = arr.getJSONObject(i);
+                String sha = obj.optString("sha", "");
+                if (sha.isEmpty()) continue;
+                String shaLower = sha.trim().toLowerCase();
+
+                // Stop at embedded hash
+                if (shaLower.startsWith(localLower) || localLower.startsWith(shaLower)) {
+                    Log.d("XENON_CMT", "found embedded hash, stopping. i=" + i + " sha=" + sha.substring(0, Math.min(7, sha.length())));
+                    break;
+                }
+
+                // Start collecting from release commit
+                if (!collecting) {
+                    if (shaLower.startsWith(releaseLower) || releaseLower.startsWith(shaLower)) {
+                        collecting = true;
+                        Log.d("XENON_CMT", "found release ref, start collecting. i=" + i + " sha=" + sha.substring(0, Math.min(7, sha.length())));
+                    } else {
+                        continue;
+                    }
+                }
+
+                String shortHash = sha.length() >= 7 ? sha.substring(0, 7) : sha;
+                JSONObject commitObj = obj.optJSONObject("commit");
+                String msg = commitObj != null ? commitObj.optString("message", "") : "";
+                String firstLine = msg.isEmpty() ? "" : msg.split("\n", 2)[0].trim();
+                if (result.length() > 0) result.append('\n');
+                result.append(shortHash).append(": ").append(firstLine);
+            }
+            Log.d("XENON_CMT", "result length: " + result.length() + " collecting=" + collecting);
+            return result.length() > 0 ? result.toString() : null;
+        } catch (Exception e) {
+            Log.d("XENON_CMT", "exception: " + e.getMessage());
+            FileLog.e("fetchCommitLog", e);
+            return null;
+        }
+    }
+
 }
