@@ -181,3 +181,13 @@
 -keep class org.luaj.vm2.** { *; }
 -keepclassmembers class org.luaj.vm2.** { *; }
 -dontwarn org.luaj.vm2.**
+
+# R8: Missing classes when minifying release build
+-dontwarn com.google.android.gms.internal.location.**
+-keep class com.google.android.gms.internal.location.** { *; }
+-dontwarn android.support.v4.app.NotificationCompat$Builder
+-keep class android.support.v4.app.NotificationCompat$Builder { *; }
+-dontwarn javax.script.**
+-keep class javax.script.** { *; }
+-dontwarn org.apache.commons.text.**
+-keep class org.apache.commons.text.** { *; }*
