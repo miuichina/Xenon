@@ -5,6 +5,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.util.TypedValue;
+
+import androidx.core.content.FileProvider;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -737,6 +739,25 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
                 }
                 if (loaded != null) {
                     hostActivity().presentFragment(new PluginSettingsActivity().setPlugin(loaded));
+                }
+            });
+
+            // Share button: send plugin file via any app (Telegram, etc.).
+            cell.getShareButton().setOnClickListener(v -> {
+                Activity a = hostActivity().getParentActivity();
+                if (a == null) return;
+                try {
+                    File pluginFile = new File(PluginManager.getPluginsDir(), info.fileName);
+                    Uri uri = FileProvider.getUriForFile(a,
+                            a.getPackageName() + ".provider", pluginFile);
+                    Intent shareIntent = new Intent(Intent.ACTION_SEND);
+                    shareIntent.setType("application/octet-stream");
+                    shareIntent.putExtra(Intent.EXTRA_STREAM, uri);
+                    shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    a.startActivity(Intent.createChooser(shareIntent,
+                            LocaleController.getString(R.string.ShareFile)));
+                } catch (Exception e) {
+                    FileLog.e(e);
                 }
             });
 

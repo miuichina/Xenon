@@ -42,6 +42,7 @@ public class PluginCardCell extends FrameLayout {
     private TextView descView;
     private View toggleSwitch;
     private View settingsButton;
+    private View shareButton;
     private View deleteButton;
 
     public PluginCardCell(Context context, Theme.ResourcesProvider resourcesProvider) {
@@ -89,6 +90,7 @@ public class PluginCardCell extends FrameLayout {
 
         LinearLayout content = new LinearLayout(context);
         content.setOrientation(LinearLayout.VERTICAL);
+        content.setClipChildren(false);
 
         // Title row: name + version (gray) on the left, switch on the right.
         // Using our own TextViews keeps the name and description aligned on the
@@ -121,13 +123,12 @@ public class PluginCardCell extends FrameLayout {
         sw.setColors(Theme.key_switchTrack, Theme.key_switchTrackChecked,
                 Theme.key_windowBackgroundWhite, Theme.key_windowBackgroundWhite);
         toggleSwitch = sw;
-        // FIXED size (standard Telegram switch 37x20dp). Using WRAP_CONTENT made
-        // the switch's measured width vary between cards, so it appeared to jump
-        // horizontally. A fixed size keeps it in the exact same spot on every
-        // card. No right margin — the cell already has 16dp padding, so the
-        // switch's right edge lines up with the text's left inset (symmetric).
+        // Fixed size (37x26dp) so the switch is in the exact same spot on every
+        // card. Extra height prevents vertical clipping of the track/thumb.
+        // No right margin — the cell already has 16dp padding, so the switch's
+        // right edge lines up with the text's left inset (symmetric).
         titleRow.addView(toggleSwitch, LayoutHelper.createLinear(
-                37, 20, Gravity.CENTER_VERTICAL, 0, 0, 0, 0));
+                37, 26, Gravity.CENTER_VERTICAL, 0, 0, 0, 0));
 
         content.addView(titleRow, LayoutHelper.createLinear(
                 LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
@@ -170,6 +171,12 @@ public class PluginCardCell extends FrameLayout {
                 Theme.key_windowBackgroundWhiteBlackText);
         actions.addView(settingsButton, LayoutHelper.createLinear(
                 LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, 0, 0, 12, 0));
+
+        shareButton = makeIconButton(context, R.drawable.msg_share,
+                LocaleController.getString(R.string.ShareFile),
+                Theme.key_windowBackgroundWhiteBlackText);
+        actions.addView(shareButton, LayoutHelper.createLinear(
+                LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, 12, 0, 0, 0));
 
         deleteButton = makeIconButton(context, R.drawable.msg_delete,
                 LocaleController.getString(R.string.Delete),
@@ -243,6 +250,10 @@ public class PluginCardCell extends FrameLayout {
 
     public View getSettingsButton() {
         return settingsButton;
+    }
+
+    public View getShareButton() {
+        return shareButton;
     }
 
     public View getDeleteButton() {
