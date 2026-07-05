@@ -164,7 +164,6 @@
     public boolean isLayoutSuppressed();
 }
 
--repackageclasses
 -allowaccessmodification
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
