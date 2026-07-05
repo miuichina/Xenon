@@ -190,4 +190,4 @@
 -dontwarn javax.script.**
 -keep class javax.script.** { *; }
 -dontwarn org.apache.commons.text.**
--keep class org.apache.commons.text.** { *; }*
+-keep class org.apache.commons.text.** { *; }
