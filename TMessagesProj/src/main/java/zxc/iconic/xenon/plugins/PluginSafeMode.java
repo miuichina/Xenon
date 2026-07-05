@@ -538,7 +538,7 @@ public final class PluginSafeMode {
         }
     }
 
-    private static String buildPluginFailureReport(String fileName, String stage, Throwable t) {
+    public static String buildPluginFailureReport(String fileName, String stage, Throwable t) {
         StringBuilder sb = new StringBuilder();
         sb.append("Xenon plugin failure report\n");
         sb.append("Plugin: ").append(fileName).append("\n");
