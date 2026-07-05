@@ -174,7 +174,7 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
         ButtonWithCounterView enableBtn = new ButtonWithCounterView(activity, resourcesProvider).setRound();
         ScaleStateListAnimator.apply(enableBtn, 0.02f, 1.5f);
         enableBtn.setText(LocaleController.getString(R.string.PluginGodModeEnable), false);
-        enableBtn.setTimer(60, () -> {});
+        enableBtn.setTimer(20, () -> {});
         final BottomSheet[] sheetRef = new BottomSheet[1];
         enableBtn.setOnClickListener(v -> {
             if (enableBtn.isTimerActive()) {
