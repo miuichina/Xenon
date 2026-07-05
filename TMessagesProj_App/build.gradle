@@ -44,7 +44,7 @@ android {
         release {
             minifyEnabled true
             def buildingBundle = gradle.startParameter.taskNames.any { it.startsWith("bundle") }
-            shrinkResources !buildingBundle
+            shrinkResources false
             vcsInfo.include false
             if (localProperties.getProperty("storeFile") != null) {
                 signingConfig signingConfigs.sign

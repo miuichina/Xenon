@@ -173,6 +173,11 @@
 -dontwarn android.support.annotation.*
 -dontwarn androidx.compose.**
 
+# Plugin system: Lua scripts access ANY Telegram class via luajava reflection.
+# Without this, R8 strips methods/fields that appear unused from Java but are
+# called from Lua via bindClass/bindClassMember/field access.
+-keep class org.telegram.** { *; }
+
 # luaj-jse: the Lua platform loads its standard libraries (Bit32Lib, BaseLib,
 # MathLib, etc. and their inner classes like Bit32LibV) via reflection from
 # JsePlatform.standardGlobals(). R8 sees no static references to those classes
