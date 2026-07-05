@@ -164,6 +164,7 @@
     public boolean isLayoutSuppressed();
 }
 
+-dontobfuscate
 -allowaccessmodification
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
