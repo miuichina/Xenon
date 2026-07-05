@@ -559,8 +559,19 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
                                 LocaleController.getString(R.string.PluginsInstallSuccess)).show();
                     }
                 } else {
-                    BulletinFactory.global().createErrorBulletin(
-                            LocaleController.getString(R.string.PluginsInstallFailed)).show();
+                    String errorText = PluginManager.getLastParseError();
+                    if (errorText != null) {
+                        BulletinFactory.global().createSimpleBulletin(R.raw.chats_infotip,
+                                LocaleController.getString(R.string.PluginsInstallFailed),
+                                LocaleController.getString(R.string.CopyError), () -> {
+                                    AndroidUtilities.addToClipboard(errorText);
+                                    BulletinFactory.global().createCopyBulletin(
+                                            LocaleController.getString(R.string.ErrorCopied)).show();
+                                }).show();
+                    } else {
+                        BulletinFactory.global().createErrorBulletin(
+                                LocaleController.getString(R.string.PluginsInstallFailed)).show();
+                    }
                 }
             });
         });

@@ -81,6 +81,10 @@ dependencies {
     // code, runs scripts (plugins) loaded at runtime without recompilation.
     implementation 'org.luaj:luaj-jse:3.0.1'
 
+    // Pine: in-process ART hooking — lets plugins intercept any Java method
+    // without adding explicit fire-points. Wrapped in try-catch + quarantine.
+    implementation 'top.canyie.pine:core:0.3.0'
+
     implementation 'androidx.activity:activity:1.13.0'
     implementation 'androidx.fragment:fragment:1.8.9'
     implementation 'androidx.core:core:1.19.0'

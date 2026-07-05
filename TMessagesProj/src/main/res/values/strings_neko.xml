@@ -529,6 +529,8 @@
     <string name="InuDisableScrimBlur">Disable scrim blur</string>
     <string name="InuDisableScrimBlurInfo">Removes blur from the bottom sheet background</string>
     <string name="InuDisableGlassGlare">Disable glass glare</string>
+    <string name="CopyError">Copy error</string>
+    <string name="ErrorCopied">Error copied</string>
 </resources>
 
 

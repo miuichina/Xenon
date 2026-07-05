@@ -36,10 +36,18 @@ import org.telegram.messenger.R;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.Utilities;
 
+import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
+import top.canyie.pine.Pine;
+import top.canyie.pine.callback.MethodHook;
+
+import org.luaj.vm2.lib.jse.CoerceJavaToLua;
+import org.luaj.vm2.lib.jse.CoerceLuaToJava;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.TLObject;
 import org.telegram.tgnet.TLRPC;
@@ -121,6 +129,22 @@ public class PluginApi {
     }
 
     private static final Map<String, MessageWatcher> watchers = new ConcurrentHashMap<>();
+
+    // Active Pine hooks per plugin, so they can be unhooked when a plugin stops.
+    private static final Map<String, List<MethodHook.Unhook>> pineHooks = new ConcurrentHashMap<>();
+
+    // NotificationCenter observers per plugin, for cleanup on stop.
+    private static final class NcObserver {
+        final NotificationCenter.NotificationCenterDelegate delegate;
+        final int id;
+        final int account;
+        NcObserver(NotificationCenter.NotificationCenterDelegate delegate, int id, int account) {
+            this.delegate = delegate;
+            this.id = id;
+            this.account = account;
+        }
+    }
+    private static final Map<String, List<NcObserver>> ncObservers = new ConcurrentHashMap<>();
 
     static void startMessageWatcher(String key, long[] chats, int interval, int threshold, LuaValue callback) {
         stopMessageWatcher(key);
@@ -373,6 +397,22 @@ public class PluginApi {
             }
             return false;
         });
+        // Unhook all Pine hooks for this plugin
+        List<MethodHook.Unhook> hooks = pineHooks.remove(pluginFileName);
+        if (hooks != null) {
+            for (MethodHook.Unhook hook : hooks) {
+                hook.unhook();
+            }
+            Log.d("XenonPlugin", "Removed " + hooks.size() + " Pine hooks for " + pluginFileName);
+        }
+        // Remove all NotificationCenter observers for this plugin
+        List<NcObserver> obs = ncObservers.remove(pluginFileName);
+        if (obs != null) {
+            for (NcObserver o : obs) {
+                NotificationCenter.getInstance(o.account).removeObserver(o.delegate, o.id);
+            }
+            Log.d("XenonPlugin", "Removed " + obs.size() + " NC observers for " + pluginFileName);
+        }
     }
 
     static void stopAll() {
@@ -380,6 +420,20 @@ public class PluginApi {
         timers.clear();
         watchers.values().forEach(w -> w.running = false);
         watchers.clear();
+        // Unhook all Pine hooks
+        for (List<MethodHook.Unhook> hooks : pineHooks.values()) {
+            for (MethodHook.Unhook hook : hooks) {
+                hook.unhook();
+            }
+        }
+        pineHooks.clear();
+        // Remove all NC observers
+        for (List<NcObserver> obs : ncObservers.values()) {
+            for (NcObserver o : obs) {
+                NotificationCenter.getInstance(o.account).removeObserver(o.delegate, o.id);
+            }
+        }
+        ncObservers.clear();
     }
 
     static void setCurrentPluginFileName(String name) {
@@ -727,6 +781,186 @@ public class PluginApi {
                 int n = uargs.narg();
                 if (n >= 4 && uargs.arg(1).isnumber() && uargs.arg(2).isnumber() && uargs.arg(3).isnumber() && uargs.arg(4).isfunction()) {
                     getMessagesFromUser((long) uargs.arg(1).todouble(), (int) uargs.arg(2).todouble(), (int) uargs.arg(3).todouble(), uargs.arg(4));
+                }
+                return LuaValue.NIL;
+            }
+        });
+        api.set("hookMethod", new VarArgFunction() {
+            @Override
+            public LuaValue invoke(Varargs args) {
+                if (!zxc.iconic.xenon.NekoConfig.pluginGodMode) {
+                    Log.e("XenonPlugin", "hookMethod requires God Mode!");
+                    return LuaValue.NIL;
+                }
+                String className = args.arg(1).checkjstring();
+                String methodName = args.arg(2).checkjstring();
+                LuaTable callbackTable = args.arg(3).checktable();
+                try {
+                    Class<?> clazz = Class.forName(className);
+                    Method targetMethod = null;
+                    for (Method m : clazz.getDeclaredMethods()) {
+                        if (m.getName().equals(methodName)) {
+                            targetMethod = m;
+                            break;
+                        }
+                    }
+                    if (targetMethod == null) {
+                        Log.e("XenonPlugin", "hookMethod: " + methodName + " not found in " + className);
+                        return LuaValue.NIL;
+                    }
+                    targetMethod.setAccessible(true);
+                    MethodHook.Unhook hook = Pine.hook(targetMethod, new MethodHook() {
+                        @Override
+                        public void beforeCall(Pine.CallFrame callFrame) throws Throwable {
+                            LuaValue beforeCb = callbackTable.get("before");
+                            if (beforeCb.isfunction()) {
+                                try {
+                                    PluginManager.markHookStart("Pine_before_" + methodName);
+                                    LuaTable luaArgs = new LuaTable();
+                                    if (callFrame.args != null) {
+                                        for (int i = 0; i < callFrame.args.length; i++) {
+                                            luaArgs.set(i + 1, callFrame.args[i] != null
+                                                    ? CoerceJavaToLua.coerce(callFrame.args[i])
+                                                    : LuaValue.NIL);
+                                        }
+                                    }
+                                    LuaValue thisObj = callFrame.thisObject != null
+                                            ? CoerceJavaToLua.coerce(callFrame.thisObject)
+                                            : LuaValue.NIL;
+                                    LuaValue result = beforeCb.call(thisObj, luaArgs);
+                                    if (!result.isnil()) {
+                                        callFrame.setResult(CoerceLuaToJava.coerce(result, Object.class));
+                                    }
+                                } catch (Throwable t) {
+                                    PluginManager.getInstance().quarantineFile(pluginFileName, "Pine beforeCall: " + methodName, t);
+                                } finally {
+                                    PluginManager.markHookEnd();
+                                }
+                            }
+                        }
+                        @Override
+                        public void afterCall(Pine.CallFrame callFrame) throws Throwable {
+                            LuaValue afterCb = callbackTable.get("after");
+                            if (afterCb.isfunction()) {
+                                try {
+                                    PluginManager.markHookStart("Pine_after_" + methodName);
+                                    LuaValue resObj = callFrame.getResult() != null
+                                            ? CoerceJavaToLua.coerce(callFrame.getResult())
+                                            : LuaValue.NIL;
+                                    LuaValue thisObj = callFrame.thisObject != null
+                                            ? CoerceJavaToLua.coerce(callFrame.thisObject)
+                                            : LuaValue.NIL;
+                                    LuaValue result = afterCb.call(thisObj, resObj);
+                                    if (!result.isnil()) {
+                                        callFrame.setResult(CoerceLuaToJava.coerce(result, Object.class));
+                                    }
+                                } catch (Throwable t) {
+                                    PluginManager.getInstance().quarantineFile(pluginFileName, "Pine afterCall: " + methodName, t);
+                                } finally {
+                                    PluginManager.markHookEnd();
+                                }
+                            }
+                        }
+                    });
+                    pineHooks.computeIfAbsent(pluginFileName, k -> new CopyOnWriteArrayList<>()).add(hook);
+                    return new ZeroArgFunction() {
+                        @Override
+                        public LuaValue call() {
+                            hook.unhook();
+                            List<MethodHook.Unhook> list = pineHooks.get(pluginFileName);
+                            if (list != null) list.remove(hook);
+                            return LuaValue.NIL;
+                        }
+                    };
+                } catch (Exception e) {
+                    FileLog.e(e);
+                    Log.e("XenonPlugin", "hookMethod exception: " + e.getMessage());
+                    return LuaValue.NIL;
+                }
+            }
+        });
+        api.set("observeNotification", new VarArgFunction() {
+            @Override
+            public LuaValue invoke(Varargs args) {
+                Varargs uargs = args.subargs(1);
+                int n = uargs.narg();
+                if (n < 2) return LuaValue.NIL;
+                int notificationId = uargs.arg(1).checkint();
+                LuaValue callback = uargs.arg(2);
+                if (!callback.isfunction()) return LuaValue.NIL;
+                Log.d("XenonPlugin", "observeNotification: id=" + notificationId + " plugin=" + pluginFileName);
+                final int account = UserConfig.selectedAccount;
+                NotificationCenter.NotificationCenterDelegate delegate = (id, acc, args2) -> {
+                    if (id != notificationId) return;
+                    AndroidUtilities.runOnUIThread(() -> {
+                        LuaTable luaArgs = new LuaTable();
+                        if (args2 != null) {
+                            for (int i = 0; i < args2.length; i++) {
+                                luaArgs.set(i + 1, args2[i] != null
+                                        ? CoerceJavaToLua.coerce(args2[i])
+                                        : LuaValue.NIL);
+                            }
+                        }
+                        try {
+                            callback.call(luaArgs);
+                        } catch (Throwable t) {
+                            FileLog.e("ObserveNotification callback error", t);
+                            PluginManager.getInstance().quarantineFile(pluginFileName, "observeNotification " + notificationId, t);
+                        }
+                    });
+                };
+                NotificationCenter.getInstance(account).addObserver(delegate, notificationId);
+                NcObserver entry = new NcObserver(delegate, notificationId, account);
+                ncObservers.computeIfAbsent(pluginFileName, k -> new CopyOnWriteArrayList<>()).add(entry);
+                return new ZeroArgFunction() {
+                    @Override
+                    public LuaValue call() {
+                        NotificationCenter.getInstance(account).removeObserver(delegate, notificationId);
+                        List<NcObserver> list = ncObservers.get(pluginFileName);
+                        if (list != null) list.remove(entry);
+                        return LuaValue.NIL;
+                    }
+                };
+            }
+        });
+        api.set("getPrivateField", new TwoArgFunction() {
+            @Override
+            public LuaValue call(LuaValue target, LuaValue fieldName) {
+                try {
+                    Object obj = CoerceLuaToJava.coerce(target, Object.class);
+                    String name = fieldName.checkjstring();
+                    Class<?> clazz = obj instanceof Class ? (Class<?>) obj : obj.getClass();
+                    Object instance = obj instanceof Class ? null : obj;
+                    java.lang.reflect.Field field = findField(clazz, name);
+                    if (field != null) {
+                        Object val = field.get(instance);
+                        return CoerceJavaToLua.coerce(val);
+                    }
+                } catch (Throwable t) {
+                    FileLog.e(t);
+                }
+                return LuaValue.NIL;
+            }
+        });
+        api.set("setPrivateField", new VarArgFunction() {
+            @Override
+            public LuaValue invoke(Varargs args) {
+                Varargs uargs = args.subargs(1);
+                if (uargs.narg() >= 3) {
+                    try {
+                        Object obj = CoerceLuaToJava.coerce(uargs.arg(1), Object.class);
+                        String name = uargs.arg(2).checkjstring();
+                        LuaValue luaVal = uargs.arg(3);
+                        Class<?> clazz = obj instanceof Class ? (Class<?>) obj : obj.getClass();
+                        Object instance = obj instanceof Class ? null : obj;
+                        java.lang.reflect.Field field = findField(clazz, name);
+                        if (field != null) {
+                            Object javaVal = CoerceLuaToJava.coerce(luaVal, field.getType());
+                            field.set(instance, javaVal);
+                        }
+                    } catch (Throwable t) {
+                        FileLog.e(t);
+                    }
                 }
                 return LuaValue.NIL;
             }
@@ -1711,6 +1945,20 @@ public class PluginApi {
         }
     }
 
+    private static java.lang.reflect.Field findField(Class<?> clazz, String name) {
+        Class<?> current = clazz;
+        while (current != null) {
+            try {
+                java.lang.reflect.Field field = current.getDeclaredField(name);
+                field.setAccessible(true);
+                return field;
+            } catch (NoSuchFieldException e) {
+                current = current.getSuperclass();
+            }
+        }
+        return null;
+    }
+
     public static int getIconDrawable(String iconName) {
         switch (iconName) {
             case "add": return org.telegram.messenger.R.drawable.msg_addcontact;
@@ -1795,6 +2043,28 @@ public class PluginApi {
                     };
                 }
                 BulletinFactory.global().createSimpleBulletin(R.raw.chats_infotip, text, button, action).show();
+            } catch (Exception e) {
+                FileLog.e(e);
+            }
+        });
+    }
+
+    /**
+     * Show a bulletin with a "Copy error" button. Tapping the button copies
+     * {@code copyText} to the clipboard and shows a brief "Copied" toast.
+     * <p>
+     * Intended for the {@link PluginManager#quarantineFile no-activity fallback}
+     * path, where we cannot show a full BottomSheet.
+     */
+    static void showBulletinError(final String text, final String copyText) {
+        org.telegram.messenger.AndroidUtilities.runOnUIThread(() -> {
+            try {
+                BulletinFactory.global().createSimpleBulletin(R.raw.chats_infotip, text,
+                        LocaleController.getString(R.string.CopyError), () -> {
+                            AndroidUtilities.addToClipboard(copyText);
+                            BulletinFactory.global().createCopyBulletin(
+                                    LocaleController.getString(R.string.ErrorCopied)).show();
+                        }).show();
             } catch (Exception e) {
                 FileLog.e(e);
             }

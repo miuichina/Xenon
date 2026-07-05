@@ -465,6 +465,7 @@
     <string name="PluginGodModeDesc">Выдать всем плагинам все скоупы. НЕ ослабляет песочницу.</string>
     <string name="PluginGodModeWarn">God Mode позволяет любому плагину отправлять, удалять и читать сообщения независимо от заявленных скоупов. Песочница Lua (файловая система, процессы, загрузка кода) остаётся заблокированной. Включайте только для плагинов, которым полностью доверяете. Продолжить?</string>
     <string name="PluginGodModeCountdown">Подождите %dс…</string>
+    <string name="PluginGodModeEnable">Включить</string>
     <string name="PluginsUpdate">Обновление</string>
     <string name="PluginsVersion">Версия</string>
     <string name="PluginsSafeModeTitle">Безопасный режим</string>
@@ -523,5 +524,7 @@
     <string name="InuDisableScrimBlur">Отключить размытие фона</string>
     <string name="InuDisableScrimBlurInfo">Убирает размытие фона у bottom sheet</string>
     <string name="InuDisableGlassGlare">Отключить блики стекла</string>
+    <string name="CopyError">Копировать ошибку</string>
+    <string name="ErrorCopied">Ошибка скопирована</string>
 </resources>
 

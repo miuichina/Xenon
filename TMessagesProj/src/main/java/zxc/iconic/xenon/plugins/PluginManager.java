@@ -154,14 +154,14 @@ public class PluginManager {
     }
 
     /** Mark that a hook is about to run (called by fire/fireReturn). */
-    private static void markHookStart(String hookName) {
+    public static void markHookStart(String hookName) {
         hookInProgress = hookName;
         hookStartTimestamp = System.currentTimeMillis();
         startWatchdogIfNeeded();
     }
 
     /** Mark that a hook finished (called by fire/fireReturn). */
-    private static void markHookEnd() {
+    public static void markHookEnd() {
         hookStartTimestamp = 0;
         hookInProgress = null;
     }
@@ -380,7 +380,8 @@ public class PluginManager {
      */
     public LoadedPlugin installFrom(File source) {
         if (source == null || !source.exists()) {
-            Log.e(TAG, "installFrom: source file is null or doesn't exist");
+            lastParseError = "source file is null or doesn't exist";
+            Log.e(TAG, "installFrom: " + lastParseError);
             return null;
         }
         Log.d(TAG, "installFrom: copying " + source.getName());
@@ -391,13 +392,15 @@ public class PluginManager {
             if (err != null) {
                 Log.e(TAG, "installFrom: plugin rejected: " + err);
             } else {
-                Log.e(TAG, "installFrom: plugin must have a plugin_id (format: something_something)");
+                lastParseError = "plugin must have a plugin_id (format: something_something)";
+                Log.e(TAG, "installFrom: " + lastParseError);
             }
             return null;
         }
         File dest = new File(getPluginsDir(), source.getName());
         if (!dest.getName().endsWith(PLUGIN_EXT)) {
-            Log.e(TAG, "installFrom: " + dest.getName() + " doesn't end with " + PLUGIN_EXT);
+            lastParseError = dest.getName() + " doesn't end with " + PLUGIN_EXT;
+            Log.e(TAG, "installFrom: " + lastParseError);
             return null;
         }
         // If source is already inside the plugins dir, copy would truncate itself
@@ -421,7 +424,8 @@ public class PluginManager {
             Log.d(TAG, "installFrom: copied to " + dest.getAbsolutePath());
         } catch (IOException e) {
             FileLog.e(e);
-            Log.e(TAG, "installFrom: copy failed - " + e.getMessage());
+            lastParseError = "copy failed - " + e.getMessage();
+            Log.e(TAG, "installFrom: " + lastParseError);
             return null;
         }
         LoadedPlugin plugin = loadFile(dest);
@@ -488,7 +492,8 @@ public class PluginManager {
             source = full.length > 0 ? new String(full, "UTF-8") : "";
             Log.d(TAG, "loadFile: content (" + full.length + " bytes)");
         } catch (Exception e) {
-            Log.e(TAG, "loadFile: error reading file: " + e.getMessage());
+            lastParseError = "error reading file: " + e.getMessage();
+            Log.e(TAG, "loadFile: " + lastParseError);
             return null;
         }
         Globals globals = createSandboxGlobals();
@@ -516,7 +521,8 @@ public class PluginManager {
             }
         } catch (LuaError e) {
             FileLog.e("Failed to load plugin " + file.getName(), e);
-            Log.e(TAG, "loadFile: " + file.getName() + " failed - " + e.getMessage());
+            lastParseError = e.getMessage();
+            Log.e(TAG, "loadFile: " + file.getName() + " failed - " + lastParseError);
             return null;
         }
         // Read metadata from Lua globals
@@ -760,18 +766,19 @@ public class PluginManager {
      * again, writes a full crash log, and shows a sheet so the user can copy the
      * exact error (the full stack trace, not a truncated class name).
      */
-    private void quarantineFile(String fileName, String stage, Throwable t) {
+    public void quarantineFile(String fileName, String stage, Throwable t) {
         try {
             getPrefs().edit().putBoolean("plugin_enabled_" + fileName, false).apply();
             FileLog.e("Plugin quarantined: " + fileName + " — " + stage, t);
+            String report = PluginSafeMode.buildPluginFailureReport(fileName, stage, t);
             android.app.Activity activity = getCurrentActivity();
             if (activity != null) {
                 PluginSafeMode.reportPluginFailure(activity, fileName, stage, t);
             } else {
-                // No activity available — fall back to a plain bulletin.
+                // No activity available — show a bulletin with a copy button.
                 String msg = t != null ? t.getClass().getSimpleName() : stage;
-                PluginApi.showBulletin("Plugin " + fileName
-                        + " was disabled: " + msg);
+                PluginApi.showBulletinError("Plugin " + fileName
+                        + " was disabled: " + msg, report);
             }
         } catch (Exception ignored) {
         }
@@ -977,16 +984,67 @@ public class PluginManager {
      * present), then strips everything that can touch the filesystem, spawn
      * processes, load code, or escape the interpreter. The session token and
      * phone number live in {@code userconfig.xml}; with {@code io}/
-     * {@code os.execute} gone a plugin cannot read them. This is NOT weakened
-     * by God Mode — the sandbox is absolute.
+     * {@code os.execute} gone a plugin cannot read them.
+     * <p>When God Mode is on, {@code luajava} is left in place so that plugins
+     * can reflect on any Java class. This is the trade-off: maximum power for
+     * maximum trust.
      */
+
+    /**
+     * Custom {@code luajava} library that overrides the default one when God
+     * Mode is enabled. The only change from the stock {@link
+     * org.luaj.vm2.lib.jse.LuajavaLib} is a smarter {@link #classForName}
+     * that tries the app's context classloader before falling back to the
+     * system one, so Android-internal classes like
+     * {@code org.telegram.ui.CameraScanActivity} can be resolved.
+     * <p>
+     * We deliberately do <b>not</b> override {@link
+     * org.luaj.vm2.lib.LibFunction#call(LuaValue, LuaValue)} / {@link
+     * org.luaj.vm2.lib.jse.LuajavaLib#invoke invoke} because the inherited
+     * INIT opcode (opcode 0 in {@code LuajavaLib.invoke}) already uses
+     * {@code this.getClass()} for the {@link #bind bind} call — so loading
+     * an instance of this subclass is sufficient to make all Lua-callable
+     * entries ({@code bindClass}, {@code newInstance}, {@code new},
+     * {@code createProxy}, {@code loadLib}) also instances of this
+     * subclass, which in turn means {@code classForName} is always the
+     * overridden version.
+     */
+    public static class XenonLuajavaLib extends org.luaj.vm2.lib.jse.LuajavaLib {
+        protected Class<?> classForName(String name) throws ClassNotFoundException {
+            try {
+                return Class.forName(name, true, Thread.currentThread().getContextClassLoader());
+            } catch (ClassNotFoundException e) {
+                try {
+                    if (org.telegram.messenger.ApplicationLoader.applicationContext != null) {
+                        return Class.forName(name, true, org.telegram.messenger.ApplicationLoader.applicationContext.getClassLoader());
+                    }
+                } catch (ClassNotFoundException ignored) {}
+                try {
+                    return Class.forName(name, true, PluginManager.class.getClassLoader());
+                } catch (ClassNotFoundException e3) {
+                    return super.classForName(name);
+                }
+            }
+        }
+    }
+
     private static Globals createSandboxGlobals() {
         Globals globals = JsePlatform.standardGlobals();
+        // If God Mode is on, replace the default luajava module with our
+        // custom XenonLuajavaLib (which overrides classForName to use the
+        // app context classloader). This MUST happen before "package" is
+        // removed below, because the INIT opcode of LuajavaLib tries to
+        // register itself in package.loaded.
+        if (NekoConfig.pluginGodMode) {
+            globals.load(new XenonLuajavaLib());
+        }
         // Filesystem / process / code-loading libs — remove entirely.
         globals.set("io", LuaValue.NIL);
         globals.set("package", LuaValue.NIL);
         globals.set("debug", LuaValue.NIL);
-        globals.set("luajava", LuaValue.NIL);
+        if (!NekoConfig.pluginGodMode) {
+            globals.set("luajava", LuaValue.NIL);
+        }
         globals.set("loadfile", LuaValue.NIL);
         globals.set("dofile", LuaValue.NIL);
         globals.set("load", LuaValue.NIL);
@@ -1193,6 +1251,19 @@ public class PluginManager {
                             }
                             case "header": {
                                 setting = new PluginSetting(PluginSetting.Type.HEADER, skey, sname, false, 0, null, 0, 0, 0, null, null);
+                                break;
+                            }
+                            case "list": {
+                                int def = (int) entry.get("default").checkdouble();
+                                LuaValue optsVal = entry.get("options");
+                                String[] opts = null;
+                                if (optsVal.istable()) {
+                                    opts = new String[optsVal.length()];
+                                    for (int o = 1; o <= optsVal.length(); o++) {
+                                        opts[o - 1] = optsVal.get(o).tojstring();
+                                    }
+                                }
+                                setting = new PluginSetting(PluginSetting.Type.LIST, skey, sname, false, def, null, 0, 0, 0, null, null, opts);
                                 break;
                             }
                         }
