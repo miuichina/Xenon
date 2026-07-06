@@ -419,6 +419,18 @@ public class ApplicationLoader extends Application {
     }
 
     public static void startPushService() {
+        if (zxc.iconic.xenon.NekoConfig.optimizedPushService) {
+            // Low-power mode: MTProto push connection only, no foreground service.
+            // Process can be killed by the OS. FCM wakes it up when a push arrives.
+            applicationContext.stopService(new Intent(applicationContext, NotificationsService.class));
+            for (int a = 0; a < UserConfig.MAX_ACCOUNT_COUNT; a++) {
+                if (UserConfig.getInstance(a).isClientActivated()) {
+                    MessagesController.getNotificationsSettings(a).edit().putBoolean("pushConnection", true).apply();
+                    ConnectionsManager.getInstance(a).setPushConnectionEnabled(true);
+                }
+            }
+            return;
+        }
         SharedPreferences preferences = MessagesController.getGlobalNotificationsSettings();
         boolean enabled;
         if (preferences.contains("pushService")) {

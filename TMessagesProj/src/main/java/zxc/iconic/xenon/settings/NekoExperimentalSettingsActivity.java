@@ -40,6 +40,7 @@ public class NekoExperimentalSettingsActivity extends BaseNekoSettingsActivity {
     private final int disableTypingRow = rowId++;
     private final int ghostModeRow = rowId++;
     private final int telegaDetectorRow = rowId++;
+    private final int optimizedPushServiceRow = rowId++;
 
     private final int liquidGlassRow = rowId++;
     private final int forceBlurLiquidGlassRow = rowId++;
@@ -67,6 +68,7 @@ public class NekoExperimentalSettingsActivity extends BaseNekoSettingsActivity {
         items.add(UItem.asCheck(disableTypingRow, LocaleController.getString(R.string.DisableTypingIndicator), LocaleController.getString(R.string.DisableTypingIndicatorDesc)).slug("disableTyping").setChecked(NekoConfig.disableTypingIndicator));
         items.add(UItem.asCheck(ghostModeRow, LocaleController.getString(R.string.GhostMode), LocaleController.getString(R.string.GhostModeDesc)).slug("ghostMode").setChecked(NekoConfig.ghostModeEnabled));
         items.add(UItem.asCheck(telegaDetectorRow, LocaleController.getString(R.string.TelegaDetectorEnabled), LocaleController.getString(R.string.TelegaDetectorHint)).slug("telegaDetector").setChecked(NekoConfig.telegaDetectorEnabled));
+        items.add(UItem.asCheck(optimizedPushServiceRow, LocaleController.getString(R.string.OptimizedPushService), LocaleController.getString(R.string.OptimizedPushServiceDesc)).slug("optimizedPushService").setChecked(NekoConfig.optimizedPushService));
         items.add(UItem.asShadow(null));
 
         if (android.os.Build.VERSION.SDK_INT >= 33) {
@@ -139,6 +141,11 @@ public class NekoExperimentalSettingsActivity extends BaseNekoSettingsActivity {
             NekoConfig.setTelegaDetectorEnabled(!NekoConfig.telegaDetectorEnabled);
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.telegaDetectorEnabled);
+            }
+        } else if (id == optimizedPushServiceRow) {
+            NekoConfig.toggleOptimizedPushService();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.optimizedPushService);
             }
         } else if (id == forceBlurLiquidGlassRow) {
             NekoConfig.toggleForceBlurLiquidGlass();

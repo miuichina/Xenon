@@ -197,6 +197,7 @@ public class NekoConfig {
     public static boolean aospTransition = false;
     public static boolean removeChatDelay = false;
     public static boolean showOnlineDotsInChat = false;
+    public static boolean optimizedPushService = false;
     private static final String XRAY_DEFAULT_CHECK_URL = "https://www.gstatic.com/generate_204";
 
     public static boolean xrayAppProxyEnabled = false;
@@ -427,6 +428,7 @@ public class NekoConfig {
             aospTransition = preferences.getBoolean("aospTransition", false);
             removeChatDelay = preferences.getBoolean("removeChatDelay", false);
             showOnlineDotsInChat = preferences.getBoolean("showOnlineDotsInChat", false);
+            optimizedPushService = preferences.getBoolean("optimizedPushService", false);
             roundedBulletin = preferences.getBoolean("roundedBulletin", false);
             nonIslandTabBars = preferences.getBoolean("nonIslandTabBars", false);
             nonIslandGlobalSearch = preferences.getBoolean("nonIslandGlobalSearch", false);
@@ -1642,6 +1644,18 @@ public class NekoConfig {
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("roundedBulletin", roundedBulletin);
         editor.apply();
+    }
+
+    public static void toggleOptimizedPushService() {
+        optimizedPushService = !optimizedPushService;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("optimizedPushService", optimizedPushService);
+        editor.apply();
+        try {
+            ApplicationLoader.startPushService();
+        } catch (Exception ignore) {
+        }
     }
 
     public static void toggleNonIslandTabBars() {
