@@ -426,6 +426,13 @@ public class PluginManager {
         }
         // Enable in prefs regardless of engine state
         getPrefs().edit().putBoolean("plugin_enabled_" + dest.getName(), true).apply();
+        // Parse plugin_id from the file (needed for removeByPluginId even when engine is off)
+        String newFileName = dest.getName();
+        String[] loadMeta = parseMetadata(dest);
+        String loadPluginId = (loadMeta != null && loadMeta.length > 2) ? loadMeta[2] : null;
+        if (loadPluginId != null) {
+            removeByPluginId(loadPluginId, newFileName);
+        }
         // If engine disabled, don't load — plugin activates when engine is turned on
         if (!isEnabled()) {
             lastInstallEngineOff = true;
@@ -434,7 +441,8 @@ public class PluginManager {
         }
         LoadedPlugin plugin = loadFile(dest);
         if (plugin != null) {
-            String newFileName = dest.getName();
+            // removeByPluginId was already called above with parsed plugin_id,
+            // but run it again with the LoadedPlugin to ensure cleanup.
             removeByPluginId(plugin.pluginId, newFileName);
             plugins.add(plugin);
             Log.d(TAG, "installFrom: plugin " + plugin.displayName + " installed and loaded");
@@ -459,12 +467,39 @@ public class PluginManager {
                 if (p.fileName.equals(keepFileName)) {
                     Log.d(TAG, "removeByPluginId: unloaded " + p.fileName + " (id=" + pluginId + ")");
                 } else {
-                    if (oldFile.exists()) oldFile.delete();
-                    getPrefs().edit().remove("plugin_enabled_" + p.fileName).apply();
-                    Log.d(TAG, "removeByPluginId: removed " + p.fileName + " (id=" + pluginId + ")");
+                    deletePluginFile(oldFile, p.fileName);
                 }
             }
         }
+        // Also scan filesystem for disabled/unloaded plugins with same plugin_id.
+        // A disabled plugin is not in the plugins list, so without this scan,
+        // installing a different version would leave the old file on disk → duplication.
+        File dir = getPluginsDir();
+        File[] files = dir.listFiles((d, name) -> name.endsWith(PLUGIN_EXT));
+        if (files != null) {
+            for (File file : files) {
+                String name = file.getName();
+                if (name.equals(keepFileName)) continue;
+                boolean alreadyHandled = false;
+                for (LoadedPlugin p : plugins) {
+                    if (p.fileName.equals(name)) {
+                        alreadyHandled = true;
+                        break;
+                    }
+                }
+                if (alreadyHandled) continue;
+                String[] meta = parseMetadata(file);
+                if (meta != null && meta.length > 2 && pluginId.equals(meta[2])) {
+                    deletePluginFile(file, name);
+                }
+            }
+        }
+    }
+
+    private void deletePluginFile(File file, String fileName) {
+        if (file.exists()) file.delete();
+        getPrefs().edit().remove("plugin_enabled_" + fileName).apply();
+        Log.d(TAG, "removeByPluginId: removed " + fileName);
     }
 
     /**
