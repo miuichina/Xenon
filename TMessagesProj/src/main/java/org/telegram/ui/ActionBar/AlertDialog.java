@@ -884,7 +884,7 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
             containerView.addView(progressViewContainer, LayoutHelper.createLinear(86, 86, Gravity.CENTER));
 
             ImageView progressView = new ImageView(getContext());
-            progressView.setImageDrawable(new CircularProgressDrawable(dp(32), AndroidUtilities.dp(2.25f), getThemedColor(Theme.key_dialog_inlineProgress)));
+            progressView.setImageDrawable(new CircularProgressDrawable(dp(9), AndroidUtilities.dp(0.2f), getThemedColor(Theme.key_dialog_inlineProgress)));
             progressViewContainer.addView(progressView, LayoutHelper.createFrame(86, 86, Gravity.CENTER));
         } else {
             if (aboveMessageView != null) {

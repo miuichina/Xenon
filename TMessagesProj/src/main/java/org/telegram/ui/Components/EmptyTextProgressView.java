@@ -131,6 +131,16 @@ public class EmptyTextProgressView extends FrameLayout {
         }
     }
 
+    public void setProgressBarSize(float sizeDp) {
+        if (progressView instanceof ImageView) {
+            Drawable drawable = ((ImageView) progressView).getDrawable();
+            if (drawable instanceof CircularProgressDrawable) {
+                CircularProgressDrawable cpd = (CircularProgressDrawable) drawable;
+                ((ImageView) progressView).setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(sizeDp), cpd.thickness, cpd.getColor()));
+            }
+        }
+    }
+
     public void setProgressBarColor(int color) {
         if (progressView instanceof ImageView) {
             Drawable drawable = ((ImageView) progressView).getDrawable();
