@@ -89,7 +89,7 @@ public class GitHubUpdateHelper {
     public static void checkForUpdates(UpdateCallback callback, boolean force) {
         new Thread(() -> {
             try {
-                FileLog.d(TAG + ": checking for updates...");
+                FileLog.d(TAG + (force ? ": force checking for updates..." : ": checking for updates..."));
                 GitHubRelease release = fetchLatestRelease();
                 if (release == null || TextUtils.isEmpty(release.tagName)) {
                     FileLog.d(TAG + ": release is null or has no tag");
@@ -104,20 +104,20 @@ public class GitHubUpdateHelper {
                     return;
                 }
 
-                // Compare version codes extracted from APK filename.
-                // Format: Xenon-{versionName}-{versionCode}-arm64-v8a.apk
-                int remoteVersionCode = extractVersionCode(release);
-                if (remoteVersionCode > 0 && remoteVersionCode <= BuildConfig.VERSION_CODE) {
-                    FileLog.d(TAG + ": remote verCode=" + remoteVersionCode
-                            + " <= local verCode=" + BuildConfig.VERSION_CODE + ", no update");
-                    AndroidUtilities.runOnUIThread(callback::onNoUpdate);
-                    return;
+                if (!force) {
+                    // Compare version codes extracted from APK filename.
+                    // Format: Xenon-{versionName}-{versionCode}-arm64-v8a.apk
+                    int remoteVersionCode = extractVersionCode(release);
+                    if (remoteVersionCode > 0 && remoteVersionCode <= BuildConfig.VERSION_CODE) {
+                        FileLog.d(TAG + ": remote verCode=" + remoteVersionCode
+                                + " <= local verCode=" + BuildConfig.VERSION_CODE + ", no update");
+                        AndroidUtilities.runOnUIThread(callback::onNoUpdate);
+                        return;
+                    }
                 }
 
                 // Use release body as changelog (don't rely on flaky git commit fetch)
-                FileLog.d(TAG + ": update available, apk=" + apkUrl
-                        + " remoteVer=" + remoteVersionCode
-                        + " localVer=" + BuildConfig.VERSION_CODE);
+                FileLog.d(TAG + ": update available, apk=" + apkUrl);
                 AndroidUtilities.runOnUIThread(() -> callback.onUpdateAvailable(release));
             } catch (Exception e) {
                 FileLog.e(TAG, e);
