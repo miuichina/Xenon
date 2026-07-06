@@ -186,6 +186,7 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
                     ((TextCheckCell) toggleView).setChecked(NekoConfig.pluginGodMode);
                 }
                 if (sheetRef[0] != null) sheetRef[0].dismiss();
+                AndroidUtilities.runOnUIThread(NekoPluginsActivity.this::showRestartBulletin, 300);
             }
         });
         sheet.addView(enableBtn, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48, 0, 0, 0, 8));
