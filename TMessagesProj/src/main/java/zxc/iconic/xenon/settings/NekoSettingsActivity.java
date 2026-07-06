@@ -27,14 +27,6 @@ import org.telegram.messenger.BuildConfig;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.LocaleController;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLEncoder;
 import org.telegram.messenger.R;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.Utilities;
@@ -342,22 +334,17 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity implements Fa
                         }, 500);
                         return;
                     }
-                    // Fetch commit log on background thread, then show dialog
-                    String tagName = release.tagName;
-                    String bodyText = release.body;
                     Activity act = activity;
-                    new Thread(() -> {
-                        String commitLog = fetchCommitLog(tagName, bodyText);
-                        String finalText = commitLog != null ? commitLog : (bodyText != null ? bodyText : "");
-                        AndroidUtilities.runOnUIThread(() -> {
-                            TLRPC.TL_help_appUpdate appUpdate = new TLRPC.TL_help_appUpdate();
-                            appUpdate.version = title;
-                            appUpdate.text = finalText;
-                            appUpdate.can_not_skip = false;
-                            appUpdate.url = apkUrl;
-                            appUpdate.flags |= 4;
-                            UpdateAppAlertDialog dialog = new UpdateAppAlertDialog(act, appUpdate, UserConfig.selectedAccount);
-                            dialog.setOnDownloadClickListener(() -> {
+                    String finalText = release.body != null ? release.body : "";
+                    AndroidUtilities.runOnUIThread(() -> {
+                        TLRPC.TL_help_appUpdate appUpdate = new TLRPC.TL_help_appUpdate();
+                        appUpdate.version = title;
+                        appUpdate.text = finalText;
+                        appUpdate.can_not_skip = false;
+                        appUpdate.url = apkUrl;
+                        appUpdate.flags |= 4;
+                        UpdateAppAlertDialog dialog = new UpdateAppAlertDialog(act, appUpdate, UserConfig.selectedAccount);
+                        dialog.setOnDownloadClickListener(() -> {
                                 final Bulletin[] progBulletin = new Bulletin[1];
                                 AndroidUtilities.runOnUIThread(() -> {
                                     try {
@@ -417,8 +404,7 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity implements Fa
                             });
                             dialog.show();
                         });
-                    }, "CommitLog").start();
-                }
+                    }
 
                 @Override
                 public void onNoUpdate() {
@@ -667,133 +653,6 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity implements Fa
                 }
             }
         }, 500);
-    }
-
-    private static String fetchCommitLog(String tagName, String releaseBody) {
-        String sinceHash = BuildConfig.GIT_COMMIT_SHORT;
-        Log.d("XENON_CMT", "sinceHash=" + sinceHash);
-        if (TextUtils.isEmpty(sinceHash) || "unknown".equals(sinceHash)) {
-            Log.d("XENON_CMT", "sinceHash empty, returning null");
-            return null;
-        }
-
-        String releaseRef = null;
-        String branch = null;
-        if (!TextUtils.isEmpty(releaseBody)) {
-            Log.d("XENON_CMT", "releaseBody=" + releaseBody.substring(0, Math.min(200, releaseBody.length())));
-            for (String line : releaseBody.split("\n")) {
-                String trimmed = line.trim();
-                // Handle both plain "Short Hash:" and Markdown "- **Short Hash:**"
-                if (trimmed.contains("Short Hash:")) {
-                    int colonIdx = trimmed.indexOf("Short Hash:") + "Short Hash:".length();
-                    releaseRef = trimmed.substring(colonIdx).trim().replace("`", "");
-                    Log.d("XENON_CMT", "found Short Hash: " + releaseRef);
-                } else if (trimmed.contains("Branch:")) {
-                    int colonIdx = trimmed.indexOf("Branch:") + "Branch:".length();
-                    branch = trimmed.substring(colonIdx).trim().replace("`", "");
-                    Log.d("XENON_CMT", "found Branch: " + branch);
-                }
-            }
-        } else {
-            Log.d("XENON_CMT", "releaseBody is null");
-        }
-        if (TextUtils.isEmpty(releaseRef) && !TextUtils.isEmpty(tagName)) {
-            String tag = tagName;
-            if (tag.toLowerCase().startsWith(zxc.iconic.xenon.helpers.remote.GitHubUpdateHelper.POSRAL_TAG_PREFIX)) {
-                tag = tag.substring(zxc.iconic.xenon.helpers.remote.GitHubUpdateHelper.POSRAL_TAG_PREFIX.length());
-            }
-            releaseRef = tag.trim();
-            Log.d("XENON_CMT", "fallback to tag: " + releaseRef);
-        }
-        if (TextUtils.isEmpty(releaseRef)) {
-            Log.d("XENON_CMT", "releaseRef empty, returning null");
-            return null;
-        }
-
-        if (TextUtils.isEmpty(branch)) {
-            branch = "master";
-            Log.d("XENON_CMT", "branch fallback: " + branch);
-        }
-
-        Log.d("XENON_CMT", "fetching commits: sha=" + branch + " ref=" + releaseRef);
-
-        // If release ref equals embedded hash, no new commits
-        String localLower = sinceHash.trim().toLowerCase();
-        String releaseLower = releaseRef.trim().toLowerCase();
-        if (localLower.startsWith(releaseLower) || releaseLower.startsWith(localLower)) {
-            Log.d("XENON_CMT", "release ref matches embedded hash, no new commits");
-            return null;
-        }
-
-        try {
-            URL url = new URL("https://api.github.com/repos/sinkclose/Xenon/commits"
-                    + "?sha=" + URLEncoder.encode(branch, "UTF-8")
-                    + "&per_page=100");
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("GET");
-            connection.setRequestProperty("Accept", "application/vnd.github+json");
-            connection.setRequestProperty("User-Agent", "Xenon-Updater/" + BuildConfig.VERSION_NAME);
-            connection.setConnectTimeout(10000);
-            connection.setReadTimeout(10000);
-            int code = connection.getResponseCode();
-            Log.d("XENON_CMT", "HTTP response code: " + code);
-            if (code != 200) {
-                connection.disconnect();
-                return null;
-            }
-            BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(connection.getInputStream(), "UTF-8"));
-            StringBuilder sb = new StringBuilder(4096);
-            String line;
-            while ((line = reader.readLine()) != null) {
-                sb.append(line);
-            }
-            reader.close();
-            connection.disconnect();
-
-            String json = sb.toString();
-            Log.d("XENON_CMT", "response length: " + json.length());
-
-            StringBuilder result = new StringBuilder();
-            JSONArray arr = new JSONArray(json);
-            Log.d("XENON_CMT", "commits array length: " + arr.length());
-            boolean collecting = false;
-            for (int i = 0; i < arr.length(); i++) {
-                JSONObject obj = arr.getJSONObject(i);
-                String sha = obj.optString("sha", "");
-                if (sha.isEmpty()) continue;
-                String shaLower = sha.trim().toLowerCase();
-
-                // Stop at embedded hash
-                if (shaLower.startsWith(localLower) || localLower.startsWith(shaLower)) {
-                    Log.d("XENON_CMT", "found embedded hash, stopping. i=" + i + " sha=" + sha.substring(0, Math.min(7, sha.length())));
-                    break;
-                }
-
-                // Start collecting from release commit
-                if (!collecting) {
-                    if (shaLower.startsWith(releaseLower) || releaseLower.startsWith(shaLower)) {
-                        collecting = true;
-                        Log.d("XENON_CMT", "found release ref, start collecting. i=" + i + " sha=" + sha.substring(0, Math.min(7, sha.length())));
-                    } else {
-                        continue;
-                    }
-                }
-
-                String shortHash = sha.length() >= 7 ? sha.substring(0, 7) : sha;
-                JSONObject commitObj = obj.optJSONObject("commit");
-                String msg = commitObj != null ? commitObj.optString("message", "") : "";
-                String firstLine = msg.isEmpty() ? "" : msg.split("\n", 2)[0].trim();
-                if (result.length() > 0) result.append('\n');
-                result.append(shortHash).append(": ").append(firstLine);
-            }
-            Log.d("XENON_CMT", "result length: " + result.length() + " collecting=" + collecting);
-            return result.length() > 0 ? result.toString() : null;
-        } catch (Exception e) {
-            Log.d("XENON_CMT", "exception: " + e.getMessage());
-            FileLog.e("fetchCommitLog", e);
-            return null;
-        }
     }
 
 }

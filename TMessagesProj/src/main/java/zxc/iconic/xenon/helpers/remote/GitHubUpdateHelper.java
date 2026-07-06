@@ -7,10 +7,7 @@ import androidx.annotation.Nullable;
 import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
 import org.telegram.messenger.AndroidUtilities;
-import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.BuildConfig;
 import org.telegram.messenger.FileLog;
 
@@ -18,7 +15,6 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLEncoder;
 import java.util.List;
 
 /**
@@ -32,10 +28,10 @@ import java.util.List;
  *   <li>assets   = APK files (Xenon-{version}-{code}-{abi}.apk)</li>
  * </ul>
  *
- * <p>Version comparison: current build's GIT_COMMIT_SHORT (embedded at compile
- * time) is compared against the latest release's tag_name (with any posral-
- * prefix stripped first). If they differ, the latest release's published_at
- * timestamp is compared to ensure we only offer genuinely newer builds.
+ * <p>Version comparison: the version code is extracted from the arm64 APK
+ * asset filename ({@code Xenon-{versionName}-{versionCode}-arm64-v8a.apk})
+ * and compared against the installed {@code BuildConfig.VERSION_CODE}.
+ * The release body text is used as the changelog.
  */
 public class GitHubUpdateHelper {
 
@@ -101,60 +97,28 @@ public class GitHubUpdateHelper {
                     return;
                 }
 
-                if (force) {
-                    // Force mode: skip hash comparison, always report as available
-                    if (findApkDownloadUrl(release) == null) {
-                        AndroidUtilities.runOnUIThread(() ->
-                                callback.onError("No arm64 build for this release"));
-                    } else {
-                        AndroidUtilities.runOnUIThread(() -> callback.onUpdateAvailable(release));
-                    }
-                    return;
-                }
-
-                String currentHash = BuildConfig.GIT_COMMIT_SHORT;
-                FileLog.d(TAG + ": local=" + currentHash
-                        + " remote=" + release.tagName
-                        + " name=" + release.name);
-                if (TextUtils.isEmpty(currentHash) || "unknown".equals(currentHash)) {
+                String apkUrl = findApkDownloadUrl(release);
+                if (apkUrl == null) {
                     AndroidUtilities.runOnUIThread(() ->
-                            callback.onError("Build commit hash is not embedded"));
+                            callback.onError("No arm64 build for this release"));
                     return;
                 }
 
-                // Strip the posral- prefix before comparing so the embedded hash
-                // (bare short hash) matches the tag body (posral-<shorthash>).
-                String tagBody = release.tagName;
-                if (tagBody.toLowerCase().startsWith(POSRAL_TAG_PREFIX)) {
-                    tagBody = tagBody.substring(POSRAL_TAG_PREFIX.length());
+                // Compare version codes extracted from APK filename.
+                // Format: Xenon-{versionName}-{versionCode}-arm64-v8a.apk
+                int remoteVersionCode = extractVersionCode(release);
+                if (remoteVersionCode > 0 && remoteVersionCode <= BuildConfig.VERSION_CODE) {
+                    FileLog.d(TAG + ": remote verCode=" + remoteVersionCode
+                            + " <= local verCode=" + BuildConfig.VERSION_CODE + ", no update");
+                    AndroidUtilities.runOnUIThread(callback::onNoUpdate);
+                    return;
                 }
 
-                // Use startsWith comparison because git short hash length varies
-                // depending on clone depth (shallow vs full), so the embedded hash
-                // and the release tag may have different lengths (e.g. 7 vs 9 chars).
-                String remote = tagBody.trim().toLowerCase();
-                String local = currentHash.trim().toLowerCase();
-                boolean isSameBuild = remote.startsWith(local)
-                        || local.startsWith(remote);
-                if (isSameBuild) {
-                    FileLog.d(TAG + ": hashes match, no update");
-                    AndroidUtilities.runOnUIThread(callback::onNoUpdate);
-                } else if (isReleaseOlderThanInstalled(release)) {
-                    // Hash differs but the GitHub "latest" was published before
-                    // the locally installed build — almost certainly a rollback
-                    // on the release page. Treat as up-to-date instead of
-                    // offering to install an older APK over the current one.
-                    FileLog.d(TAG + ": remote release is older than installed, ignoring");
-                    AndroidUtilities.runOnUIThread(callback::onNoUpdate);
-                } else {
-                    String apkUrl = findApkDownloadUrl(release);
-                    FileLog.d(TAG + ": update available, apk=" + apkUrl);
-                    String commitLog = fetchCommitLog(release.tagName, release.body);
-                    if (commitLog != null) {
-                        release.body = commitLog;
-                    }
-                    AndroidUtilities.runOnUIThread(() -> callback.onUpdateAvailable(release));
-                }
+                // Use release body as changelog (don't rely on flaky git commit fetch)
+                FileLog.d(TAG + ": update available, apk=" + apkUrl
+                        + " remoteVer=" + remoteVersionCode
+                        + " localVer=" + BuildConfig.VERSION_CODE);
+                AndroidUtilities.runOnUIThread(() -> callback.onUpdateAvailable(release));
             } catch (Exception e) {
                 FileLog.e(TAG, e);
                 String msg = e.getMessage();
@@ -162,6 +126,39 @@ public class GitHubUpdateHelper {
                         callback.onError(msg != null ? msg : "Unknown error"));
             }
         }, "XenonUpdateCheck").start();
+    }
+
+    /**
+     * Extracts the version code from the first arm64 APK asset's filename.
+     * Format: {@code Xenon-{versionName}-{versionCode}-arm64-v8a.apk}
+     * e.g. {@code Xenon-10.5.3-12345-arm64-v8a.apk} → {@code 12345}.
+     *
+     * @return the parsed version code, or {@code -1} if no arm64 APK asset
+     *         exists or parsing fails.
+     */
+    static int extractVersionCode(GitHubRelease release) {
+        if (release == null || release.assets == null) return -1;
+        for (GitHubAsset asset : release.assets) {
+            if (asset.name == null || !asset.name.endsWith(".apk")) continue;
+            String lower = asset.name.toLowerCase();
+            if (lower.contains("debug")) continue;
+            if (!lower.contains("arm64")) continue;
+            // Remove .apk extension
+            String base = asset.name.endsWith(".apk")
+                    ? asset.name.substring(0, asset.name.length() - 4) : asset.name;
+            // Split by dash: Xenon-10.5.3-12345-arm64-v8a
+            String[] parts = base.split("-");
+            // Version code is the third-from-last segment (before abi)
+            // parts: [Xenon, 10.5.3, 12345, arm64, v8a?]
+            // Look for a part that's all digits
+            for (String part : parts) {
+                try {
+                    return Integer.parseInt(part);
+                } catch (NumberFormatException ignored) {
+                }
+            }
+        }
+        return -1;
     }
 
     /**
@@ -186,10 +183,6 @@ public class GitHubUpdateHelper {
                     AndroidUtilities.runOnUIThread(() ->
                             callback.onError("No arm64 build available"));
                     return;
-                }
-                String commitLog = fetchCommitLog(release.tagName, release.body);
-                if (commitLog != null) {
-                    release.body = commitLog;
                 }
                 AndroidUtilities.runOnUIThread(() -> callback.onUpdateAvailable(release));
             } catch (Exception e) {
@@ -220,10 +213,6 @@ public class GitHubUpdateHelper {
                     AndroidUtilities.runOnUIThread(() ->
                             callback.onError("No arm64 build available"));
                     return;
-                }
-                String commitLog = fetchCommitLog(release.tagName, release.body);
-                if (commitLog != null) {
-                    release.body = commitLog;
                 }
                 AndroidUtilities.runOnUIThread(() -> callback.onUpdateAvailable(release));
             } catch (Exception e) {
@@ -339,124 +328,6 @@ public class GitHubUpdateHelper {
     }
 
     /**
-     * Fetches commit log (shortHash: message) from GitHub since the embedded
-     * build hash up to (including) the release commit. Parses release body
-     * in both plain and Markdown format ({@code - **Short Hash:**}).
-     * Returns formatted string or {@code null} on failure.
-     */
-    @Nullable
-    public static String fetchCommitLog(String tagName, String releaseBody) {
-        String sinceHash = BuildConfig.GIT_COMMIT_SHORT;
-        if (TextUtils.isEmpty(sinceHash) || "unknown".equals(sinceHash)) {
-            return null;
-        }
-
-        String releaseRef = null;
-        String branch = null;
-        if (!TextUtils.isEmpty(releaseBody)) {
-            for (String line : releaseBody.split("\n")) {
-                String trimmed = line.trim();
-                int idx;
-                if ((idx = trimmed.indexOf("Short Hash:")) >= 0) {
-                    releaseRef = trimmed.substring(idx + "Short Hash:".length()).trim();
-                } else if ((idx = trimmed.indexOf("Branch:")) >= 0) {
-                    branch = trimmed.substring(idx + "Branch:".length()).trim();
-                }
-            }
-        }
-        // Strip Markdown formatting (**bold**, `backticks`)
-        if (releaseRef != null) {
-            releaseRef = releaseRef.replace("*", "").replace("`", "").trim();
-        }
-        if (branch != null) {
-            branch = branch.replace("*", "").replace("`", "").trim();
-        }
-
-        // Fallback: use tag name (strip posral- prefix)
-        if (TextUtils.isEmpty(releaseRef) && !TextUtils.isEmpty(tagName)) {
-            String tag = tagName;
-            if (tag.toLowerCase().startsWith(POSRAL_TAG_PREFIX)) {
-                tag = tag.substring(POSRAL_TAG_PREFIX.length());
-            }
-            releaseRef = tag.trim();
-        }
-        if (TextUtils.isEmpty(releaseRef)) {
-            return null;
-        }
-
-        if (TextUtils.isEmpty(branch)) {
-            branch = "master";
-        }
-
-        // If release ref matches embedded hash, no new commits
-        String localLower = sinceHash.trim().toLowerCase();
-        String releaseLower = releaseRef.trim().toLowerCase();
-        if (localLower.startsWith(releaseLower) || releaseLower.startsWith(localLower)) {
-            return null;
-        }
-
-        try {
-            URL url = new URL("https://api.github.com/repos/sinkclose/Xenon/commits"
-                    + "?sha=" + URLEncoder.encode(branch, "UTF-8")
-                    + "&per_page=100");
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("GET");
-            connection.setRequestProperty("Accept", "application/vnd.github+json");
-            connection.setRequestProperty("User-Agent", "Xenon-Updater/" + BuildConfig.VERSION_NAME);
-            connection.setConnectTimeout(10000);
-            connection.setReadTimeout(10000);
-            int code = connection.getResponseCode();
-            if (code != 200) {
-                connection.disconnect();
-                return null;
-            }
-            BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(connection.getInputStream(), "UTF-8"));
-            StringBuilder sb = new StringBuilder(4096);
-            String line;
-            while ((line = reader.readLine()) != null) {
-                sb.append(line);
-            }
-            reader.close();
-            connection.disconnect();
-
-            JSONArray arr = new JSONArray(sb.toString());
-            StringBuilder result = new StringBuilder();
-            boolean collecting = false;
-            for (int i = 0; i < arr.length(); i++) {
-                JSONObject obj = arr.getJSONObject(i);
-                String sha = obj.optString("sha", "");
-                if (sha.isEmpty()) continue;
-                String shaLower = sha.trim().toLowerCase();
-
-                // Stop at embedded hash
-                if (shaLower.startsWith(localLower) || localLower.startsWith(shaLower)) {
-                    break;
-                }
-                // Start collecting from release commit
-                if (!collecting) {
-                    if (shaLower.startsWith(releaseLower) || releaseLower.startsWith(shaLower)) {
-                        collecting = true;
-                    } else {
-                        continue;
-                    }
-                }
-
-                String shortHash = sha.length() >= 7 ? sha.substring(0, 7) : sha;
-                JSONObject commitObj = obj.optJSONObject("commit");
-                String msg = commitObj != null ? commitObj.optString("message", "") : "";
-                String firstLine = msg.isEmpty() ? "" : msg.split("\n", 2)[0].trim();
-                if (result.length() > 0) result.append('\n');
-                result.append(shortHash).append(": ").append(firstLine);
-            }
-            return result.length() > 0 ? result.toString() : null;
-        } catch (Exception e) {
-            FileLog.e(TAG, e);
-            return null;
-        }
-    }
-
-    /**
      * Fetches the best APK download URL from release assets.
      * @param release the release to search
      * @return download URL of the arm64 APK, or {@code null} if the release
@@ -506,49 +377,6 @@ public class GitHubUpdateHelper {
             if (lower.contains("arm64")) return asset.size;
         }
         return -1;
-    }
-
-    /**
-     * Returns {@code true} if the given GitHub release was published before or
-     * at the same time as the locally installed APK. Used to suppress the
-     * "update available" prompt on rollbacks (e.g. when {@code latest} on
-     * GitHub points back to an older build than the user already has).
-     *
-     * <p>{@code release.publishedAt} is ISO-8601 with a {@code Z} suffix
-     * (e.g. {@code 2026-05-15T19:30:00Z}); we parse it via
-     * {@link java.time.OffsetDateTime#parse} and compare against
-     * {@code PackageInfo.lastUpdateTime}. If parsing fails or local install
-     * time is unknown, we fall back to "treat as newer" so the existing
-     * hash-mismatch path can still fire and the user is not silently locked
-     * out of legitimate updates.
-     */
-    static boolean isReleaseOlderThanInstalled(GitHubRelease release) {
-        if (release == null || android.text.TextUtils.isEmpty(release.publishedAt)) {
-            return false;
-        }
-        long releaseEpochMs;
-        try {
-            releaseEpochMs = java.time.OffsetDateTime.parse(release.publishedAt)
-                    .toInstant().toEpochMilli();
-        } catch (Throwable t) {
-            FileLog.e(TAG + ": failed to parse published_at=" + release.publishedAt, t);
-            return false;
-        }
-        long installedEpochMs;
-        try {
-            android.content.pm.PackageInfo pi = ApplicationLoader.applicationContext
-                    .getPackageManager()
-                    .getPackageInfo(ApplicationLoader.applicationContext.getPackageName(), 0);
-            installedEpochMs = pi.lastUpdateTime;
-        } catch (Throwable t) {
-            return false;
-        }
-        if (installedEpochMs <= 0) {
-            return false;
-        }
-        // Allow a small skew (60s) so a release published the same minute as
-        // the local build doesn't get rejected on the boundary.
-        return releaseEpochMs + 60_000L <= installedEpochMs;
     }
 
     /**
