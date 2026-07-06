@@ -10,7 +10,6 @@ import android.view.Gravity;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.FileLog;
@@ -439,7 +438,6 @@ public final class PluginSafeMode {
             layout.addView(divider(activity));
             layout.addView(makeButton(activity, "Copy crash log", Theme.getColor(Theme.key_windowBackgroundWhiteBlueText), v -> {
                 copyToClipboard(crashLog);
-                Toast.makeText(activity, "Crash log copied", Toast.LENGTH_SHORT).show();
             }));
             layout.addView(divider(activity));
             layout.addView(makeButton(activity, "Close", Theme.getColor(Theme.key_windowBackgroundWhiteGrayText), v -> {
@@ -595,7 +593,6 @@ public final class PluginSafeMode {
             final BottomSheet[] sheetRef = new BottomSheet[1];
             layout.addView(makeButton(activity, "Copy error", Theme.getColor(Theme.key_windowBackgroundWhiteBlueText), v -> {
                 copyToClipboard(crashLog);
-                Toast.makeText(activity, "Error copied", Toast.LENGTH_SHORT).show();
             }));
             layout.addView(divider(activity));
             layout.addView(makeButton(activity, "Open plugins", Theme.getColor(Theme.key_windowBackgroundWhiteBlueText), v -> {
