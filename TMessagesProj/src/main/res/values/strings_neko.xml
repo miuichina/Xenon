@@ -466,6 +466,7 @@
     <string name="PluginsLoadedCount">Plugins loaded: %d</string>
     <string name="PluginsSettings">Plugin settings</string>
     <string name="PluginsOpenSettings">Open settings</string>
+    <string name="PluginsOpenPlugins">Open plugins</string>
     <string name="PluginsUpdate">Update</string>
     <string name="PluginPermissions">Permissions</string>
     <string name="PluginScopeGeneral">General</string>

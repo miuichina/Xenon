@@ -114,9 +114,13 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
         if (!item.enabled) return;
         int id = item.id;
         if (id == enableRow) {
+            boolean wasEnabled = NekoConfig.pluginsEnabled;
             NekoConfig.togglePluginsEnabled();
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.pluginsEnabled);
+            }
+            if (!wasEnabled && NekoConfig.pluginsEnabled) {
+                showRestartBulletin();
             }
             updateRows();
         } else if (id == godModeRow) {
@@ -395,6 +399,8 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
         // Check if a plugin with the same pluginId is already installed
         PluginManager.LoadedPlugin existingSameId = pluginId != null ? PluginManager.getInstance().findByPluginId(pluginId) : null;
         boolean isUpdate = existingSameId != null;
+        // Check if the file content is identical to an already installed plugin
+        boolean isIdentical = PluginManager.isPluginFileIdentical(pluginFile, pluginId);
 
         BottomSheet.Builder builder = new BottomSheet.Builder(activity, false, resourcesProvider);
         LinearLayout layout = new LinearLayout(activity);
@@ -497,7 +503,9 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
         installWrap.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(12), AndroidUtilities.dp(16), AndroidUtilities.dp(6));
 
         TextView installBtn = new TextView(activity);
-        installBtn.setText(LocaleController.getString(R.string.PluginsInstall));
+        installBtn.setText(isIdentical
+                ? LocaleController.getString(R.string.PluginsOpenPlugins)
+                : LocaleController.getString(R.string.PluginsInstall));
         installBtn.setTextColor(installTextColor);
         installBtn.setTextSize(15);
         installBtn.setTypeface(AndroidUtilities.getTypeface("fonts/rmedium.ttf"));
@@ -509,7 +517,13 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
         BottomSheet[] sheetRef = new BottomSheet[1];
         installBtn.setOnClickListener(v -> {
             if (sheetRef[0] != null) sheetRef[0].dismiss();
-            doInstallPluginBackground(activity, pluginFile, fileName, onInstalled);
+            if (isIdentical) {
+                if (activity instanceof org.telegram.ui.LaunchActivity) {
+                    ((org.telegram.ui.LaunchActivity) activity).presentFragment(new NekoPluginsActivity());
+                }
+            } else {
+                doInstallPluginBackground(activity, pluginFile, fileName, onInstalled);
+            }
         });
         installWrap.addView(installBtn, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 48));
         layout.addView(installWrap);
@@ -561,6 +575,9 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
                         BulletinFactory.global().createSimpleBulletin(R.raw.chats_infotip,
                                 LocaleController.getString(R.string.PluginsInstallSuccess)).show();
                     }
+                } else if (PluginManager.isLastInstallEngineOff()) {
+                    BulletinFactory.global().createSimpleBulletin(R.raw.chats_infotip,
+                            LocaleController.getString(R.string.PluginsInstallSuccess)).show();
                 } else {
                     String errorText = PluginManager.getLastParseError();
                     if (errorText != null) {

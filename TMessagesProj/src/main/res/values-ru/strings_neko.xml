@@ -458,6 +458,7 @@
     <string name="PluginsLoadedCount">Плагинов загружено: %d</string>
     <string name="PluginsSettings">Настройки плагина</string>
     <string name="PluginsOpenSettings">Открыть настройки</string>
+    <string name="PluginsOpenPlugins">Открыть плагины</string>
     <string name="PluginPermissions">Разрешения</string>
     <string name="PluginScopeGeneral">Общие</string>
     <string name="PluginScopeMessaging">Сообщения</string>

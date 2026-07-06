@@ -21,6 +21,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.ref.WeakReference;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -384,7 +385,8 @@ public class PluginManager {
             Log.e(TAG, "installFrom: " + lastParseError);
             return null;
         }
-        Log.d(TAG, "installFrom: copying " + source.getName());
+        lastInstallEngineOff = false;
+        Log.d(TAG, "installFrom: processing " + source.getName());
         // Reject plugins without plugin_id
         String[] meta = parseMetadata(source);
         if (meta == null || meta.length < 3 || meta[2] == null || meta[2].isEmpty()) {
@@ -404,33 +406,36 @@ public class PluginManager {
             return null;
         }
         // If source is already inside the plugins dir, copy would truncate itself
-        if (source.getAbsolutePath().equals(dest.getAbsolutePath())) {
-            Log.d(TAG, "installFrom: source already in plugins dir, loading directly");
-            LoadedPlugin plugin = loadFile(dest);
-            if (plugin != null) {
-                removeByPluginId(plugin.pluginId);
-                plugins.add(plugin);
-                Log.d(TAG, "installFrom: plugin " + plugin.displayName + " installed and loaded");
+        if (!source.getAbsolutePath().equals(dest.getAbsolutePath())) {
+            try (FileInputStream in = new FileInputStream(source);
+                 FileOutputStream out = new FileOutputStream(dest)) {
+                byte[] buffer = new byte[8192];
+                int read;
+                while ((read = in.read(buffer)) != -1) {
+                    out.write(buffer, 0, read);
+                }
+                Log.d(TAG, "installFrom: copied to " + dest.getAbsolutePath());
+            } catch (IOException e) {
+                FileLog.e(e);
+                lastParseError = "copy failed - " + e.getMessage();
+                Log.e(TAG, "installFrom: " + lastParseError);
+                return null;
             }
-            return plugin;
+        } else {
+            Log.d(TAG, "installFrom: source already in plugins dir");
         }
-        try (FileInputStream in = new FileInputStream(source);
-             FileOutputStream out = new FileOutputStream(dest)) {
-            byte[] buffer = new byte[8192];
-            int read;
-            while ((read = in.read(buffer)) != -1) {
-                out.write(buffer, 0, read);
-            }
-            Log.d(TAG, "installFrom: copied to " + dest.getAbsolutePath());
-        } catch (IOException e) {
-            FileLog.e(e);
-            lastParseError = "copy failed - " + e.getMessage();
-            Log.e(TAG, "installFrom: " + lastParseError);
+        // Enable in prefs regardless of engine state
+        getPrefs().edit().putBoolean("plugin_enabled_" + dest.getName(), true).apply();
+        // If engine disabled, don't load — plugin activates when engine is turned on
+        if (!isEnabled()) {
+            lastInstallEngineOff = true;
+            Log.d(TAG, "installFrom: engine disabled, postponing load");
             return null;
         }
         LoadedPlugin plugin = loadFile(dest);
         if (plugin != null) {
-            removeByPluginId(plugin.pluginId);
+            String newFileName = dest.getName();
+            removeByPluginId(plugin.pluginId, newFileName);
             plugins.add(plugin);
             Log.d(TAG, "installFrom: plugin " + plugin.displayName + " installed and loaded");
         } else {
@@ -440,16 +445,24 @@ public class PluginManager {
     }
 
     private void removeByPluginId(String pluginId) {
+        removeByPluginId(pluginId, null);
+    }
+
+    private void removeByPluginId(String pluginId, String keepFileName) {
         if (pluginId == null) return;
-        for (int i = 0; i < plugins.size(); i++) {
+        for (int i = plugins.size() - 1; i >= 0; i--) {
             LoadedPlugin p = plugins.get(i);
             if (pluginId.equals(p.pluginId)) {
                 PluginApi.stopAllForPlugin(p.fileName);
                 plugins.remove(i);
                 File oldFile = new File(getPluginsDir(), p.fileName);
-                if (oldFile.exists()) oldFile.delete();
-                Log.d(TAG, "removeByPluginId: removed " + p.fileName + " (id=" + pluginId + ")");
-                break;
+                if (p.fileName.equals(keepFileName)) {
+                    Log.d(TAG, "removeByPluginId: unloaded " + p.fileName + " (id=" + pluginId + ")");
+                } else {
+                    if (oldFile.exists()) oldFile.delete();
+                    getPrefs().edit().remove("plugin_enabled_" + p.fileName).apply();
+                    Log.d(TAG, "removeByPluginId: removed " + p.fileName + " (id=" + pluginId + ")");
+                }
             }
         }
     }
@@ -770,12 +783,18 @@ public class PluginManager {
         try {
             getPrefs().edit().putBoolean("plugin_enabled_" + fileName, false).apply();
             FileLog.e("Plugin quarantined: " + fileName + " — " + stage, t);
+            PluginApi.stopAllForPlugin(fileName);
+            for (int i = 0; i < plugins.size(); i++) {
+                if (plugins.get(i).fileName.equals(fileName)) {
+                    plugins.remove(i);
+                    break;
+                }
+            }
             String report = PluginSafeMode.buildPluginFailureReport(fileName, stage, t);
             android.app.Activity activity = getCurrentActivity();
             if (activity != null) {
                 PluginSafeMode.reportPluginFailure(activity, fileName, stage, t);
             } else {
-                // No activity available — show a bulletin with a copy button.
                 String msg = t != null ? t.getClass().getSimpleName() : stage;
                 PluginApi.showBulletinError("Plugin " + fileName
                         + " was disabled: " + msg, report);
@@ -872,9 +891,14 @@ public class PluginManager {
      * or null if parsing fails.
      */
     private static String lastParseError;
+    private static boolean lastInstallEngineOff;
 
     public static String getLastParseError() {
         return lastParseError;
+    }
+
+    public static boolean isLastInstallEngineOff() {
+        return lastInstallEngineOff;
     }
 
     public static String[] parseMetadata(File file) {
@@ -912,6 +936,42 @@ public class PluginManager {
             Log.e(TAG, "parseMetadata: failed for " + file.getName() + ": " + lastParseError);
             return null;
         }
+    }
+
+    public static String hashPluginFile(File file) {
+        if (file == null || !file.exists()) return null;
+        try (InputStream is = new FileInputStream(file)) {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = is.read(buf)) > 0) {
+                md.update(buf, 0, n);
+            }
+            byte[] digest = md.digest();
+            StringBuilder sb = new StringBuilder(32);
+            for (byte b : digest) {
+                sb.append(String.format("%02x", b & 0xff));
+            }
+            return sb.toString();
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    public static boolean isPluginFileIdentical(File pluginFile, String pluginId) {
+        String newHash = hashPluginFile(pluginFile);
+        if (newHash == null) return false;
+        File dir = getPluginsDir();
+        File[] files = dir.listFiles((d, name) -> name.endsWith(PLUGIN_EXT));
+        if (files == null) return false;
+        for (File file : files) {
+            if (file.getAbsolutePath().equals(pluginFile.getAbsolutePath())) continue;
+            String existingHash = hashPluginFile(file);
+            if (newHash.equals(existingHash)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
