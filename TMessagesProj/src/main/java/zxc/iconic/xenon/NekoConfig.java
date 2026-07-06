@@ -1816,10 +1816,10 @@ public class NekoConfig {
     }
 
     public static String getChannelLabel() {
-        return " (Main)";
+        return "";
     }
 
     public static String getChannelName() {
-        return "Main";
+        return "";
     }
 }
