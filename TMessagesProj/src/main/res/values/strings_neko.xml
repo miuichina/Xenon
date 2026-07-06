@@ -471,8 +471,8 @@
     <string name="PluginScopeGeneral">General</string>
     <string name="PluginScopeMessaging">Messaging</string>
     <string name="PluginGodMode">God Mode</string>
-    <string name="PluginGodModeDesc">Grant all plugins every scope. Does NOT weaken the sandbox.</string>
-    <string name="PluginGodModeWarn">God Mode lets every plugin send, delete and read messages regardless of its declared scopes. The Lua sandbox (filesystem, processes, code loading) stays locked. Only enable this for plugins you fully trust. Continue?</string>
+    <string name="PluginGodModeDesc">Activates Xposed hooks and reflection. Grants every plugin all scopes and full API capabilities — including intercepting messages, reading the database, hooking methods at runtime, and bypassing passcode, biometrics, and encryption.</string>
+    <string name="PluginGodModeWarn">God Mode activates Xposed hooks and reflection for plugins, giving them runtime control over the entire app: intercept every message in real time, read and modify the encrypted database directly, hook any internal method (including the networking layer and native code bridges), extract private keys and session tokens from memory, bypass the passcode lock and biometric authentication, record audio and video, spoof any dialog or UI element to phish credentials, and silently exfiltrate all account data — all regardless of declared scopes. Only enable this for plugins you fully trust. Continue?</string>
     <string name="PluginGodModeCountdown">Wait %ds…</string>
     <string name="PluginGodModeEnable">Enable</string>
     <string name="PluginsVersion">Version</string>
