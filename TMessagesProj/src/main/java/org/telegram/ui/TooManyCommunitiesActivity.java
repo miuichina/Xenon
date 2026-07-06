@@ -15,6 +15,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -41,7 +42,7 @@ import org.telegram.ui.Cells.ShadowSectionCell;
 import org.telegram.ui.Components.CombinedDrawable;
 import org.telegram.ui.Components.EmptyTextProgressView;
 import org.telegram.ui.Components.LayoutHelper;
-import org.telegram.ui.Components.RadialProgressView;
+import org.telegram.ui.Components.CircularProgressDrawable;
 import org.telegram.ui.Components.RecyclerListView;
 
 import java.util.ArrayList;
@@ -73,7 +74,7 @@ public class TooManyCommunitiesActivity extends BaseFragment {
 
     private ValueAnimator enterAnimator;
     private float enterProgress;
-    protected RadialProgressView progressBar;
+    protected ImageView progressBar;
 
     int type;
 
@@ -219,7 +220,8 @@ public class TooManyCommunitiesActivity extends BaseFragment {
         emptyView.showTextView();
 
 
-        progressBar = new RadialProgressView(context);
+        progressBar = new ImageView(context);
+        progressBar.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(40), AndroidUtilities.dp(2.25f), Theme.getColor(Theme.key_progressCircle)));
         contentView.addView(progressBar, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT));
         adapter.updateRows();
         progressBar.setVisibility(View.GONE);
@@ -671,7 +673,6 @@ public class TooManyCommunitiesActivity extends BaseFragment {
             }
 
             buttonTextView.setBackground(Theme.AdaptiveRipple.filledRectByKey(Theme.key_featuredStickers_addButton, 4));
-            progressBar.setProgressColor(Theme.getColor(Theme.key_progressCircle));
         };
 
         themeDescriptions.add(new ThemeDescription(actionBar, ThemeDescription.FLAG_BACKGROUND, null, null, null, null, Theme.key_actionBarDefault));

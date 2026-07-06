@@ -56,6 +56,7 @@ import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.SoundEffectConstants;
 import android.view.View;
+import android.widget.ImageView;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityNodeInfo;
 
@@ -121,7 +122,7 @@ import org.telegram.ui.Components.MediaActionDrawable;
 import org.telegram.ui.Components.Premium.StarParticlesView;
 import org.telegram.ui.Components.RLottieDrawable;
 import org.telegram.ui.Components.RadialProgress2;
-import org.telegram.ui.Components.RadialProgressView;
+import org.telegram.ui.Components.CircularProgressDrawable;
 import org.telegram.ui.Components.Reactions.ReactionsLayoutInBubble;
 import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.ScaleStateListAnimator;
@@ -306,7 +307,7 @@ public class ChatActionCell extends BaseCell implements DownloadController.FileD
     private int previousWidth;
     private boolean imagePressed;
     private boolean giftButtonPressed;
-    RadialProgressView progressView;
+    ImageView progressView;
     float progressToProgress;
     StoriesUtilities.AvatarStoryParams avatarStoryParams = new StoriesUtilities.AvatarStoryParams(false);
     public boolean isAllChats;
@@ -3119,14 +3120,19 @@ public class ChatActionCell extends BaseCell implements DownloadController.FileD
             progressToProgress = Utilities.clamp(progressToProgress, 1f, 0f);
             if (progressToProgress != 0) {
                 if (progressView == null) {
-                    progressView = new RadialProgressView(getContext());
+                    progressView = new ImageView(getContext());
+                    progressView.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(18), AndroidUtilities.dp(2.25f), 0xffffffff));
                 }
-                int rad = dp(16);
                 canvas.save();
                 canvas.scale(progressToProgress, progressToProgress, giftButtonRect.centerX(), giftButtonRect.centerY());
-                progressView.setSize(rad);
-                progressView.setProgressColor(Theme.getColor(Theme.key_chat_serviceText));
-                progressView.draw(canvas, giftButtonRect.centerX(), giftButtonRect.centerY());
+                Drawable drawable = progressView.getDrawable();
+                if (drawable != null) {
+                    int cx = (int) giftButtonRect.centerX();
+                    int cy = (int) giftButtonRect.centerY();
+                    int size = AndroidUtilities.dp(18);
+                    drawable.setBounds(cx - size / 2, cy - size / 2, cx + size / 2, cy + size / 2);
+                    drawable.draw(canvas);
+                }
                 canvas.restore();
             }
             if (progressToProgress != 1f && giftPremiumButtonLayout != null) {

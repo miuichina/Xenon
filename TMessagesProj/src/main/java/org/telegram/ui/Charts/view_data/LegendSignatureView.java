@@ -25,9 +25,10 @@ import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.ChannelMonetizationLayout;
 import org.telegram.ui.Charts.data.ChartData;
 import org.telegram.ui.Components.AnimatedEmojiSpan;
+import org.telegram.ui.Components.CircularProgressDrawable;
 import org.telegram.ui.Components.CombinedDrawable;
 import org.telegram.ui.Components.LayoutHelper;
-import org.telegram.ui.Components.RadialProgressView;
+
 import org.telegram.ui.Stars.StarsIntroActivity;
 
 import java.text.DecimalFormat;
@@ -46,7 +47,7 @@ public class LegendSignatureView extends FrameLayout {
     TextView hourTime;
     Drawable background;
     public ImageView chevron;
-    private RadialProgressView progressView;
+    private ImageView progressView;
 
     SimpleDateFormat format = new SimpleDateFormat("E, ");
     SimpleDateFormat format2 = new SimpleDateFormat("MMM dd");
@@ -100,9 +101,8 @@ public class LegendSignatureView extends FrameLayout {
         chevron = new ImageView(context);
         chevron.setImageResource(R.drawable.ic_chevron_right_black_18dp);
 
-        progressView = new RadialProgressView(context);
-        progressView.setSize(AndroidUtilities.dp(12));
-        progressView.setStrokeWidth(AndroidUtilities.dp(0.5f));
+        progressView = new ImageView(context);
+        progressView.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(12), AndroidUtilities.dp(0.5f), 0xffffffff));
         progressView.setVisibility(View.GONE);
 
         addView(content, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.NO_GRAVITY, 0, 22, 0, 0));
@@ -118,7 +118,7 @@ public class LegendSignatureView extends FrameLayout {
         time.setTextColor(Theme.getColor(Theme.key_dialogTextBlack, resourcesProvider));
         hourTime.setTextColor(Theme.getColor(Theme.key_dialogTextBlack, resourcesProvider));
         chevron.setColorFilter(Theme.getColor(Theme.key_statisticChartChevronColor, resourcesProvider));
-        progressView.setProgressColor(Theme.getColor(Theme.key_statisticChartChevronColor, resourcesProvider));
+        if (progressView.getDrawable() instanceof CircularProgressDrawable) ((CircularProgressDrawable) progressView.getDrawable()).setColor(Theme.getColor(Theme.key_statisticChartChevronColor, resourcesProvider));
 
         shadowDrawable = getContext().getResources().getDrawable(R.drawable.stats_tooltip).mutate();
         backgroundDrawable = Theme.createSimpleSelectorRoundRectDrawable(AndroidUtilities.dp(4), Theme.getColor(Theme.key_dialogBackground, resourcesProvider), Theme.getColor(Theme.key_listSelector, resourcesProvider), 0xff000000);

@@ -11,6 +11,7 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -41,7 +42,7 @@ public class StickerEmptyView extends FrameLayout implements NotificationCenter.
 
     public LinearLayout linearLayout;
     public BackupImageView stickerView;
-    private RadialProgressView progressBar;
+    private ImageView progressBar;
     public final SpoilersTextView title;
     public final LinkSpanDrawable.LinksTextView subtitle;
     public final ButtonWithCounterView button;
@@ -128,7 +129,8 @@ public class StickerEmptyView extends FrameLayout implements NotificationCenter.
         addView(linearLayout, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER, 46, 0, 46, 30));
 
         if (progressView == null) {
-            progressBar = new RadialProgressView(context, resourcesProvider);
+            progressBar = new ImageView(context);
+            progressBar.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(40), AndroidUtilities.dp(2.25f), getThemedColor(Theme.key_chat_serviceText)));
             progressBar.setAlpha(0);
             progressBar.setScaleY(0.5f);
             progressBar.setScaleX(0.5f);

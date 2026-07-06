@@ -77,7 +77,7 @@ import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.LineProgressView;
 import org.telegram.ui.Components.RLottieDrawable;
 import org.telegram.ui.Components.RLottieImageView;
-import org.telegram.ui.Components.RadialProgressView;
+import org.telegram.ui.Components.CircularProgressDrawable;
 import org.telegram.ui.Components.ScaleStateListAnimator;
 import org.telegram.ui.Components.spoilers.SpoilersTextView;
 import org.telegram.ui.LaunchActivity;
@@ -883,9 +883,8 @@ public class AlertDialog extends Dialog implements Drawable.Callback, Notificati
             }
             containerView.addView(progressViewContainer, LayoutHelper.createLinear(86, 86, Gravity.CENTER));
 
-            RadialProgressView progressView = new RadialProgressView(getContext(), resourcesProvider);
-            progressView.setSize(dp(32));
-            progressView.setProgressColor(getThemedColor(Theme.key_dialog_inlineProgress));
+            ImageView progressView = new ImageView(getContext());
+            progressView.setImageDrawable(new CircularProgressDrawable(dp(32), AndroidUtilities.dp(2.25f), getThemedColor(Theme.key_dialog_inlineProgress)));
             progressViewContainer.addView(progressView, LayoutHelper.createFrame(86, 86, Gravity.CENTER));
         } else {
             if (aboveMessageView != null) {

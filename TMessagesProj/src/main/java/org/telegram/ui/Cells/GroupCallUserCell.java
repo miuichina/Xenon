@@ -49,7 +49,7 @@ import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.RLottieDrawable;
 import org.telegram.ui.Components.RLottieImageView;
-import org.telegram.ui.Components.RadialProgressView;
+import org.telegram.ui.Components.CircularProgressDrawable;
 import org.telegram.ui.Components.WaveDrawable;
 
 import java.util.ArrayList;
@@ -71,7 +71,7 @@ public class GroupCallUserCell extends FrameLayout {
     private Drawable verifiedDrawable;
     private Drawable premiumDrawable;
 
-    private RadialProgressView avatarProgressView;
+    private ImageView avatarProgressView;
 
     private AvatarDrawable avatarDrawable;
 
@@ -193,7 +193,6 @@ public class GroupCallUserCell extends FrameLayout {
     }
 
     public void setUploadProgress(float progress, boolean animated) {
-        avatarProgressView.setProgress(progress);
         if (progress < 1f) {
             AndroidUtilities.updateViewVisibilityAnimated(avatarProgressView, true, 1f, animated);
         } else {
@@ -267,25 +266,8 @@ public class GroupCallUserCell extends FrameLayout {
         avatarImageView.setRoundRadius(AndroidUtilities.dp(24));
         addView(avatarImageView, LayoutHelper.createFrame(46, 46, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, LocaleController.isRTL ? 0 : 11, 6, LocaleController.isRTL ? 11 : 0, 0));
 
-        avatarProgressView = new RadialProgressView(context) {
-            private Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            {
-                paint.setColor(0x55000000);
-            }
-
-            @Override
-            protected void onDraw(Canvas canvas) {
-                if (avatarImageView.getImageReceiver().hasNotThumb() && avatarImageView.getAlpha() > 0) {
-                    paint.setAlpha((int) (0x55 * avatarImageView.getImageReceiver().getCurrentAlpha() * avatarImageView.getAlpha()));
-                    canvas.drawCircle(getMeasuredWidth() / 2.0f, getMeasuredHeight() / 2.0f, getMeasuredWidth() / 2.0f, paint);
-                }
-                avatarProgressView.setProgressColor(ColorUtils.setAlphaComponent(0xffffffff, (int) (255 * avatarImageView.getImageReceiver().getCurrentAlpha() * avatarImageView.getAlpha())));
-                super.onDraw(canvas);
-            }
-        };
-        avatarProgressView.setSize(AndroidUtilities.dp(26));
-        avatarProgressView.setProgressColor(0xffffffff);
-        avatarProgressView.setNoProgress(false);
+        avatarProgressView = new ImageView(context);
+        avatarProgressView.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(26), AndroidUtilities.dp(2.25f), Theme.getColor(Theme.key_voipgroup_nameText)));
         addView(avatarProgressView, LayoutHelper.createFrame(46, 46, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, LocaleController.isRTL ? 0 : 11, 6, LocaleController.isRTL ? 11 : 0, 0));
         AndroidUtilities.updateViewVisibilityAnimated(avatarProgressView, false, 1f, false);
 

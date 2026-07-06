@@ -63,11 +63,11 @@ import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.ActionBar.ThemeDescription;
 import org.telegram.ui.Cells.PhotoPickerAlbumsCell;
 import org.telegram.ui.Components.AlertsCreator;
+import org.telegram.ui.Components.CircularProgressDrawable;
 import org.telegram.ui.Components.CombinedDrawable;
 import org.telegram.ui.Components.EditTextBoldCursor;
 import org.telegram.ui.Components.EditTextEmoji;
 import org.telegram.ui.Components.LayoutHelper;
-import org.telegram.ui.Components.RadialProgressView;
 import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.SizeNotifierFrameLayout;
 
@@ -347,8 +347,8 @@ public class PhotoAlbumPickerActivity extends BaseFragment implements Notificati
         progressView.setVisibility(View.GONE);
         sizeNotifierFrameLayout.addView(progressView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.LEFT | Gravity.TOP, 0, 0, 0, 48));
 
-        RadialProgressView progressBar = new RadialProgressView(context);
-        progressBar.setProgressColor(0xff527da3);
+        ImageView progressBar = new ImageView(context);
+        progressBar.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(40), AndroidUtilities.dp(2.25f), Theme.getColor(Theme.key_progressCircle)));
         progressView.addView(progressBar, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER));
 
         shadow = new View(context);

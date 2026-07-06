@@ -48,7 +48,9 @@ public class EmptyTextProgressView extends FrameLayout {
         this.resourcesProvider = resourcesProvider;
 
         if (progressView == null) {
-            progressView = new RadialProgressView(context);
+            ImageView imageView = new ImageView(context);
+            imageView.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(28), AndroidUtilities.dp(2.25f), getThemedColor(Theme.key_progressCircle)));
+            progressView = imageView;
             addView(progressView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT));
         } else {
             addView(progressView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
@@ -119,9 +121,22 @@ public class EmptyTextProgressView extends FrameLayout {
         }
     }
 
+    public void setProgressBarStrokeWidth(float strokeWidth) {
+        if (progressView instanceof ImageView) {
+            Drawable drawable = ((ImageView) progressView).getDrawable();
+            if (drawable instanceof CircularProgressDrawable) {
+                CircularProgressDrawable cpd = (CircularProgressDrawable) drawable;
+                ((ImageView) progressView).setImageDrawable(new CircularProgressDrawable(cpd.size, AndroidUtilities.dp(strokeWidth), cpd.getColor()));
+            }
+        }
+    }
+
     public void setProgressBarColor(int color) {
-        if (progressView instanceof RadialProgressView) {
-            ((RadialProgressView) progressView).setProgressColor(color);
+        if (progressView instanceof ImageView) {
+            Drawable drawable = ((ImageView) progressView).getDrawable();
+            if (drawable instanceof CircularProgressDrawable) {
+                ((CircularProgressDrawable) drawable).setColor(color);
+            }
         }
     }
 

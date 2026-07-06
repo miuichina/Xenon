@@ -118,7 +118,7 @@ import org.telegram.ui.Components.ListView.AdapterWithDiffUtils;
 import org.telegram.ui.Components.NumberTextView;
 import org.telegram.ui.Components.PullForegroundDrawable;
 import org.telegram.ui.Components.RLottieDrawable;
-import org.telegram.ui.Components.RadialProgressView;
+import org.telegram.ui.Components.CircularProgressDrawable;
 import org.telegram.ui.Components.RecyclerAnimationScrollHelper;
 import org.telegram.ui.Components.RecyclerItemsEnterAnimator;
 import org.telegram.ui.Components.RecyclerListView;
@@ -244,7 +244,7 @@ public class TopicsFragment extends BaseFragment implements NotificationCenter.N
     private ActionBarMenuSubItem closeTopic;
     private ActionBarMenuSubItem restartTopic;
     ActionBarMenuItem otherItem;
-    private RadialProgressView bottomOverlayProgress;
+    private ImageView bottomOverlayProgress;
     private FrameLayout bottomOverlayContainer;
     private ActionBarMenuItem searchItem;
     private ActionBarMenuItem other;
@@ -1370,8 +1370,8 @@ public class TopicsFragment extends BaseFragment implements NotificationCenter.N
             }
         });
 
-        bottomOverlayProgress = new RadialProgressView(context, themeDelegate);
-        bottomOverlayProgress.setSize(AndroidUtilities.dp(22));
+        bottomOverlayProgress = new ImageView(context);
+        bottomOverlayProgress.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(22), AndroidUtilities.dp(2.25f), getThemedColor(Theme.key_chat_fieldOverlayText)));
         bottomOverlayProgress.setVisibility(View.INVISIBLE);
         bottomOverlayContainer.addView(bottomOverlayProgress, LayoutHelper.createFrame(30, 30, Gravity.CENTER));
 
@@ -1546,7 +1546,7 @@ public class TopicsFragment extends BaseFragment implements NotificationCenter.N
         if (bottomOverlayProgress == null) {
             return;
         }
-        bottomOverlayProgress.setProgressColor(getThemedColor(Theme.key_chat_fieldOverlayText));
+        ((CircularProgressDrawable) bottomOverlayProgress.getDrawable()).setColor(getThemedColor(Theme.key_chat_fieldOverlayText));
         floatingButton.updateColors();
         bottomOverlayContainer.setBackgroundColor(getThemedColor(Theme.key_windowBackgroundWhite));
         actionBar.setActionModeColor(getThemedColor(Theme.key_windowBackgroundWhite));

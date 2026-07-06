@@ -139,8 +139,8 @@ import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.MotionBackgroundDrawable;
 import org.telegram.ui.Components.PhonebookShareAlert;
 import org.telegram.ui.Components.PipRoundVideoView;
-import org.telegram.ui.Components.RadialProgressView;
 import org.telegram.ui.Components.RecyclerAnimationScrollHelper;
+import org.telegram.ui.Components.CircularProgressDrawable;
 import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.ShareAlert;
 import org.telegram.ui.Components.SizeNotifierFrameLayout;
@@ -201,7 +201,7 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
 
     private FrameLayout progressView;
     private View progressView2;
-    private RadialProgressView progressBar;
+    private ImageView progressBar;
     private ChatListRecyclerView chatListView;
     private UndoView undoView;
     private LinearLayoutManager chatLayoutManager;
@@ -1499,9 +1499,8 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
         progressView2.setBackground(Theme.createServiceDrawable(dp(18), progressView2, contentView));
         progressView.addView(progressView2, LayoutHelper.createFrame(36, 36, Gravity.CENTER));
 
-        progressBar = new RadialProgressView(context);
-        progressBar.setSize(dp(28));
-        progressBar.setProgressColor(Theme.getColor(Theme.key_chat_serviceText));
+        progressBar = new ImageView(context);
+        progressBar.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(40), AndroidUtilities.dp(2.25f), 0xffffffff));
         progressView.addView(progressBar, LayoutHelper.createFrame(32, 32, Gravity.CENTER));
 
         floatingDateView = new ChatActionCell(context);
@@ -3911,7 +3910,7 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
 
         themeDescriptions.add(new ThemeDescription(emptyView, ThemeDescription.FLAG_TEXTCOLOR, null, null, null, null, Theme.key_chat_serviceText));
 
-        themeDescriptions.add(new ThemeDescription(progressBar, ThemeDescription.FLAG_PROGRESSBAR, null, null, null, null, Theme.key_chat_serviceText));
+        themeDescriptions.add(new ThemeDescription(progressBar, ThemeDescription.FLAG_IMAGECOLOR, null, null, null, null, Theme.key_chat_serviceText));
 
         themeDescriptions.add(new ThemeDescription(chatListView, ThemeDescription.FLAG_USEBACKGROUNDDRAWABLE, new Class[]{ChatUnreadCell.class}, new String[]{"backgroundLayout"}, null, null, null, Theme.key_chat_unreadMessagesStartBackground));
         themeDescriptions.add(new ThemeDescription(chatListView, ThemeDescription.FLAG_IMAGECOLOR, new Class[]{ChatUnreadCell.class}, new String[]{"imageView"}, null, null, null, Theme.key_chat_unreadMessagesStartArrowIcon));

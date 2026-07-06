@@ -28,6 +28,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -66,7 +67,7 @@ import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.ImageUpdater;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.RLottieDrawable;
-import org.telegram.ui.Components.RadialProgressView;
+import org.telegram.ui.Components.CircularProgressDrawable;
 import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.UniversalAdapter;
 import org.telegram.ui.Components.UniversalRecyclerView;
@@ -86,7 +87,7 @@ public class ContactAddActivity extends BaseFragment implements NotificationCent
     private TextView onlineTextView;
     private AvatarDrawable avatarDrawable;
     private Theme.ResourcesProvider resourcesProvider;
-    private RadialProgressView avatarProgressView;
+    private ImageView avatarProgressView;
     private View avatarOverlay;
     private AnimatorSet avatarAnimation;
 
@@ -259,10 +260,8 @@ public class ContactAddActivity extends BaseFragment implements NotificationCent
         };
         infoLayout.addView(avatarOverlay, LayoutHelper.createFrame(64, 64, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, 16, 13, 16, 13));
 
-        avatarProgressView = new RadialProgressView(context);
-        avatarProgressView.setSize(dp(30));
-        avatarProgressView.setProgressColor(0xffffffff);
-        avatarProgressView.setNoProgress(false);
+        avatarProgressView = new ImageView(context);
+        avatarProgressView.setImageDrawable(new CircularProgressDrawable(dp(30), dp(2.25f), Theme.getColor(Theme.key_progressCircle, resourcesProvider)));
         infoLayout.addView(avatarProgressView, LayoutHelper.createFrame(64, 64, (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.TOP, 16, 13, 16, 13));
 
         showAvatarProgress(false, false);
@@ -970,7 +969,6 @@ public class ContactAddActivity extends BaseFragment implements NotificationCent
         if (avatarProgressView == null) {
             return;
         }
-        avatarProgressView.setProgress(progress);
     }
 
     @Override
@@ -979,7 +977,6 @@ public class ContactAddActivity extends BaseFragment implements NotificationCent
             return;
         }
         photoSelectedTypeFinal = photoSelectedType;
-        avatarProgressView.setProgress(0.0f);
     }
 
     @Override

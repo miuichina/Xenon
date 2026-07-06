@@ -93,7 +93,7 @@ import org.telegram.ui.Components.LinkSpanDrawable;
 import org.telegram.ui.Components.OutlineEditText;
 import org.telegram.ui.Components.OutlineTextContainerView;
 import org.telegram.ui.Components.PermissionRequest;
-import org.telegram.ui.Components.RadialProgressView;
+
 import org.telegram.ui.Components.ScaleStateListAnimator;
 import org.telegram.ui.Components.TextHelper;
 import org.telegram.ui.Stories.recorder.ButtonWithCounterView;
@@ -148,7 +148,7 @@ public class NewContactBottomSheet extends BottomSheet implements AdapterView.On
     private int wasCountryHintIndex;
     private TextView countryFlag;
     private TextView doneButton;
-    private RadialProgressView progressView;
+    private ImageView progressView;
     private FrameLayout doneButtonContainer;
     private TextView plusTextView;
 
@@ -796,9 +796,8 @@ public class NewContactBottomSheet extends BottomSheet implements AdapterView.On
         doneButton.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
         doneButton.setTypeface(AndroidUtilities.bold());
 
-        progressView = new RadialProgressView(context);
-        progressView.setSize(dp(20));
-        progressView.setProgressColor(parentFragment.getThemedColor(Theme.key_featuredStickers_buttonText));
+        progressView = new ImageView(context);
+        progressView.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(40), AndroidUtilities.dp(2.25f), Theme.getColor(Theme.key_progressCircle)));
         doneButtonContainer.addView(doneButton, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
         doneButtonContainer.addView(progressView, LayoutHelper.createFrame(40, 40, Gravity.CENTER));
         contentLayout.addView(doneButtonContainer, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48, 0, 0, 16, 0, 16));

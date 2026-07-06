@@ -179,7 +179,7 @@ import org.telegram.ui.Components.Premium.StarParticlesView;
 import org.telegram.ui.Components.ProxyDrawable;
 import org.telegram.ui.Components.RLottieDrawable;
 import org.telegram.ui.Components.RLottieImageView;
-import org.telegram.ui.Components.RadialProgressView;
+import org.telegram.ui.Components.CircularProgressDrawable;
 import org.telegram.ui.Components.ScaleStateListAnimator;
 import org.telegram.ui.Components.SimpleThemeDescription;
 import org.telegram.ui.Components.SizeNotifierFrameLayout;
@@ -363,7 +363,7 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
 
     private ImageView backButtonView;
     private ActionBarMenuItem moreButtonView;
-    private RadialProgressView radialProgressView;
+    private ImageView radialProgressView;
 
     private ImageView proxyButtonView;
     private ProxyDrawable proxyDrawable;
@@ -804,8 +804,8 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
         sizeNotifierFrameLayout.addView(proxyButtonView, LayoutHelper.createFrame(32, 32, Gravity.RIGHT | Gravity.TOP, 16, 16, 16, 16));
         updateProxyButton(false, true);
 
-        radialProgressView = new RadialProgressView(context);
-        radialProgressView.setSize(AndroidUtilities.dp(20));
+        radialProgressView = new ImageView(context);
+        radialProgressView.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(16), AndroidUtilities.dp(2f), getThemedColor(Theme.key_progressCircle)));
         radialProgressView.setAlpha(0);
         radialProgressView.setScaleX(0.1f);
         radialProgressView.setScaleY(0.1f);
@@ -3020,7 +3020,7 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
                             confirmView.dismiss();
                             AndroidUtilities.runOnUIThread(()-> {
                                 onNextPressed(code);
-                                floatingButton.progressView.sync(confirmView.fabButton.progressView);
+                                // sync not needed — CircularProgressDrawable uses realtime
                             }, 150);
                         });
                     }
@@ -7787,7 +7787,7 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
         private AvatarDrawable avatarDrawable;
         private View avatarOverlay;
         private RLottieImageView avatarEditor;
-        private RadialProgressView avatarProgressView;
+        private ImageView avatarProgressView;
         private AnimatorSet avatarAnimation;
         private TextView descriptionTextView;
         private TextView wrongNumber;
@@ -7996,15 +7996,8 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
                 }
             });
 
-            avatarProgressView = new RadialProgressView(context) {
-                @Override
-                public void setAlpha(float alpha) {
-                    super.setAlpha(alpha);
-                    avatarOverlay.invalidate();
-                }
-            };
-            avatarProgressView.setSize(AndroidUtilities.dp(30));
-            avatarProgressView.setProgressColor(0xffffffff);
+            avatarProgressView = new ImageView(context);
+            avatarProgressView.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(30), AndroidUtilities.dp(2.25f), getThemedColor(Theme.key_progressCircle)));
             avatarContainer.addView(avatarProgressView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
             showAvatarProgress(false, false);
@@ -8723,7 +8716,7 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
         proxyDrawable.setColorFilter(new PorterDuffColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText), PorterDuff.Mode.SRC_IN));
         proxyButtonView.setBackground(Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector)));
 
-        radialProgressView.setProgressColor(Theme.getColor(Theme.key_chats_actionBackground));
+        ((CircularProgressDrawable) radialProgressView.getDrawable()).setColor(Theme.getColor(Theme.key_chats_actionBackground));
 
         floatingButton.updateColors();
         floatingButtonIcon.setColor(Theme.getColor(Theme.key_chats_actionIcon));

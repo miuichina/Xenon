@@ -462,7 +462,7 @@ public class ChatActivity extends BaseFragment implements
     private ActionBarMenuItem searchIconItem;
     private ActionBarMenu.LazyItem audioCallIconItem;
     private boolean searchItemVisible;
-    private RadialProgressView progressBar;
+    private ImageView progressBar;
     private ActionBarMenuItem.Item addContactItem;
     private ActionBarMenuItem.Item clearHistoryItem;
     private ActionBarMenuItem.Item viewAsTopics;
@@ -480,7 +480,7 @@ public class ChatActivity extends BaseFragment implements
     private LinkSpanDrawable.LinksTextView bottomOverlayLinksText;
     private TextView bottomOverlayText;
     private TextView bottomOverlayStartButton;
-    private RadialProgressView bottomOverlayProgress;
+    private ImageView bottomOverlayProgress;
     private AnimatorSet bottomOverlayAnimation;
     private boolean bottomOverlayChatWaitsReply;
     private HintView2 bottomGiftHintView;
@@ -606,7 +606,7 @@ public class ChatActivity extends BaseFragment implements
     private AnimatorSet[] pinnedNextAnimation = new AnimatorSet[2];
     private boolean pinnedMessageButtonShown = false;
     private ImageView closePinned;
-    private RadialProgressView pinnedProgress;
+    private ImageView pinnedProgress;
     private ImageView pinnedListButton;
     private AnimatorSet pinnedListAnimator;
     @Nullable
@@ -7215,13 +7215,11 @@ public class ChatActivity extends BaseFragment implements
         };
         progressView.addView(progressView2, LayoutHelper.createFrame(36, 36, Gravity.CENTER));
 
-        progressBar = new RadialProgressView(context, themeDelegate);
-        progressBar.setSize(AndroidUtilities.dp(28));
-        progressBar.setProgressColor(getThemedColor(Theme.key_chat_serviceText));
-        progressBar.setNoProgress(false);
-        progressBar.setProgressImmediately(0.25f);
-        progressBar.setRadOffset(-90);
-        progressBar.setRotationEnabled(false);
+        progressBar = new ImageView(context);
+        progressBar.setImageDrawable(new CircularProgressDrawable(
+            AndroidUtilities.dp(28), AndroidUtilities.dp(2.25f),
+            0xffffffff
+        ));
         progressView.addView(progressBar, LayoutHelper.createFrame(32, 32, Gravity.CENTER));
 
         floatingTopicSeparator = new TopicSeparator.Cell(context, currentAccount, themeDelegate) {
@@ -8856,9 +8854,8 @@ public class ChatActivity extends BaseFragment implements
             return showEnter;
         });
 
-        bottomOverlayProgress = new RadialProgressView(context, themeDelegate);
-        bottomOverlayProgress.setSize(AndroidUtilities.dp(22));
-        bottomOverlayProgress.setProgressColor(getThemedColor(Theme.key_featuredStickers_buttonText));
+        bottomOverlayProgress = new ImageView(context);
+        bottomOverlayProgress.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(22), AndroidUtilities.dp(2f), 0xffffffff));
         bottomOverlayProgress.setVisibility(View.INVISIBLE);
         bottomOverlayProgress.setScaleX(0.1f);
         bottomOverlayProgress.setScaleY(0.1f);
@@ -11919,11 +11916,9 @@ public class ChatActivity extends BaseFragment implements
         closePinned.setVisibility(View.GONE);
         closePinned.setContentDescription(LocaleController.getString(R.string.Close));
 
-        pinnedProgress = new RadialProgressView(getContext(), themeDelegate);
+        pinnedProgress = new ImageView(getContext());
         pinnedProgress.setVisibility(View.GONE);
-        pinnedProgress.setSize(AndroidUtilities.dp(16));
-        pinnedProgress.setStrokeWidth(2f);
-        pinnedProgress.setProgressColor(getThemedColor(Theme.key_chat_topPanelLine));
+        pinnedProgress.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(16), AndroidUtilities.dp(2f), getThemedColor(Theme.key_chat_topPanelLine)));
         pinnedMessageView.addView(pinnedProgress, LayoutHelper.createFrame(36, 48, Gravity.RIGHT | Gravity.TOP, 0, 0, 2, 0));
 
         closePinned.setBackgroundDrawable(Theme.createSelectorDrawable(getThemedColor(Theme.key_inappPlayerClose) & 0x19ffffff, 1, AndroidUtilities.dp(14)));
@@ -43894,12 +43889,12 @@ public class ChatActivity extends BaseFragment implements
         themeDescriptions.add(new ThemeDescription(bottomOverlayChatText, 0, null, null, null, null, Theme.key_glass_defaultText));
         themeDescriptions.add(new ThemeDescription(bottomOverlayChatText, 0, null, null, null, null, Theme.key_chat_goDownButtonCounterBackground));
         themeDescriptions.add(new ThemeDescription(bottomOverlayChatText, 0, null, null, null, null, Theme.key_chat_messagePanelBackground));
-        themeDescriptions.add(new ThemeDescription(bottomOverlayProgress, 0, null, null, null, null, Theme.key_featuredStickers_buttonText));
+        themeDescriptions.add(new ThemeDescription(bottomOverlayProgress, ThemeDescription.FLAG_IMAGECOLOR, null, null, null, null, Theme.key_featuredStickers_buttonText));
 
         themeDescriptions.add(new ThemeDescription(bigEmptyView, ThemeDescription.FLAG_TEXTCOLOR, null, null, null, null, Theme.key_chat_serviceText));
         themeDescriptions.add(new ThemeDescription(emptyView, ThemeDescription.FLAG_TEXTCOLOR, null, null, null, null, Theme.key_chat_serviceText));
 
-        themeDescriptions.add(new ThemeDescription(progressBar, ThemeDescription.FLAG_PROGRESSBAR, null, null, null, null, Theme.key_chat_serviceText));
+        themeDescriptions.add(new ThemeDescription(progressBar, ThemeDescription.FLAG_IMAGECOLOR, null, null, null, null, Theme.key_chat_serviceText));
 
         themeDescriptions.add(new ThemeDescription(chatListView, ThemeDescription.FLAG_USEBACKGROUNDDRAWABLE, new Class[]{ChatUnreadCell.class}, new String[]{"backgroundLayout"}, null, null, null, Theme.key_chat_unreadMessagesStartBackground));
         themeDescriptions.add(new ThemeDescription(chatListView, ThemeDescription.FLAG_IMAGECOLOR, new Class[]{ChatUnreadCell.class}, new String[]{"imageView"}, null, null, null, Theme.key_chat_unreadMessagesStartArrowIcon));

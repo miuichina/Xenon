@@ -30,6 +30,7 @@ import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -98,7 +99,7 @@ import org.telegram.ui.Components.ItemOptions;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.Premium.boosts.BoostDialogs;
 import org.telegram.ui.Components.RLottieImageView;
-import org.telegram.ui.Components.RadialProgressView;
+import org.telegram.ui.Components.CircularProgressDrawable;
 import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.SizeNotifierFrameLayout;
 import org.telegram.ui.Components.ViewPagerFixed;
@@ -1791,7 +1792,7 @@ public class StatisticActivity extends BaseFragment implements NotificationCente
         BaseChartView zoomedChartView;
         ChartHeaderView chartHeaderView;
 
-        RadialProgressView progressView;
+        ImageView progressView;
         TextView errorTextView;
 
         ViewGroup checkboxContainer;
@@ -1897,7 +1898,8 @@ public class StatisticActivity extends BaseFragment implements NotificationCente
 
             chartView.sharedUiComponents = sharedUi;
             zoomedChartView.sharedUiComponents = sharedUi;
-            progressView = new RadialProgressView(context);
+            progressView = new ImageView(context);
+            progressView.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(40), AndroidUtilities.dp(2.25f), Theme.getColor(Theme.key_progressCircle)));
             frameLayout.addView(chartView);
             frameLayout.addView(chartView.legendSignatureView, WRAP_CONTENT, WRAP_CONTENT);
             frameLayout.addView(zoomedChartView);
@@ -2287,7 +2289,7 @@ public class StatisticActivity extends BaseFragment implements NotificationCente
                     }
                 }
             }
-            progressView.setProgressColor(Theme.getColor(Theme.key_progressCircle));
+            ((CircularProgressDrawable) progressView.getDrawable()).setColor(Theme.getColor(Theme.key_progressCircle));
             errorTextView.setTextColor(Theme.getColor(Theme.key_dialogTextGray4));
         }
 

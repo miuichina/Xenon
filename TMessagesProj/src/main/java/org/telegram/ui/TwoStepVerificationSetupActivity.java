@@ -76,7 +76,7 @@ import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.OutlineTextContainerView;
 import org.telegram.ui.Components.RLottieDrawable;
 import org.telegram.ui.Components.RLottieImageView;
-import org.telegram.ui.Components.RadialProgressView;
+import org.telegram.ui.Components.CircularProgressDrawable;
 import org.telegram.ui.Components.SizeNotifierFrameLayout;
 import org.telegram.ui.Components.TextStyleSpan;
 import org.telegram.ui.Components.TransformableLoginButtonView;
@@ -112,7 +112,7 @@ public class TwoStepVerificationSetupActivity extends BaseFragment {
     private ArrayList<BaseFragment> fragmentsToClose = new ArrayList<>();
 
     private AnimatorSet actionBarAnimator;
-    private RadialProgressView radialProgressView;
+    private ImageView radialProgressView;
 
     private boolean ignoreTextChange;
 
@@ -930,12 +930,11 @@ public class TwoStepVerificationSetupActivity extends BaseFragment {
                 container.addView(actionBarBackground);
                 container.addView(actionBar);
 
-                radialProgressView = new RadialProgressView(context);
-                radialProgressView.setSize(AndroidUtilities.dp(20));
+                radialProgressView = new ImageView(context);
+                radialProgressView.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(40), AndroidUtilities.dp(2.25f), Theme.getColor(Theme.key_progressCircle)));
                 radialProgressView.setAlpha(0);
                 radialProgressView.setScaleX(0.1f);
                 radialProgressView.setScaleY(0.1f);
-                radialProgressView.setProgressColor(Theme.getColor(Theme.key_windowBackgroundWhiteInputFieldActivated));
                 frameLayout.addView(radialProgressView, LayoutHelper.createFrame(32, 32, Gravity.RIGHT | Gravity.TOP, 0, 16, 16, 0));
                 break;
             }

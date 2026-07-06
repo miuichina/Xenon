@@ -11,14 +11,15 @@ package org.telegram.ui.Cells;
 import android.content.Context;
 import android.view.Gravity;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 
 import org.telegram.messenger.AndroidUtilities;
+import org.telegram.ui.Components.CircularProgressDrawable;
 import org.telegram.ui.Components.LayoutHelper;
-import org.telegram.ui.Components.RadialProgressView;
 
 public class LoadingCell extends FrameLayout {
 
-    private RadialProgressView progressBar;
+    private ImageView progressBar;
     private int height;
 
     public LoadingCell(Context context) {
@@ -30,8 +31,8 @@ public class LoadingCell extends FrameLayout {
 
         height = h;
 
-        progressBar = new RadialProgressView(context);
-        progressBar.setSize(size);
+        progressBar = new ImageView(context);
+        progressBar.setImageDrawable(new CircularProgressDrawable(size, AndroidUtilities.dp(2.25f), 0xffffffff));
         addView(progressBar, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER));
     }
 

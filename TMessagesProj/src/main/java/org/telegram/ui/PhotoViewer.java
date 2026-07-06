@@ -283,7 +283,7 @@ import org.telegram.ui.Components.Premium.LimitReachedBottomSheet;
 import org.telegram.ui.Components.Premium.PremiumFeatureBottomSheet;
 import org.telegram.ui.Components.QuoteSpan;
 import org.telegram.ui.Components.RLottieDrawable;
-import org.telegram.ui.Components.RadialProgressView;
+import org.telegram.ui.Components.CircularProgressDrawable;
 import org.telegram.ui.Components.Reactions.ReactionsLayoutInBubble;
 import org.telegram.ui.Components.RectOld;
 import org.telegram.ui.Components.RecyclerListView;
@@ -938,7 +938,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
     private PickerBottomLayoutViewer editorDoneLayout;
     private TextView resetButton;
     private PhotoProgressView[] photoProgressViews = new PhotoProgressView[3];
-    private RadialProgressView miniProgressView;
+    private ImageView miniProgressView;
     private ImageView paintItem;
     private ImageView cropItem;
     private ImageView mirrorItem;
@@ -6464,26 +6464,8 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             photoProgressViews[a].setBackgroundState(PROGRESS_EMPTY, false, true);
         }
 
-        miniProgressView = new RadialProgressView(activityContext, resourcesProvider) {
-            @Override
-            public void setAlpha(float alpha) {
-                super.setAlpha(alpha);
-                if (containerView != null) {
-                    containerView.invalidate();
-                }
-            }
-
-            @Override
-            public void invalidate() {
-                super.invalidate();
-                if (containerView != null) {
-                    containerView.invalidate();
-                }
-            }
-        };
-        miniProgressView.setUseSelfAlpha(true);
-        miniProgressView.setProgressColor(0xffffffff);
-        miniProgressView.setSize(dp(54));
+        miniProgressView = new ImageView(activityContext);
+        miniProgressView.setImageDrawable(new CircularProgressDrawable(dp(54), dp(2.25f), getThemedColor(Theme.key_progressCircle)));
         miniProgressView.setBackgroundResource(R.drawable.circle_big);
         miniProgressView.setVisibility(View.INVISIBLE);
         miniProgressView.setAlpha(0.0f);
@@ -6491,8 +6473,8 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
 
         createVideoControlsInterface();
 
-        progressView = new RadialProgressView(parentActivity, resourcesProvider);
-        progressView.setProgressColor(0xffffffff);
+        progressView = new ImageView(parentActivity);
+        progressView.setImageDrawable(new CircularProgressDrawable(dp(44), dp(2.25f), getThemedColor(Theme.key_progressCircle)));
         progressView.setBackgroundResource(R.drawable.circle_big);
         progressView.setVisibility(View.INVISIBLE);
         containerView.addView(progressView, LayoutHelper.createFrame(54, 54, Gravity.CENTER));
@@ -21422,7 +21404,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
     // video edit start
     private QualityChooseView qualityChooseView;
     private PickerBottomLayoutViewer qualityPicker;
-    private RadialProgressView progressView;
+    private ImageView progressView;
     private FrameLayout videoTimelineViewContainer;
     private VideoTimelinePlayView videoTimelineView;
     private TextView videoAvatarTooltip;

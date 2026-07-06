@@ -9,6 +9,7 @@ import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.core.graphics.ColorUtils;
@@ -16,7 +17,7 @@ import androidx.core.graphics.ColorUtils;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.LayoutHelper;
-import org.telegram.ui.Components.RadialProgressView;
+import org.telegram.ui.Components.CircularProgressDrawable;
 import org.telegram.ui.Components.SimpleFloatPropertyCompat;
 import org.telegram.ui.web.BotWebViewContainer;
 
@@ -31,7 +32,7 @@ public class ChatActivityBotWebViewButton extends FrameLayout {
     private int menuButtonWidth;
 
     private TextView textView;
-    private RadialProgressView progressView;
+    private ImageView progressView;
     private View rippleView;
 
     private boolean progressWasVisible;
@@ -48,8 +49,8 @@ public class ChatActivityBotWebViewButton extends FrameLayout {
         textView.setTypeface(AndroidUtilities.bold());
         addView(textView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.LEFT, 0, 0, 0, 0));
 
-        progressView = new RadialProgressView(context);
-        progressView.setSize(AndroidUtilities.dp(18));
+        progressView = new ImageView(context);
+        progressView.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(40), AndroidUtilities.dp(2.25f), 0xffffffff));
         progressView.setAlpha(0f);
         progressView.setScaleX(0);
         progressView.setScaleY(0);
@@ -77,7 +78,7 @@ public class ChatActivityBotWebViewButton extends FrameLayout {
         rippleView.setBackground(Theme.createSelectorDrawable(BotWebViewContainer.getMainButtonRippleColor(buttonColor), 2));
         invalidate();
 
-        progressView.setProgressColor(textColor);
+        ((CircularProgressDrawable) progressView.getDrawable()).setColor(textColor);
         if (progressWasVisible != isProgressVisible) {
             progressWasVisible = isProgressVisible;
             progressView.animate().cancel();

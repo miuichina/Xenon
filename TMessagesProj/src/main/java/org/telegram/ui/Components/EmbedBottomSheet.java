@@ -80,7 +80,7 @@ public class EmbedBottomSheet extends BottomSheet {
     private FrameLayout fullscreenVideoContainer;
     private WebChromeClient.CustomViewCallback customViewCallback;
     private View progressBarBlackBackground;
-    private RadialProgressView progressBar;
+    private ImageView progressBar;
     private Activity parentActivity;
     private LinearLayout imageButtonsContainer;
     private TextView copyTextButton;
@@ -704,7 +704,8 @@ public class EmbedBottomSheet extends BottomSheet {
         progressBarBlackBackground.setVisibility(View.INVISIBLE);
         containerLayout.addView(progressBarBlackBackground, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.TOP | Gravity.LEFT, 0, 0, 0, 48 + 36 + (hasDescription ? 22 : 0)));
 
-        progressBar = new RadialProgressView(context);
+        progressBar = new ImageView(context);
+        progressBar.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(40), AndroidUtilities.dp(3f), Theme.getColor(Theme.key_progressCircle)));
         progressBar.setVisibility(View.INVISIBLE);
         containerLayout.addView(progressBar, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER, 0, 0, 0, (48 + 36 + (hasDescription ? 22 : 0)) / 2));
 

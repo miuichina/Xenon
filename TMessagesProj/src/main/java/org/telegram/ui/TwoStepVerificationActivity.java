@@ -31,6 +31,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -69,7 +70,7 @@ import org.telegram.ui.Components.FragmentFloatingButton;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.OutlineTextContainerView;
 import org.telegram.ui.Components.RLottieImageView;
-import org.telegram.ui.Components.RadialProgressView;
+import org.telegram.ui.Components.CircularProgressDrawable;
 import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.TransformableLoginButtonView;
 import org.telegram.ui.Components.VerticalPositionAutoAnimator;
@@ -134,7 +135,7 @@ public class TwoStepVerificationActivity extends BaseFragment implements Notific
     private boolean forgotPasswordOnShow;
     int otherwiseReloginDays = -1;
 
-    private RadialProgressView radialProgressView;
+    private ImageView radialProgressView;
 
     private int delegateType;
     private String delegateTypeString;
@@ -404,19 +405,11 @@ public class TwoStepVerificationActivity extends BaseFragment implements Notific
             }
         });
 
-        radialProgressView = new RadialProgressView(context) {
-            @Override
-            protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-                super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-                ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) getLayoutParams();
-                params.topMargin = AndroidUtilities.statusBarHeight / 2;
-            }
-        };
-        radialProgressView.setSize(dp(20));
+        radialProgressView = new ImageView(context);
+        radialProgressView.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(40), AndroidUtilities.dp(2.25f), Theme.getColor(Theme.key_progressCircle)));
         radialProgressView.setAlpha(0);
         radialProgressView.setScaleX(0.1f);
         radialProgressView.setScaleY(0.1f);
-        radialProgressView.setProgressColor(Theme.getColor(Theme.key_windowBackgroundWhiteInputFieldActivated));
         actionBar.addView(radialProgressView, LayoutHelper.createFrame(32, 32, Gravity.CENTER_VERTICAL | Gravity.RIGHT, 0, 0, 12, 0));
 
         updateRows();

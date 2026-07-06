@@ -85,7 +85,7 @@ import org.telegram.ui.Components.LinkSpanDrawable;
 import org.telegram.ui.Components.Premium.LimitReachedBottomSheet;
 import org.telegram.ui.Components.RLottieDrawable;
 import org.telegram.ui.Components.RLottieImageView;
-import org.telegram.ui.Components.RadialProgressView;
+
 import org.telegram.ui.Components.SizeNotifierFrameLayout;
 import org.telegram.ui.Components.TypefaceSpan;
 
@@ -101,7 +101,7 @@ public class ChannelCreateActivity extends BaseFragment implements NotificationC
     private View avatarOverlay;
     private RLottieImageView avatarEditor;
     private AnimatorSet avatarAnimation;
-    private RadialProgressView avatarProgressView;
+    private ImageView avatarProgressView;
     private AvatarDrawable avatarDrawable;
     private ImageUpdater imageUpdater;
     private EditTextBoldCursor descriptionTextView;
@@ -627,16 +627,8 @@ public class ChannelCreateActivity extends BaseFragment implements NotificationC
             avatarEditor.setPadding(AndroidUtilities.dp(0), 0, 0, AndroidUtilities.dp(1));
             frameLayout.addView(avatarEditor, LayoutHelper.createFrame(64, 64, Gravity.TOP | (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT), LocaleController.isRTL ? 0 : 15, 12, LocaleController.isRTL ? 15 : 0, 12));
 
-            avatarProgressView = new RadialProgressView(context) {
-                @Override
-                public void setAlpha(float alpha) {
-                    super.setAlpha(alpha);
-                    avatarOverlay.invalidate();
-                }
-            };
-            avatarProgressView.setSize(AndroidUtilities.dp(30));
-            avatarProgressView.setProgressColor(0xffffffff);
-            avatarProgressView.setNoProgress(false);
+            avatarProgressView = new ImageView(context);
+            avatarProgressView.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(30), AndroidUtilities.dp(2.25f), getThemedColor(Theme.key_progressCircle)));
             frameLayout.addView(avatarProgressView, LayoutHelper.createFrame(64, 64, Gravity.TOP | (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT), LocaleController.isRTL ? 0 : 16, 12, LocaleController.isRTL ? 16 : 0, 12));
 
             showAvatarProgress(false, false);
@@ -1001,7 +993,6 @@ public class ChannelCreateActivity extends BaseFragment implements NotificationC
         if (avatarProgressView == null) {
             return;
         }
-        avatarProgressView.setProgress(progress);
     }
 
     @Override
@@ -1009,7 +1000,6 @@ public class ChannelCreateActivity extends BaseFragment implements NotificationC
         if (avatarProgressView == null) {
             return;
         }
-        avatarProgressView.setProgress(0.0f);
     }
 
     @Override

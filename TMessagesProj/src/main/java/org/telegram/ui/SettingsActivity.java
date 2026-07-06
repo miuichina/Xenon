@@ -114,7 +114,7 @@ import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.LinkSpanDrawable;
 import org.telegram.ui.Components.Paint.PersistColorPalette;
 import org.telegram.ui.Components.Premium.boosts.UserSelectorBottomSheet;
-import org.telegram.ui.Components.RadialProgressView;
+import org.telegram.ui.Components.CircularProgressDrawable;
 import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.ScaleStateListAnimator;
 import org.telegram.ui.Components.ShareAlert;
@@ -170,7 +170,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
 
     private ImageUpdater imageUpdater;
     private AnimatorSet avatarAnimation;
-    private RadialProgressView avatarProgressView;
+    private ImageView avatarProgressView;
     private TLRPC.FileLocation avatar;
     private TLRPC.FileLocation avatarBig;
     private ImageLocation uploadingImageLocation;
@@ -420,25 +420,8 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
         avatarView.setRoundRadius(dp(90));
         avatarContainer.addView(avatarView, LayoutHelper.createFrame(90, 90, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 15, 0, 0));
 
-        avatarProgressView = new RadialProgressView(context) {
-            private Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-
-            {
-                paint.setColor(0x55000000);
-            }
-
-            @Override
-            protected void onDraw(Canvas canvas) {
-                if (avatarView != null && avatarView.getImageReceiver().hasNotThumb()) {
-                    paint.setAlpha((int) (0x55 * avatarView.getImageReceiver().getCurrentAlpha()));
-                    canvas.drawCircle(getMeasuredWidth() / 2.0f, getMeasuredHeight() / 2.0f, getMeasuredWidth() / 2.0f, paint);
-                }
-                super.onDraw(canvas);
-            }
-        };
-        avatarProgressView.setSize(AndroidUtilities.dp(26));
-        avatarProgressView.setProgressColor(0xffffffff);
-        avatarProgressView.setNoProgress(false);
+        avatarProgressView = new ImageView(context);
+        avatarProgressView.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(26), AndroidUtilities.dp(2.25f), getThemedColor(Theme.key_progressCircle)));
         avatarContainer.addView(avatarProgressView, LayoutHelper.createFrame(90, 90, Gravity.CENTER_HORIZONTAL | Gravity.TOP, 0, 15, 0, 0));
         showAvatarProgress(false, false);
 
@@ -2010,7 +1993,6 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
         if (avatarProgressView == null) {
             return;
         }
-        avatarProgressView.setProgress(progress);
 //        avatarsViewPager.setUploadProgress(uploadingImageLocation, progress);
     }
 
@@ -2019,10 +2001,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
         if (avatarProgressView == null) {
             return;
         }
-        avatarProgressView.setProgress(0.0f);
     }
-
-
 
     @Override
     public void onFactorChanged(int id, float factor, float fraction, FactorAnimator callee) {

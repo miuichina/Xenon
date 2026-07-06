@@ -55,7 +55,7 @@ public class JoinGroupAlert extends BottomSheet {
     private TLRPC.ChatInvite chatInvite;
     private TLRPC.Chat currentChat;
     private TextView requestTextView;
-    private RadialProgressView requestProgressView;
+    private ImageView requestProgressView;
 
     public JoinGroupAlert(final Context context, TLObject obj, String group, BaseFragment parentFragment, Theme.ResourcesProvider resourcesProvider) {
         this(context, obj, group, parentFragment, resourcesProvider, ORIGINATION_OTHER);
@@ -187,9 +187,8 @@ public class JoinGroupAlert extends BottomSheet {
             FrameLayout requestFrameLayout = new FrameLayout(getContext());
             linearLayout.addView(requestFrameLayout, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
-            requestProgressView = new RadialProgressView(getContext(), resourcesProvider);
-            requestProgressView.setProgressColor(getThemedColor(Theme.key_featuredStickers_addButton));
-            requestProgressView.setSize(dp(32));
+            requestProgressView = new ImageView(getContext());
+            requestProgressView.setImageDrawable(new CircularProgressDrawable(dp(32), dp(3.5f), getThemedColor(Theme.key_featuredStickers_addButton)));
             requestProgressView.setVisibility(View.INVISIBLE);
             requestFrameLayout.addView(requestProgressView, LayoutHelper.createFrame(48, 48, Gravity.CENTER));
 

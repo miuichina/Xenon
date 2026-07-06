@@ -71,7 +71,7 @@ import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.ListView.AdapterWithDiffUtils;
 import org.telegram.ui.Components.RLottieDrawable;
 import org.telegram.ui.Components.RLottieImageView;
-import org.telegram.ui.Components.RadialProgressView;
+import org.telegram.ui.Components.CircularProgressDrawable;
 import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.SizeNotifierFrameLayout;
 import org.telegram.ui.Components.VerticalPositionAutoAnimator;
@@ -88,7 +88,7 @@ public class GroupCreateFinalActivity extends BaseFragment implements Notificati
     private View avatarOverlay;
     private RLottieImageView avatarEditor;
     private AnimatorSet avatarAnimation;
-    private RadialProgressView avatarProgressView;
+    private ImageView avatarProgressView;
     private AvatarDrawable avatarDrawable;
     private FrameLayout editTextContainer;
     private FragmentFloatingButton floatingButton;
@@ -568,16 +568,8 @@ public class GroupCreateFinalActivity extends BaseFragment implements Notificati
         avatarEditor.setPadding(dp(0), 0, 0, dp(1));
         editTextContainer.addView(avatarEditor, LayoutHelper.createFrame(64, 64, Gravity.TOP | (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT), LocaleController.isRTL ? 0 : 15, 16, LocaleController.isRTL ? 15 : 0, 16));
 
-        avatarProgressView = new RadialProgressView(context) {
-            @Override
-            public void setAlpha(float alpha) {
-                super.setAlpha(alpha);
-                avatarOverlay.invalidate();
-            }
-        };
-        avatarProgressView.setSize(dp(30));
-        avatarProgressView.setProgressColor(0xffffffff);
-        avatarProgressView.setNoProgress(false);
+        avatarProgressView = new ImageView(context);
+        avatarProgressView.setImageDrawable(new CircularProgressDrawable(dp(30), dp(2.25f), getThemedColor(Theme.key_progressCircle)));
         editTextContainer.addView(avatarProgressView, LayoutHelper.createFrame(64, 64, Gravity.TOP | (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT), LocaleController.isRTL ? 0 : 16, 16, LocaleController.isRTL ? 16 : 0, 16));
 
         showAvatarProgress(false, false);
@@ -699,7 +691,6 @@ public class GroupCreateFinalActivity extends BaseFragment implements Notificati
         if (avatarProgressView == null) {
             return;
         }
-        avatarProgressView.setProgress(progress);
     }
 
     @Override
@@ -707,7 +698,6 @@ public class GroupCreateFinalActivity extends BaseFragment implements Notificati
         if (avatarProgressView == null) {
             return;
         }
-        avatarProgressView.setProgress(0.0f);
     }
 
     @Override

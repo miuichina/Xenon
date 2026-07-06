@@ -22,12 +22,13 @@ import android.widget.FrameLayout;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.ActionBar.Theme;
-import org.telegram.ui.Components.RadialProgressView;
+import android.widget.ImageView;
+import org.telegram.ui.Components.CircularProgressDrawable;
 
 public class ChatLoadingCell extends FrameLayout {
 
     private FrameLayout frameLayout;
-    private RadialProgressView progressBar;
+    private ImageView progressBar;
     private Theme.ResourcesProvider resourcesProvider;
 
     public ChatLoadingCell(Context context, View parent, Theme.ResourcesProvider resourcesProvider) {
@@ -51,9 +52,8 @@ public class ChatLoadingCell extends FrameLayout {
         frameLayout.setWillNotDraw(false);
         addView(frameLayout, LayoutHelper.createFrame(36, 36, Gravity.CENTER));
 
-        progressBar = new RadialProgressView(context, resourcesProvider);
-        progressBar.setSize(dp(28));
-        progressBar.setProgressColor(getThemedColor(Theme.key_chat_serviceText));
+        progressBar = new ImageView(context);
+        progressBar.setImageDrawable(new CircularProgressDrawable(dp(28), AndroidUtilities.dp(2.25f), getThemedColor(Theme.key_chat_serviceText)));
         frameLayout.addView(progressBar, LayoutHelper.createFrame(32, 32, Gravity.CENTER));
     }
 

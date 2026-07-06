@@ -5891,7 +5891,7 @@ public class EmojiView extends FrameLayout implements
         if (gifSearchAdapter != null) {
             gifSearchAdapter.progressEmptyView.imageView.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_chat_emojiPanelEmptyText), PorterDuff.Mode.MULTIPLY));
             gifSearchAdapter.progressEmptyView.textView.setTextColor(getThemedColor(Theme.key_chat_emojiPanelEmptyText));
-            gifSearchAdapter.progressEmptyView.progressView.setProgressColor(getThemedColor(Theme.key_progressCircle));
+            ((CircularProgressDrawable) gifSearchAdapter.progressEmptyView.progressView.getDrawable()).setColor(getThemedColor(Theme.key_progressCircle));
         }
         animatedEmojiTextColorFilter = new PorterDuffColorFilter(getThemedColor(Theme.key_featuredStickers_addButton), PorterDuff.Mode.SRC_IN);
 
@@ -9131,7 +9131,7 @@ public class EmojiView extends FrameLayout implements
 
         private final ImageView imageView;
         private final TextView textView;
-        private final RadialProgressView progressView;
+        private final ImageView progressView;
 
         private boolean loadingState;
 
@@ -9150,9 +9150,9 @@ public class EmojiView extends FrameLayout implements
             textView.setTextColor(getThemedColor(Theme.key_chat_emojiPanelEmptyText));
             addView(textView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER, 0, 42, 0, 0));
 
-            progressView = new RadialProgressView(context, resourcesProvider);
+            progressView = new ImageView(getContext());
+            progressView.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(24), AndroidUtilities.dp(2.25f), getThemedColor(Theme.key_progressCircle)));
             progressView.setVisibility(GONE);
-            progressView.setProgressColor(getThemedColor(Theme.key_progressCircle));
             addView(progressView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER));
         }
 

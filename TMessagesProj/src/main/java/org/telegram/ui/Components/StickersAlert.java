@@ -47,6 +47,7 @@ import android.view.ViewGroup;
 import android.view.animation.LinearInterpolator;
 import android.view.inputmethod.EditorInfo;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -94,6 +95,7 @@ import org.telegram.ui.Cells.StickerEmojiCell;
 import org.telegram.ui.ChatActivity;
 import org.telegram.ui.Components.Premium.PremiumButtonView;
 import org.telegram.ui.Components.Premium.PremiumFeatureBottomSheet;
+import org.telegram.ui.Components.CircularProgressDrawable;
 import org.telegram.ui.ContentPreviewViewer;
 import org.telegram.ui.LaunchActivity;
 import org.telegram.ui.PhotoViewer;
@@ -1130,7 +1132,8 @@ public class StickersAlert extends BottomSheet implements NotificationCenter.Not
         optionsButton.setContentDescription(LocaleController.getString(R.string.AccDescrMoreOptions));
         optionsButton.setVisibility(inputStickerSet != null ? View.VISIBLE : View.GONE);
 
-        RadialProgressView progressView = new RadialProgressView(context);
+        ImageView progressView = new ImageView(context);
+        progressView.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(40), AndroidUtilities.dp(2.25f), Theme.getColor(Theme.key_progressCircle)));
         emptyView.addView(progressView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER));
 
         frameLayoutParams = new FrameLayout.LayoutParams(LayoutHelper.MATCH_PARENT, AndroidUtilities.getShadowHeight(), Gravity.BOTTOM | Gravity.LEFT);

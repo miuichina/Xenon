@@ -89,12 +89,12 @@ import org.telegram.ui.Cells.TextCell;
 import org.telegram.ui.Components.AlertsCreator;
 import org.telegram.ui.Components.BackupImageView;
 import org.telegram.ui.Components.ChatAttachAlertPhotoLayout;
+import org.telegram.ui.Components.CircularProgressDrawable;
 import org.telegram.ui.Components.CombinedDrawable;
 import org.telegram.ui.Components.EditTextBoldCursor;
 import org.telegram.ui.Components.EditTextEmoji;
 import org.telegram.ui.Components.FlickerLoadingView;
 import org.telegram.ui.Components.LayoutHelper;
-import org.telegram.ui.Components.RadialProgressView;
 import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.RecyclerViewItemRangeSelector;
 import org.telegram.ui.Components.SizeNotifierFrameLayout;
@@ -1870,8 +1870,8 @@ public class PhotoPickerActivity extends BaseFragment implements NotificationCen
                     FrameLayout frameLayout = new FrameLayout(mContext);
                     view = frameLayout;
                     view.setLayoutParams(new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-                    RadialProgressView progressBar = new RadialProgressView(mContext);
-                    progressBar.setProgressColor(0xff527da3);
+                    ImageView progressBar = new ImageView(mContext);
+                    progressBar.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(40), AndroidUtilities.dp(2.25f), getThemedColor(Theme.key_progressCircle)));
                     frameLayout.addView(progressBar, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
                     break;
                 case 2:

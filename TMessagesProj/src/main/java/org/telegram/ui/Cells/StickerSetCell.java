@@ -56,7 +56,6 @@ import org.telegram.ui.Components.Easings;
 import org.telegram.ui.Components.ForegroundColorSpanThemable;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.Premium.PremiumButtonView;
-import org.telegram.ui.Components.RadialProgressView;
 import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.ScaleStateListAnimator;
 import org.telegram.ui.Components.UItem;
@@ -75,7 +74,7 @@ public class StickerSetCell extends FrameLayout {
     private TextView textView;
     private TextView valueTextView;
     private BackupImageView imageView;
-    private RadialProgressView progressView;
+    private ImageView progressView;
     private CheckBox2 checkBox;
     private boolean needDivider;
     private ImageView optionsButton;

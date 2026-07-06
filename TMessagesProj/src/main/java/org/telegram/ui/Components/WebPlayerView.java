@@ -148,7 +148,7 @@ public class WebPlayerView extends ViewGroup implements VideoPlayer.VideoPlayerD
     private boolean isLoading;
     private boolean switchingInlineMode;
 
-    private RadialProgressView progressView;
+    private ImageView progressView;
     private ImageView fullscreenButton;
     private ImageView playButton;
     private ImageView inlineButton;
@@ -1602,8 +1602,8 @@ public class WebPlayerView extends ViewGroup implements VideoPlayer.VideoPlayerD
             addView(controlsView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
         }
 
-        progressView = new RadialProgressView(context);
-        progressView.setProgressColor(0xffffffff);
+        progressView = new ImageView(context);
+        progressView.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(24), AndroidUtilities.dp(2.25f), 0xffffffff));
         addView(progressView, LayoutHelper.createFrame(48, 48, Gravity.CENTER));
 
         fullscreenButton = new ImageView(context);

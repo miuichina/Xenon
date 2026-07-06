@@ -1133,6 +1133,7 @@ public class ChatAttachAlertPhotoLayout extends ChatAttachAlert.AttachAlertLayou
         progressView.setText(LocaleController.getString(R.string.NoPhotos));
         progressView.setOnTouchListener(null);
         progressView.setTextSize(16);
+        progressView.setProgressBarStrokeWidth(3.5f);
         addView(progressView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
         if (loading) {

@@ -519,7 +519,7 @@ public class ChatAttachAlert extends BottomSheet implements NotificationCenter.N
                             });
                             botButtonAnimator.start();
                         }
-                        botProgressView.setProgressColor(textColor);
+                        ((CircularProgressDrawable) botProgressView.getDrawable()).setColor(textColor);
                         if (botButtonProgressWasVisible != isProgressVisible) {
                             botProgressView.animate().cancel();
                             if (isProgressVisible) {
@@ -1072,7 +1072,7 @@ public class ChatAttachAlert extends BottomSheet implements NotificationCenter.N
     private ButtonsAdapter buttonsAdapter;
 
     private boolean botButtonProgressWasVisible = false;
-    private RadialProgressView botProgressView;
+    private ImageView botProgressView;
 
     private boolean botButtonWasVisible = false;
     private AnimatedTextView botMainButtonTextView;
@@ -2925,13 +2925,13 @@ public class ChatAttachAlert extends BottomSheet implements NotificationCenter.N
         });
         containerView.addView(botMainButtonTextView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 48, Gravity.BOTTOM | Gravity.LEFT));
 
-        botProgressView = new RadialProgressView(context);
-        botProgressView.setSize(dp(18));
+        botProgressView = new ImageView(context);
+        botProgressView.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(28), AndroidUtilities.dp(2f), Theme.getColor(Theme.key_progressCircle)));
         botProgressView.setAlpha(0f);
         botProgressView.setScaleX(0.1f);
         botProgressView.setScaleY(0.1f);
         botProgressView.setVisibility(View.GONE);
-        containerView.addView(botProgressView, LayoutHelper.createFrame(28, 28, Gravity.BOTTOM | Gravity.RIGHT, 0, 0, 10, 10));
+        containerView.addView(botProgressView, LayoutHelper.createFrame(36, 36, Gravity.BOTTOM | Gravity.RIGHT, 0, 0, 10, 10));
 
         moveCaptionButton = new ImageView(context);
         moveCaptionButton.setScaleType(ImageView.ScaleType.CENTER);

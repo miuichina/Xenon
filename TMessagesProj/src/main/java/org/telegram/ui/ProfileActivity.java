@@ -260,7 +260,7 @@ import org.telegram.ui.Components.ProfileGooeyView;
 import org.telegram.ui.Components.ProfileMusicView;
 import org.telegram.ui.Components.RLottieDrawable;
 import org.telegram.ui.Components.RLottieImageView;
-import org.telegram.ui.Components.RadialProgressView;
+import org.telegram.ui.Components.CircularProgressDrawable;
 import org.telegram.ui.Components.Reactions.ReactionsLayoutInBubble;
 import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.ScaleStateListAnimator;
@@ -404,7 +404,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     private AvatarImageView avatarImage;
     private View avatarOverlay;
     private AnimatorSet avatarAnimation;
-    private RadialProgressView avatarProgressView;
+    private ImageView avatarProgressView;
     private ImageView timeItem;
     private ImageView starBgItem, starFgItem;
     private TimerDrawable timerDrawable;
@@ -5384,25 +5384,8 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
             return false;
         });
 
-        avatarProgressView = new RadialProgressView(context) {
-            private Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-
-            {
-                paint.setColor(0x55000000);
-            }
-
-            @Override
-            protected void onDraw(Canvas canvas) {
-                if (avatarImage != null && avatarImage.getImageReceiver().hasNotThumb()) {
-                    paint.setAlpha((int) (0x55 * avatarImage.getImageReceiver().getCurrentAlpha()));
-                    canvas.drawCircle(getMeasuredWidth() / 2.0f, getMeasuredHeight() / 2.0f, getMeasuredWidth() / 2.0f, paint);
-                }
-                super.onDraw(canvas);
-            }
-        };
-        avatarProgressView.setSize(AndroidUtilities.dp(26));
-        avatarProgressView.setProgressColor(0xffffffff);
-        avatarProgressView.setNoProgress(false);
+        avatarProgressView = new ImageView(context);
+        avatarProgressView.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(26), AndroidUtilities.dp(2.25f), getThemedColor(Theme.key_progressCircle)));
         avatarContainer.addView(avatarProgressView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
         timeItem = new ImageView(context);
@@ -12890,7 +12873,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         if (avatarProgressView == null) {
             return;
         }
-        avatarProgressView.setProgress(progress);
         avatarsViewPager.setUploadProgress(uploadingImageLocation, progress);
     }
 
@@ -12899,7 +12881,6 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
         if (avatarProgressView == null) {
             return;
         }
-        avatarProgressView.setProgress(0.0f);
     }
 
     int avatarUploadingRequest;

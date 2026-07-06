@@ -30,6 +30,7 @@ import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 
 import androidx.collection.LongSparseArray;
 import androidx.core.content.ContextCompat;
@@ -80,7 +81,7 @@ import org.telegram.ui.Components.FlickerLoadingView;
 import org.telegram.ui.Components.GigagroupConvertAlert;
 import org.telegram.ui.Components.ItemOptions;
 import org.telegram.ui.Components.LayoutHelper;
-import org.telegram.ui.Components.RadialProgressView;
+import org.telegram.ui.Components.CircularProgressDrawable;
 import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.SlideChooseView;
 import org.telegram.ui.Components.StickerEmptyView;
@@ -248,7 +249,7 @@ public class ChatUsersActivity extends BaseFragment implements NotificationCente
 
     private boolean openTransitionStarted;
     private FlickerLoadingView flickerLoadingView;
-    private View progressBar;
+    private ImageView progressBar;
 
     public interface ChatUsersActivityDelegate {
         default void didAddParticipantToList(long uid, TLObject participant) {
@@ -734,7 +735,8 @@ public class ChatUsersActivity extends BaseFragment implements NotificationCente
         flickerLoadingView.setColors(Theme.key_actionBarDefaultSubmenuBackground, Theme.key_listSelector, Theme.key_listSelector);
         progressLayout.addView(flickerLoadingView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.NO_GRAVITY, 12, 30, 12, 0));
 
-        progressBar = new RadialProgressView(context);
+        progressBar = new ImageView(context);
+        progressBar.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(40), AndroidUtilities.dp(2.25f), Theme.getColor(Theme.key_progressCircle)));
         progressLayout.addView(progressBar, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER));
 
         flickerLoadingView.setVisibility(View.GONE);

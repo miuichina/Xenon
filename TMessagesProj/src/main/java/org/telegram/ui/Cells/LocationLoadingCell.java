@@ -21,12 +21,13 @@ import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.Components.CircularProgressDrawable;
 import org.telegram.ui.Components.LayoutHelper;
-import org.telegram.ui.Components.RadialProgressView;
+
 
 public class LocationLoadingCell extends FrameLayout {
 
-    private RadialProgressView progressBar;
+    private ImageView progressBar;
     private TextView textView;
     private ImageView imageView;
     private final Theme.ResourcesProvider resourcesProvider;
@@ -35,7 +36,8 @@ public class LocationLoadingCell extends FrameLayout {
         super(context);
         this.resourcesProvider = resourcesProvider;
 
-        progressBar = new RadialProgressView(context, resourcesProvider);
+        progressBar = new ImageView(context);
+        progressBar.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(40), AndroidUtilities.dp(2.25f), getThemedColor(Theme.key_chat_serviceText)));
         addView(progressBar, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER));
 
         imageView = new ImageView(context);

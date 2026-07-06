@@ -90,7 +90,7 @@ public class CircularProgressDrawable extends Drawable {
         }
         lastWavyUpdate = now;
 
-        float inset = AndroidUtilities.dp(1f);
+        float inset = AndroidUtilities.dp(2.5f);
         RectF insetOval = new RectF(bounds);
         insetOval.inset(inset, inset);
         float sweep = segment[1] - segment[0];
@@ -194,13 +194,19 @@ public class CircularProgressDrawable extends Drawable {
         paint.setColor(color);
     }
 
+    public int getColor() {
+        return paint.getColor();
+    }
+
     @Override
     public void setAlpha(int alpha) {
         paint.setAlpha(alpha);
     }
 
     @Override
-    public void setColorFilter(@Nullable ColorFilter colorFilter) {}
+    public void setColorFilter(@Nullable ColorFilter colorFilter) {
+        paint.setColorFilter(colorFilter);
+    }
 
     @Override
     public int getOpacity() {

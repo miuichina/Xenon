@@ -27,6 +27,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -82,7 +83,7 @@ public class PhotoViewerWebView extends FrameLayout {
     private TextView errorButton;
     private WebView webView;
     private View progressBarBlackBackground;
-    private RadialProgressView progressBar;
+    private ImageView progressBar;
     private View pipItem;
 
     private String youtubeStoryboardsSpecUrl;
@@ -411,7 +412,8 @@ public class PhotoViewerWebView extends FrameLayout {
         progressBarBlackBackground.setVisibility(View.INVISIBLE);
         addView(progressBarBlackBackground, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
-        progressBar = new RadialProgressView(context);
+        progressBar = new ImageView(context);
+        progressBar.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(40), AndroidUtilities.dp(3f), Theme.getColor(Theme.key_progressCircle)));
         progressBar.setVisibility(View.INVISIBLE);
         addView(progressBar, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER));
     }

@@ -44,6 +44,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 
@@ -95,7 +96,7 @@ import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.LoadingSpan;
 import org.telegram.ui.Components.Premium.LimitReachedBottomSheet;
 import org.telegram.ui.Components.RLottieDrawable;
-import org.telegram.ui.Components.RadialProgressView;
+import org.telegram.ui.Components.CircularProgressDrawable;
 import org.telegram.ui.Components.Reactions.ChatCustomReactionsEditActivity;
 import org.telegram.ui.Components.Reactions.ReactionsUtils;
 import org.telegram.ui.Components.SectionsScrollView;
@@ -127,7 +128,7 @@ public class ChatEditActivity extends BaseFragment implements ImageUpdater.Image
     private BackupImageView avatarImage;
     private View avatarOverlay;
     private AnimatorSet avatarAnimation;
-    private RadialProgressView avatarProgressView;
+    private ImageView avatarProgressView;
     private AvatarDrawable avatarDrawable;
     private ImageUpdater imageUpdater;
     private EditTextEmoji nameTextView;
@@ -702,10 +703,8 @@ public class ChatEditActivity extends BaseFragment implements ImageUpdater.Image
             };
             frameLayout.addView(avatarOverlay, LayoutHelper.createFrame(64, 64, Gravity.TOP | (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT), LocaleController.isRTL ? 0 : 16, 12, LocaleController.isRTL ? 16 : 0, 8));
 
-            avatarProgressView = new RadialProgressView(context);
-            avatarProgressView.setSize(dp(30));
-            avatarProgressView.setProgressColor(0xffffffff);
-            avatarProgressView.setNoProgress(false);
+            avatarProgressView = new ImageView(context);
+            avatarProgressView.setImageDrawable(new CircularProgressDrawable(dp(30), dp(2.25f), Theme.getColor(Theme.key_progressCircle)));
             frameLayout.addView(avatarProgressView, LayoutHelper.createFrame(64, 64, Gravity.TOP | (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT), LocaleController.isRTL ? 0 : 16, 12, LocaleController.isRTL ? 16 : 0, 8));
 
             showAvatarProgress(false, false);
@@ -1808,7 +1807,6 @@ public class ChatEditActivity extends BaseFragment implements ImageUpdater.Image
         if (avatarProgressView == null) {
             return;
         }
-        avatarProgressView.setProgress(progress);
     }
 
     @Override
@@ -1816,7 +1814,6 @@ public class ChatEditActivity extends BaseFragment implements ImageUpdater.Image
         if (avatarProgressView == null) {
             return;
         }
-        avatarProgressView.setProgress(0.0f);
     }
 
     @Override
