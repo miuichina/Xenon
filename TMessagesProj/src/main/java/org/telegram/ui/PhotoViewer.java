@@ -2535,7 +2535,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                 progressPaint.setStyle(Paint.Style.STROKE);
                 progressPaint.setStrokeCap(Paint.Cap.ROUND);
                 progressPaint.setStrokeWidth(dp(3));
-                progressPaint.setColor(0xffffffff);
+                progressPaint.setColor(Theme.getColor(Theme.key_progressCircle));
             }
             parent = parentView;
             resetAlphas();
@@ -2665,6 +2665,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
         }
 
         public void setProgress(float value, boolean animated) {
+            value = 0.1f + 0.9f * value;
             if (!animated) {
                 animatedProgressValue = value;
                 animationProgressStart = value;
