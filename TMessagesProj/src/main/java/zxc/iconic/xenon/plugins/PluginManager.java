@@ -546,6 +546,10 @@ public class PluginManager {
         }
         Globals globals = createSandboxGlobals();
         PluginApi.setCurrentPluginFileName(file.getName());
+        // Pre-parse metadata so plugin_id is available before Lua execution
+        // for settings keying, scope gating, etc.
+        String[] pluginMeta = parseMetadata(file);
+        PluginApi.setCurrentPluginId(pluginMeta != null && pluginMeta.length > 2 ? pluginMeta[2] : null);
         // Auto-grant declared scopes BEFORE the plugin's top-level code runs,
         // so protected calls made during load are gated correctly.
         grantScopes(file.getName(), file);

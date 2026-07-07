@@ -72,7 +72,7 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
         general.setEnabled(false);
         items.add(general);
         boolean messaging = plugin != null
-                && getPrefs().getBoolean("plugin_scope_" + plugin.fileName + "_" + PluginManager.SCOPE_MESSAGING, false);
+                && getPrefs().getBoolean("plugin_scope_" + (plugin.pluginId != null ? plugin.pluginId : plugin.fileName) + "_" + PluginManager.SCOPE_MESSAGING, false);
         items.add(UItem.asCheck(permMessagingRow, LocaleController.getString(R.string.PluginScopeMessaging))
                 .setChecked(messaging));
         items.add(UItem.asShadow(null));
@@ -165,7 +165,7 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
         // on). Toggling persists the scope flag; hasScope() reads it live on
         // every API call, so no engine reload is needed for it to take effect.
         if (item.id == permMessagingRow) {
-            String key = "plugin_scope_" + plugin.fileName + "_" + PluginManager.SCOPE_MESSAGING;
+            String key = "plugin_scope_" + (plugin.pluginId != null ? plugin.pluginId : plugin.fileName) + "_" + PluginManager.SCOPE_MESSAGING;
             boolean newVal = !getPrefs().getBoolean(key, false);
             getPrefs().edit().putBoolean(key, newVal).apply();
             if (view instanceof TextCheckCell) {
@@ -234,7 +234,7 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
     }
 
     private String settingKey(String key) {
-        String prefix = plugin != null ? plugin.fileName : "unknown";
+        String prefix = plugin != null && plugin.pluginId != null ? plugin.pluginId : (plugin != null ? plugin.fileName : "unknown");
         return prefix + "_" + key;
     }
 
@@ -252,6 +252,6 @@ public class PluginSettingsActivity extends BaseNekoSettingsActivity {
 
     @Override
     protected String getKey() {
-        return "plugin_settings_" + (plugin != null ? plugin.fileName : "unknown");
+        return "plugin_settings_" + (plugin != null && plugin.pluginId != null ? plugin.pluginId : (plugin != null ? plugin.fileName : "unknown"));
     }
 }

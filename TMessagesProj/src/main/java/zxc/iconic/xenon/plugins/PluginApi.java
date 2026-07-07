@@ -84,6 +84,7 @@ import org.telegram.ui.DialogsActivity;
 public class PluginApi {
 
     static volatile String currentPluginFileName;
+    static volatile String currentPluginId;
 
     private static class TimerEntry {
         Runnable runnable;
@@ -440,6 +441,10 @@ public class PluginApi {
         currentPluginFileName = name;
     }
 
+    static void setCurrentPluginId(String id) {
+        currentPluginId = id;
+    }
+
     /**
      * Check the {@code MESSAGING} scope for the plugin that's currently
      * loading/calling. Protected API methods call this and silently bail
@@ -627,7 +632,8 @@ public class PluginApi {
                 return LuaValue.NIL;
             }
         });
-        final String capturedPluginForSettings = currentPluginFileName;
+        final String capturedPluginForSettings = currentPluginId != null ? currentPluginId : currentPluginFileName;
+        final String capturedFileNameForMigration = (currentPluginId != null && currentPluginFileName != null) ? currentPluginFileName : null;
         api.set("getSetting", new TwoArgFunction() {
             @Override
             public LuaValue call(LuaValue key, LuaValue def) {
@@ -635,6 +641,17 @@ public class PluginApi {
                 String namespacedKey = (capturedPluginForSettings != null ? capturedPluginForSettings + "_" : "") + rawKey;
                 String defStr = def.isnil() ? null : def.tojstring();
                 String val = getSetting(namespacedKey, null);
+                if (val == null) {
+                    // Migration from old file-name-based key to plugin_id-based key
+                    if (capturedFileNameForMigration != null) {
+                        String oldKey = capturedFileNameForMigration + "_" + rawKey;
+                        val = getSetting(oldKey, null);
+                        if (val != null) {
+                            setSetting(namespacedKey, val);
+                            removeSetting(oldKey);
+                        }
+                    }
+                }
                 if (val == null) {
                     val = getSetting(rawKey, null);
                     if (val != null) {
@@ -2012,6 +2029,10 @@ public class PluginApi {
 
     static void setSetting(String key, String value) {
         getPrefs().edit().putString(key, value).apply();
+    }
+
+    static void removeSetting(String key) {
+        getPrefs().edit().remove(key).apply();
     }
 
     static void showBulletin(final String text) {
