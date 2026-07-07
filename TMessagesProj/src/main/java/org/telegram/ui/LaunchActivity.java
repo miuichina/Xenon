@@ -7261,6 +7261,10 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         zxc.iconic.xenon.plugins.PluginSafeMode.consumeVolumeKeySafeMode(this);
         zxc.iconic.xenon.plugins.PluginSafeMode.checkAndHandleCrash(this);
 
+        // Plugins use this to get the hosting Activity for UI operations
+        // (presenting fragments, etc.). Must be set before firing onResume.
+        zxc.iconic.xenon.plugins.PluginManager.setCurrentActivity(this);
+
         // Plugin hook: any plugin that registered via xenon.on("onResume", ...)
         // gets notified every time the app returns to the foreground.
         zxc.iconic.xenon.plugins.PluginManager.getInstance().fire("onResume");
