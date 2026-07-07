@@ -30293,13 +30293,9 @@ public class ChatActivity extends BaseFragment implements
 
             @Override
             public void onShow(Bulletin bulletin) {
-                bulletin.getLayout().setCustomBackground(glassBackgroundDrawableFactory
-                    // fake multiwindow flag because bulleting parent is not child of fragment
-                    // todo: fix?
-                    .create(bulletin.getLayout(), true)
-                    .setColorProvider(BlurredBackgroundProviderImpl.bulletin(themeDelegate))
-                    .setRadius(dp(16))
-                );
+                int radius = zxc.iconic.xenon.NekoConfig.roundedBulletin ? AndroidUtilities.dp(48) : AndroidUtilities.dp(16);
+                int color = Theme.getColor(Theme.key_undo_background, themeDelegate);
+                bulletin.getLayout().setCustomBackground(Theme.createRoundRectDrawable(radius, color));
             }
         });
 
