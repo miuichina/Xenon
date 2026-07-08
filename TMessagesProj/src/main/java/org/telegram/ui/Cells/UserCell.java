@@ -716,6 +716,15 @@ public class UserCell extends FrameLayout implements NotificationCenter.Notifica
             nameTextView.setRightDrawable(null);
             nameTextView.setRightDrawableTopPadding(0);
         }
+        nameTextView.setRightDrawable2(null);
+        if (currentUser != null) {
+            String badgeDesc = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().getDescription(currentUser.id);
+            if (badgeDesc != null) {
+                Drawable badge = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().createDrawable(true, resourcesProvider);
+                nameTextView.setRightDrawable2(badge);
+                nameTextView.setRightDrawableOutside(true);
+            }
+        }
         if (currentStatus != null) {
             statusTextView.setTextColor(statusColor);
             CharSequence status = currentStatus;

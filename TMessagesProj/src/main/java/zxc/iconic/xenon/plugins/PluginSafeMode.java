@@ -437,6 +437,7 @@ public final class PluginSafeMode {
             }));
             layout.addView(divider(activity));
             layout.addView(makeButton(activity, "Copy crash log", Theme.getColor(Theme.key_windowBackgroundWhiteBlueText), v -> {
+                if (sheetRef[0] != null) sheetRef[0].dismiss();
                 copyToClipboard(crashLog);
             }));
             layout.addView(divider(activity));
@@ -592,6 +593,7 @@ public final class PluginSafeMode {
 
             final BottomSheet[] sheetRef = new BottomSheet[1];
             layout.addView(makeButton(activity, "Copy error", Theme.getColor(Theme.key_windowBackgroundWhiteBlueText), v -> {
+                if (sheetRef[0] != null) sheetRef[0].dismiss();
                 copyToClipboard(crashLog);
             }));
             layout.addView(divider(activity));

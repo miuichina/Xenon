@@ -398,9 +398,9 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
         String pluginVersion = meta != null && meta.length > 4 ? meta[4] : null;
         // Check if a plugin with the same pluginId is already installed
         PluginManager.LoadedPlugin existingSameId = pluginId != null ? PluginManager.getInstance().findByPluginId(pluginId) : null;
-        boolean isUpdate = existingSameId != null;
         // Check if the file content is identical to an already installed plugin
         boolean isIdentical = PluginManager.isPluginFileIdentical(pluginFile, pluginId);
+        boolean isUpdate = existingSameId != null && !isIdentical;
 
         BottomSheet.Builder builder = new BottomSheet.Builder(activity, false, resourcesProvider);
         LinearLayout layout = new LinearLayout(activity);
@@ -453,12 +453,12 @@ public class NekoPluginsActivity extends BaseNekoSettingsActivity {
         if (pluginId != null) {
             TextView idView = new TextView(activity);
             String idText = pluginId;
-            if (existingSameId != null) {
+            if (isUpdate) {
                 idText = pluginId + " (" + LocaleController.getString(R.string.PluginsUpdate) + ")";
             }
             idView.setText(idText);
             idView.setTextSize(12);
-            idView.setTextColor(existingSameId != null
+            idView.setTextColor(isUpdate
                     ? Theme.getColor(Theme.key_text_RedBold, resourcesProvider)
                     : Theme.getColor(Theme.key_windowBackgroundWhiteGrayText3, resourcesProvider));
             idView.setGravity(android.view.Gravity.CENTER);

@@ -2817,7 +2817,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             }
 
             if (backgroundState == PROGRESS_EMPTY || backgroundState == PROGRESS_CANCEL || previousBackgroundState == PROGRESS_EMPTY || previousBackgroundState == PROGRESS_CANCEL) {
-                int diff = dp(4);
+                int diff = dp(10);
                 if (previousBackgroundState != -2) {
                     progressPaint.setAlpha((int) (255 * animatedAlphaValue * alpha));
                 } else {

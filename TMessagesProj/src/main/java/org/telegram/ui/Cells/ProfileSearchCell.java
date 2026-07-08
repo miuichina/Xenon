@@ -134,6 +134,7 @@ public class ProfileSearchCell extends BaseCell implements NotificationCenter.No
     private StaticLayout statusLayout;
     private AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable botVerificationDrawable;
     private AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable statusDrawable;
+    private Drawable customBadgeDrawable;
     public StoriesUtilities.AvatarStoryParams avatarStoryParams = new StoriesUtilities.AvatarStoryParams(false);
 
     private final RectF adBounds = new RectF();
@@ -477,6 +478,16 @@ public class ProfileSearchCell extends BaseCell implements NotificationCenter.No
                 });
             }
         }
+        customBadgeDrawable = null;
+        if (dialog_id != 0) {
+            String badgeDesc = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().getDescription(dialog_id);
+            if (badgeDesc != null) {
+                customBadgeDrawable = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().createDrawable(true, resourcesProvider);
+                if (customBadgeDrawable != null) {
+                    customBadgeDrawable.setCallback(this);
+                }
+            }
+        }
         if (!LocaleController.isRTL) {
             statusLeft = dp(AndroidUtilities.leftBaseline);
         } else {
@@ -618,6 +629,13 @@ public class ProfileSearchCell extends BaseCell implements NotificationCenter.No
                 // nameLeft += statusDrawable.getIntrinsicWidth();
             } else {
                 nameWidth -= statusDrawable.getIntrinsicWidth();
+            }
+        }
+        if (customBadgeDrawable != null) {
+            if (LocaleController.isRTL) {
+                nameWidth -= customBadgeDrawable.getIntrinsicWidth();
+            } else {
+                nameLeft += customBadgeDrawable.getIntrinsicWidth();
             }
         }
 
@@ -984,6 +1002,22 @@ public class ProfileSearchCell extends BaseCell implements NotificationCenter.No
             }
             setDrawableBounds(statusDrawable, x, nameTop + (nameLayout.getHeight() - statusDrawable.getIntrinsicHeight()) / 2f);
             statusDrawable.draw(canvas);
+
+            if (customBadgeDrawable != null) {
+                int bx;
+                if (LocaleController.isRTL) {
+                    if (nameLayout.getLineLeft(0) == 0) {
+                        bx = nameLeft - dp(3) - customBadgeDrawable.getIntrinsicWidth();
+                    } else {
+                        float w = nameLayout.getLineWidth(0);
+                        bx = (int) (nameLeft + nameWidth - Math.ceil(w) - dp(3) - customBadgeDrawable.getIntrinsicWidth());
+                    }
+                } else {
+                    bx = (int) (nameLeft + nameLayout.getLineRight(0) + dp(6));
+                }
+                setDrawableBounds(customBadgeDrawable, bx, nameTop + (nameLayout.getHeight() - customBadgeDrawable.getIntrinsicHeight()) / 2f);
+                customBadgeDrawable.draw(canvas);
+            }
         }
 
         if (ad != null && adText != null && adBackgroundPaint != null) {

@@ -11591,6 +11591,18 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 } else {
                     nameTextView[a].setLeftDrawableOutside(false);
                 }
+                String badgeDesc = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().getDescription(dialogId != 0 ? dialogId : userId);
+                if (badgeDesc != null) {
+                    nameTextView[a].setRightDrawableOutside(true);
+                    Drawable badge = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().createDrawable(true, resourcesProvider);
+                    String finalDesc = badgeDesc;
+                    nameTextView[a].setRightDrawable2(badge);
+                    nameTextView[a].setRightDrawable2OnClick(v -> {
+                        BulletinFactory.of(ProfileActivity.this).createSimpleBulletin(R.raw.chats_infotip, finalDesc).show();
+                    });
+                } else {
+                    nameTextView[a].setRightDrawable2(null);
+                }
                 nameTextView[a].setLeftDrawable(leftIcon);
                 if (a == 1 && (rightIconIsStatus || rightIconIsPremium)) {
                     nameTextView[a].setRightDrawableOutside(true);
@@ -11926,6 +11938,18 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     nameTextView[a].setLeftDrawable(getBotVerificationDrawable(chat.bot_verification_icon, false, a));
                 } else {
                     nameTextView[a].setLeftDrawable(null);
+                }
+                String badgeDesc = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().getDescription(dialogId);
+                if (badgeDesc != null) {
+                    nameTextView[a].setRightDrawableOutside(true);
+                    Drawable badge = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().createDrawable(true, resourcesProvider);
+                    nameTextView[a].setRightDrawable2(badge);
+                    String finalDesc = badgeDesc;
+                    nameTextView[a].setRightDrawable2OnClick(v -> {
+                        BulletinFactory.of(ProfileActivity.this).createSimpleBulletin(R.raw.chats_infotip, finalDesc).show();
+                    });
+                } else {
+                    nameTextView[a].setRightDrawable2(null);
                 }
                 if (a == 0 && onlineTextOverride != null) {
                     onlineTextView[a].setText(onlineTextOverride);

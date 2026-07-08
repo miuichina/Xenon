@@ -595,6 +595,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
 
     private boolean drawVerified;
     private boolean drawBotVerified;
+    private Drawable customBadgeDrawable;
     private boolean drawPremium;
     private final View emojiStatusView;
     private final AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable emojiStatus;
@@ -1189,6 +1190,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
         drawNameLock = false;
         drawVerified = false;
         drawBotVerified = false;
+        customBadgeDrawable = null;
         drawPremium = false;
         drawForwardIcon = false;
         drawGiftIcon = false;
@@ -1416,6 +1418,15 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                                 nameLayoutEllipsizeByGradient = true;
                                 emojiStatus.set(PremiumGradient.getInstance().premiumStarDrawableMini, false);
                                 emojiStatus.setParticles(false, false);
+                            }
+                        }
+                    }
+                    if (customBadgeDrawable == null) {
+                        String badgeDesc = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().getDescription(currentDialogId);
+                        if (badgeDesc != null) {
+                            customBadgeDrawable = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().createDrawable(true, resourcesProvider);
+                            if (customBadgeDrawable != null) {
+                                customBadgeDrawable.setCallback(this);
                             }
                         }
                     }
@@ -4343,6 +4354,34 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                 }
                 setDrawableBounds((drawScam == 1 ? Theme.dialogs_scamDrawable : Theme.dialogs_fakeDrawable), nameMuteLeft, y);
                 (drawScam == 1 ? Theme.dialogs_scamDrawable : Theme.dialogs_fakeDrawable).draw(canvas);
+            }
+            if (customBadgeDrawable != null) {
+                int y = dp(useForceThreeLines || SharedConfig.useThreeLinesLayout ? 12.5f : 15.5f);
+                if ((!(useForceThreeLines || SharedConfig.useThreeLinesLayout) || isForumCell()) && hasTags()) {
+                    y -= dp(9);
+                }
+                int size = customBadgeDrawable.getIntrinsicWidth();
+                int iconRight = nameMuteLeft;
+                if (drawVerified) {
+                    iconRight = nameMuteLeft - dp(1) + Theme.dialogs_verifiedDrawable.getIntrinsicWidth();
+                } else if (drawPremium) {
+                    iconRight = nameMuteLeft + dp(20);
+                } else if (drawScam != 0) {
+                    iconRight = nameMuteLeft + (drawScam == 1 ? Theme.dialogs_scamDrawable : Theme.dialogs_fakeDrawable).getIntrinsicWidth();
+                }
+                if (drawMuted && !drawVerified && drawScam == 0) {
+                    int muteRight = (drawPremium ? nameMutedIconLeft : nameMuteLeft) + Theme.dialogs_muteDrawable.getIntrinsicWidth();
+                    if (muteRight > iconRight) iconRight = muteRight;
+                }
+                int badgeLeft = iconRight + dp(4);
+                customBadgeDrawable.setBounds(
+                    badgeLeft,
+                    y,
+                    badgeLeft + size,
+                    y + size
+                );
+                customBadgeDrawable.draw(canvas);
+                invalidate();
             }
 
             if (drawReorder || reorderIconProgress != 0) {

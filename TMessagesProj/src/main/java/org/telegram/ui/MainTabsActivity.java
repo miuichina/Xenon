@@ -692,10 +692,11 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
     @NonNull
     @Override
     protected WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat insets) {
-        navigationBarHeight = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom;
+        int bottomInset = zxc.iconic.xenon.helpers.NonIslandHelper.bottomBar() ? 0 : insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom;
+        navigationBarHeight = bottomInset;
         final boolean isUpdateLayoutVisible = updateLayoutWrapper.isUpdateLayoutVisible();
         final int updateLayoutHeight = isUpdateLayoutVisible ? dp(UpdateLayoutWrapper.HEIGHT) : 0;
-        updateLayoutWrapper.setPadding(0, 0, 0, navigationBarHeight);
+        updateLayoutWrapper.setPadding(0, 0, 0, bottomInset);
 
         ViewGroup.MarginLayoutParams lp;
         {

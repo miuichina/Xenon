@@ -331,6 +331,7 @@ public class PluginManager {
     public void reloadAll() {
         PluginApi.stopAll();
         plugins.clear();
+        zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().init();
         if (!isEnabled()) {
             Log.d(TAG, "reloadAll: plugins disabled, skipping");
             return;
