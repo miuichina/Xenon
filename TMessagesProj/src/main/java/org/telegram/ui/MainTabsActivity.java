@@ -718,7 +718,22 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             }
         }
 
-        tabsViewWrapper.setPadding(0, 0, 0, navigationBarHeight);
+        if (zxc.iconic.xenon.helpers.NonIslandHelper.bottomBar()) {
+            // In non-island mode the wrapper has no bottom padding so the blur drawable
+            // extends under the system navigation bar. The tabsView itself gets a
+            // bottom padding equal to the navigation-bar height so the buttons
+            // stay above it, and we grow its LayoutParams height accordingly.
+            tabsViewWrapper.setPadding(0, 0, 0, 0);
+            final int tabsFullHeight = dp(DialogsActivity.MAIN_TABS_HEIGHT + DialogsActivity.MAIN_TABS_MARGIN) + navigationBarHeight;
+            ViewGroup.LayoutParams tabsLp = tabsView.getLayoutParams();
+            if (tabsLp != null && tabsLp.height != tabsFullHeight) {
+                tabsLp.height = tabsFullHeight;
+                tabsView.setLayoutParams(tabsLp);
+            }
+            tabsView.setPadding(0, 0, 0, navigationBarHeight);
+        } else {
+            tabsViewWrapper.setPadding(0, 0, 0, navigationBarHeight);
+        }
 
         final WindowInsetsCompat consumed = isUpdateLayoutVisible ?
             insets.inset(0, 0, 0, navigationBarHeight) : insets;

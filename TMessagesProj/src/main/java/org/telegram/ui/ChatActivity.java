@@ -1057,6 +1057,8 @@ public class ChatActivity extends BaseFragment implements
     private ActionBarMenuSubItem menuDeleteItem;
     private ImageView popupBlurOverlayView;
     private Bitmap popupBlurOverlayBitmap;
+    private android.view.Choreographer.FrameCallback popupBlurRefreshCallback;
+    private int popupBlurRefreshFrameCounter;
     private final Runnable updateDeleteItemRunnable = new Runnable() {
         @Override
         public void run() {
@@ -31162,8 +31164,43 @@ public class ChatActivity extends BaseFragment implements
                     imageView.setAlpha(0f);
                     imageView.animate().alpha(1f).setDuration(200).setInterpolator(CubicBezierInterpolator.DEFAULT).start();
                 }
+                if (NekoConfig.blurOverlayRefresh) {
+                    setupPopupBlurRefresh(window, dw, dh, bw, bh);
+                }
             }
         }, new Handler(Looper.getMainLooper()));
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.S)
+    private void setupPopupBlurRefresh(android.view.Window window, int dw, int dh, int bw, int bh) {
+        popupBlurRefreshFrameCounter = 0;
+        popupBlurRefreshCallback = new android.view.Choreographer.FrameCallback() {
+            @Override
+            public void doFrame(long frameTimeNanos) {
+                if (popupBlurOverlayView == null) return;
+                popupBlurRefreshFrameCounter++;
+                int interval = NekoConfig.blurOverlayRefreshInterval;
+                if (popupBlurRefreshFrameCounter % interval != 0) {
+                    android.view.Choreographer.getInstance().postFrameCallback(this);
+                    return;
+                }
+                Bitmap newBitmap = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888);
+                PixelCopy.request(window, newBitmap, refreshResult -> {
+                    if (refreshResult == PixelCopy.SUCCESS && popupBlurOverlayView != null) {
+                        Bitmap old = popupBlurOverlayBitmap;
+                        popupBlurOverlayBitmap = newBitmap;
+                        popupBlurOverlayView.setImageBitmap(newBitmap);
+                        if (old != null) old.recycle();
+                    } else {
+                        newBitmap.recycle();
+                    }
+                    if (popupBlurOverlayView != null && NekoConfig.blurOverlayRefresh) {
+                        android.view.Choreographer.getInstance().postFrameCallback(popupBlurRefreshCallback);
+                    }
+                }, new Handler(Looper.getMainLooper()));
+            }
+        };
+        android.view.Choreographer.getInstance().postFrameCallback(popupBlurRefreshCallback);
     }
 
     private void removePopupBlur() {
@@ -31171,6 +31208,7 @@ public class ChatActivity extends BaseFragment implements
     }
 
     private void removePopupBlur(boolean animated) {
+        popupBlurRefreshCallback = null;
         if (popupBlurOverlayView != null) {
             if (animated) {
                 View overlay = popupBlurOverlayView;

@@ -1657,10 +1657,13 @@ public class FilterTabsView extends FrameLayout {
             Tab firstTab = findDefaultTab();
             if (firstTab != null || NekoConfig.hideAllTab) {
                 int trueTabsWidth;
+                boolean titleChanged = false;
                 if (!NekoConfig.hideAllTab) {
+                    CharSequence originalTitle = firstTab.title;
                     firstTab.setTitle(LocaleController.getString(R.string.FilterAllChats), null, false);
                     int tabWidth = firstTab.getWidth(false);
                     firstTab.setTitle(allTabsWidth > width ? LocaleController.getString(R.string.FilterAllChatsShort) : LocaleController.getString(R.string.FilterAllChats), null, false);
+                    titleChanged = !android.text.TextUtils.equals(originalTitle, firstTab.title);
                     trueTabsWidth = allTabsWidth - tabWidth;
                     trueTabsWidth += firstTab.getWidth(false);
                 } else {
@@ -1668,7 +1671,7 @@ public class FilterTabsView extends FrameLayout {
                 }
                 int prevWidth = additionalTabWidth;
                 additionalTabWidth = trueTabsWidth < width ? (width - trueTabsWidth) / tabs.size() : 0;
-                if (prevWidth != additionalTabWidth) {
+                if (prevWidth != additionalTabWidth || titleChanged) {
                     ignoreLayout = true;
                     RecyclerView.ItemAnimator animator = listView.getItemAnimator();
                     listView.setItemAnimator(null);

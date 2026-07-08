@@ -8,12 +8,14 @@ import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.RectF;
 import android.os.Build;
 import android.os.SystemClock;
 import android.text.Editable;
 import android.text.Layout;
 import android.text.TextWatcher;
 import android.text.style.ForegroundColorSpan;
+import android.view.Choreographer;
 import android.view.Gravity;
 import android.view.animation.PathInterpolator;
 import android.widget.TextView;
@@ -52,9 +54,22 @@ public class TextAnimationEditText extends EditTextCaption {
     private final Paint cursorPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private float animCursorX = -1;
     private int animCursorLine = -1;
-    private ValueAnimator cursorAnimator;
-    private boolean cursorAnimating;
     private int cursorColor = 0xff54a1db;
+
+    private float targetCursorX = -1;
+    private float targetCursorY = -1;
+    private float targetCursorHeight = -1;
+    private float animCursorY = -1;
+    private float animCursorHeight = -1;
+    private long lastFrameTime = 0;
+    private float cursorMotion = 0;
+
+    private boolean spaceJumpActive;
+    private long spaceJumpTime;
+    private boolean enterDiveActive;
+    private long enterDiveTime;
+    private boolean backspacePulseActive;
+    private long backspacePulseTime;
 
     private static Field mShowCursorField;
     private Object editorObj;
@@ -68,6 +83,10 @@ public class TextAnimationEditText extends EditTextCaption {
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
                 if (!NekoConfig.textAnimationEnabled) return;
                 if (count > 0) {
+                    if (after < count) {
+                        backspacePulseActive = true;
+                        backspacePulseTime = SystemClock.elapsedRealtime();
+                    }
                     if (start == 0 && count == s.length()) {
                         charAnims.clear();
                         deletedCharAnims.clear();
@@ -97,6 +116,18 @@ public class TextAnimationEditText extends EditTextCaption {
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 if (!NekoConfig.textAnimationEnabled) return;
+                if (count > 0) {
+                    for (int i = start; i < start + count && i < s.length(); i++) {
+                        char c = s.charAt(i);
+                        if (c == ' ') {
+                            spaceJumpActive = true;
+                            spaceJumpTime = SystemClock.elapsedRealtime();
+                        } else if (c == '\n') {
+                            enterDiveActive = true;
+                            enterDiveTime = SystemClock.elapsedRealtime();
+                        }
+                    }
+                }
                 if (s.length() == 0) {
                     charAnims.clear();
                     deletedCharAnims.clear();
@@ -153,52 +184,59 @@ public class TextAnimationEditText extends EditTextCaption {
         cursorColor = color;
     }
 
+    private int getCorrectedOffset(int offset) {
+        CharSequence s = getText();
+        if (s == null || s.length() == 0) return offset;
+        Layout layout = getLayout();
+        if (layout == null) return offset;
+        int line = layout.getLineForOffset(offset);
+        int lineStart = layout.getLineStart(line);
+        int lineEnd = layout.getLineEnd(line);
+        int current = lineStart;
+        while (current < lineEnd) {
+            int len = graphemeClusterLength(s, current, lineEnd);
+            if (offset > current && offset <= current + len) {
+                return current + len;
+            }
+            current += len;
+        }
+        return offset;
+    }
+
     @Override
     protected void onSelectionChanged(int selStart, int selEnd) {
         super.onSelectionChanged(selStart, selEnd);
         if (!NekoConfig.textAnimationEnabled || NekoConfig.textAnimCursorSpeed <= 0) return;
         Layout layout = getLayout();
         if (layout == null) return;
-        float newX = layout.getPrimaryHorizontal(selStart);
-        int newLine = layout.getLineForOffset(selStart);
-        if (newLine != animCursorLine) {
-            animCursorLine = newLine;
-            animCursorX = newX;
-            if (cursorAnimator != null) {
-                cursorAnimator.cancel();
-            }
-            invalidate();
-            return;
-        }
+
+        int correctedOffset = getCorrectedOffset(selStart);
+        float newX = layout.getPrimaryHorizontal(correctedOffset);
+        int newLine = layout.getLineForOffset(correctedOffset);
+
+        float lineTop = layout.getLineTop(newLine);
+        float lineBottom = layout.getLineBottom(newLine);
+        float newY = lineTop;
+        float newHeight = lineBottom - lineTop;
+
+        animCursorLine = newLine;
+        lastFrameTime = SystemClock.elapsedRealtime();
+
         if (animCursorX < 0) {
             animCursorX = newX;
-            return;
-        }
-        if (Math.abs(newX - animCursorX) < AndroidUtilities.dp(1)) {
-            animCursorX = newX;
-            return;
-        }
-        if (cursorAnimator != null) {
-            cursorAnimator.cancel();
-        }
-        float fromX = animCursorX;
-        long duration = Math.max(50, 500 - NekoConfig.textAnimCursorSpeed * 4);
-        cursorAnimator = ValueAnimator.ofFloat(fromX, newX);
-        cursorAnimator.setDuration(duration);
-        cursorAnimator.setInterpolator(bezier);
-        cursorAnimator.addUpdateListener(a -> {
-            animCursorX = (float) a.getAnimatedValue();
-            cursorAnimating = true;
+            animCursorY = newY;
+            animCursorHeight = newHeight;
+            targetCursorX = newX;
+            targetCursorY = newY;
+            targetCursorHeight = newHeight;
             invalidate();
-        });
-        cursorAnimator.addListener(new AnimatorListenerAdapter() {
-            @Override
-            public void onAnimationEnd(Animator animation) {
-                cursorAnimating = false;
-                invalidate();
-            }
-        });
-        cursorAnimator.start();
+            return;
+        }
+
+        targetCursorX = newX;
+        targetCursorY = newY;
+        targetCursorHeight = newHeight;
+        invalidate();
     }
 
     private boolean isCursorBlinkVisible() {
@@ -220,7 +258,7 @@ public class TextAnimationEditText extends EditTextCaption {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        boolean smoothCursor = NekoConfig.textAnimationEnabled && NekoConfig.textAnimCursorSpeed > 0 && cursorAnimating;
+        boolean smoothCursor = NekoConfig.textAnimationEnabled && NekoConfig.textAnimCursorSpeed > 0;
         float origWidth = getCursorWidth();
         if (smoothCursor) {
             setCursorWidth(0);
@@ -234,11 +272,119 @@ public class TextAnimationEditText extends EditTextCaption {
     }
 
     private void drawAnimatedCursor(Canvas canvas) {
-        if (!isCursorBlinkVisible()) return;
+        if (getSelectionStart() != getSelectionEnd()) return;
         Layout layout = getLayout();
         if (layout == null) return;
-        int sel = getSelectionStart();
-        int line = layout.getLineForOffset(sel);
+
+        long now = SystemClock.elapsedRealtime();
+        if (lastFrameTime == 0) {
+            lastFrameTime = now;
+        }
+        long dt = now - lastFrameTime;
+        lastFrameTime = now;
+        if (dt > 100) {
+            dt = 16;
+        }
+        float deltaTimeFactor = dt / 16.0f;
+
+        if (targetCursorX < 0) {
+            return;
+        }
+
+        float cursorSpeed = NekoConfig.textAnimCursorSpeed;
+        float factor = Math.min(1.0f, (cursorSpeed / 100.0f) * deltaTimeFactor * 0.22f);
+
+        float dx = targetCursorX - animCursorX;
+        float dy = targetCursorY - animCursorY;
+        float dh = targetCursorHeight - animCursorHeight;
+
+        boolean needsInvalidate = false;
+
+        if (Math.abs(dx) > 0.01f || Math.abs(dy) > 0.01f || Math.abs(dh) > 0.01f) {
+            animCursorX += dx * factor;
+            animCursorY += dy * factor;
+            animCursorHeight += dh * factor;
+            needsInvalidate = true;
+        } else {
+            animCursorX = targetCursorX;
+            animCursorY = targetCursorY;
+            animCursorHeight = targetCursorHeight;
+        }
+
+        // Update motion
+        float targetMotion = (float) Math.sqrt(dx * dx + dy * dy);
+        cursorMotion += (targetMotion - cursorMotion) * Math.min(1.0f, 0.32f * deltaTimeFactor);
+        if (cursorMotion > 0.01f) {
+            needsInvalidate = true;
+        } else {
+            cursorMotion = 0;
+        }
+
+        // Triggers
+        float spaceJumpWidth = 0;
+        if (spaceJumpActive) {
+            long spaceTimeElapsed = now - spaceJumpTime;
+            if (spaceTimeElapsed < 300) {
+                float progress = spaceTimeElapsed / 300.0f;
+                float spaceFactor = (float) Math.sin(progress * Math.PI);
+                spaceJumpWidth = spaceFactor * AndroidUtilities.dp(8);
+                needsInvalidate = true;
+            } else {
+                spaceJumpActive = false;
+            }
+        }
+
+        float enterDiveOffset = 0;
+        if (enterDiveActive) {
+            long enterTimeElapsed = now - enterDiveTime;
+            if (enterTimeElapsed < 400) {
+                float progress = enterTimeElapsed / 400.0f;
+                float enterFactor = (float) Math.sin(progress * Math.PI);
+                enterDiveOffset = enterFactor * AndroidUtilities.dp(12);
+                needsInvalidate = true;
+            } else {
+                enterDiveActive = false;
+            }
+        }
+
+        float backspaceSqueezeX = 0;
+        float backspaceStretchY = 0;
+        if (backspacePulseActive) {
+            long backspaceTimeElapsed = now - backspacePulseTime;
+            if (backspaceTimeElapsed < 300) {
+                float progress = backspaceTimeElapsed / 300.0f;
+                float backspaceFactor = (float) Math.sin(progress * Math.PI);
+                backspaceSqueezeX = -backspaceFactor * AndroidUtilities.dp(1.0f);
+                backspaceStretchY = backspaceFactor * AndroidUtilities.dp(4.0f);
+                needsInvalidate = true;
+            } else {
+                backspacePulseActive = false;
+            }
+        }
+
+        if (needsInvalidate) {
+            invalidate();
+        }
+
+        if (!isCursorBlinkVisible()) return;
+
+        // Motion stretch
+        float stretchX = 0;
+        float stretchY = 0;
+        if (cursorSpeed > 0) {
+            stretchX = Math.abs(dx) * 0.25f;
+            float maxStretchX = AndroidUtilities.dp(12);
+            if (stretchX > maxStretchX) {
+                stretchX = maxStretchX;
+            }
+
+            stretchY = Math.abs(dy) * 0.2f;
+            float maxStretchY = animCursorHeight * 0.3f;
+            if (stretchY > maxStretchY) {
+                stretchY = maxStretchY;
+            }
+        }
+
         canvas.save();
         int voffsetCursor = 0;
         if ((getGravity() & Gravity.VERTICAL_GRAVITY_MASK) != Gravity.TOP) {
@@ -246,13 +392,50 @@ public class TextAnimationEditText extends EditTextCaption {
         }
         canvas.translate(getPaddingLeft(), getExtendedPaddingTop() + voffsetCursor);
         cursorPaint.setColor(cursorColor);
-        float x = animCursorX;
-        float lineTop = layout.getLineTop(line);
-        float lineBottom = layout.getLineBottom(line);
-        // Use actual line height so cursor matches text size (not a hardcoded dp(24)).
-        float cursorSize = lineBottom - lineTop;
-        float centerY = (lineTop + lineBottom) / 2;
-        canvas.drawRect(x, centerY - cursorSize / 2, x + AndroidUtilities.dp(2), centerY + cursorSize / 2, cursorPaint);
+
+        float baseWidth = AndroidUtilities.dp(2);
+        float left = animCursorX;
+        float right = animCursorX + baseWidth;
+
+        if (dx > 0) {
+            left -= stretchX;
+        } else if (dx < 0) {
+            right += stretchX;
+        }
+
+        float horizontalPulse = spaceJumpWidth + backspaceSqueezeX;
+        left -= horizontalPulse / 2.0f;
+        right += horizontalPulse / 2.0f;
+
+        float top = animCursorY;
+        float bottom = animCursorY + animCursorHeight;
+
+        if (dy > 0) {
+            top -= stretchY;
+        } else if (dy < 0) {
+            bottom += stretchY;
+        }
+
+        float verticalShrink = stretchX * 0.2f;
+        top += verticalShrink;
+        bottom -= verticalShrink;
+
+        top -= backspaceStretchY / 2.0f;
+        bottom += backspaceStretchY / 2.0f;
+
+        top += enterDiveOffset;
+        bottom += enterDiveOffset;
+
+        if (top > bottom - AndroidUtilities.dp(4)) {
+            float centerY = (top + bottom) / 2.0f;
+            top = centerY - AndroidUtilities.dp(2);
+            bottom = centerY + AndroidUtilities.dp(2);
+        }
+
+        RectF cursorRect = new RectF(left, top, right, bottom);
+        float rx = (right - left) / 2.0f;
+        float ry = rx;
+        canvas.drawRoundRect(cursorRect, rx, ry, cursorPaint);
         canvas.restore();
     }
 
