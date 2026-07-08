@@ -20138,6 +20138,15 @@ public class ChatActivity extends BaseFragment implements
             leftIcon = avatarContainer.getBotVerificationDrawable(DialogObject.getBotVerificationIcon(currentUser), false);
         }
         avatarContainer.setTitleIcons(leftIcon, rightIcon);
+        String badgeDesc = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().getDescription(dialog_id);
+        if (badgeDesc != null) {
+            Drawable badge = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().createDrawable(true, getResourceProvider());
+            avatarContainer.getTitleTextView().setRightDrawable2(badge);
+            avatarContainer.getTitleTextView().setRightDrawable2OnClick(v -> {
+                org.telegram.ui.Components.BulletinFactory.of(ChatActivity.this).createSimpleBulletin(org.telegram.messenger.R.raw.chats_infotip, badgeDesc).show();
+            });
+            avatarContainer.getTitleTextView().setRightDrawableOutside(true);
+        }
         if (!forceToggleMuted && muteItem != null) {
             if (isMuted) {
                 muteItem.setRightIconVisibility(View.GONE);

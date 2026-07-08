@@ -1327,6 +1327,23 @@ public class SimpleTextView extends View implements Drawable.Callback {
         rightDrawableOnClickListener = onClickListener;
     }
 
+    private OnClickListener rightDrawable2OnClickListener;
+    private boolean maybeClickRight2;
+    private float touchDownRight2X, touchDownRight2Y;
+
+    public void setRightDrawable2OnClick(OnClickListener onClickListener) {
+        rightDrawable2OnClickListener = onClickListener;
+    }
+
+    private OnClickListener leftDrawableOnClickListener;
+    private boolean maybeClickLeft;
+    private float touchDownLeftX;
+    private float touchDownLeftY;
+
+    public void setLeftDrawableOnClick(OnClickListener onClickListener) {
+        leftDrawableOnClickListener = onClickListener;
+    }
+
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         if (rightDrawableOnClickListener != null && rightDrawable != null) {
@@ -1358,7 +1375,53 @@ public class SimpleTextView extends View implements Drawable.Callback {
                 getParent().requestDisallowInterceptTouchEvent(false);
             }
         }
-        return super.onTouchEvent(event) || maybeClick;
+        if (rightDrawable2OnClickListener != null && rightDrawable2 != null) {
+            android.graphics.Rect b = rightDrawable2.getBounds();
+            if (!b.isEmpty()) {
+                AndroidUtilities.rectTmp.set(b.left - dp(16), b.top - dp(16), b.right + dp(16), b.bottom + dp(16));
+                if (event.getAction() == MotionEvent.ACTION_DOWN && AndroidUtilities.rectTmp.contains((int) event.getX(), (int) event.getY())) {
+                    maybeClickRight2 = true;
+                    touchDownRight2X = event.getX();
+                    touchDownRight2Y = event.getY();
+                    getParent().requestDisallowInterceptTouchEvent(true);
+                } else if (event.getAction() == MotionEvent.ACTION_MOVE && maybeClickRight2) {
+                    if (Math.abs(event.getX() - touchDownRight2X) >= AndroidUtilities.touchSlop || Math.abs(event.getY() - touchDownRight2Y) >= AndroidUtilities.touchSlop) {
+                        maybeClickRight2 = false;
+                        getParent().requestDisallowInterceptTouchEvent(false);
+                    }
+                } else if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
+                    if (maybeClickRight2 && event.getAction() == MotionEvent.ACTION_UP) {
+                        rightDrawable2OnClickListener.onClick(this);
+                    }
+                    maybeClickRight2 = false;
+                    getParent().requestDisallowInterceptTouchEvent(false);
+                }
+            }
+        }
+        if (leftDrawableOnClickListener != null && leftDrawable != null) {
+            android.graphics.Rect b = leftDrawable.getBounds();
+            if (!b.isEmpty()) {
+                AndroidUtilities.rectTmp.set(b.left - dp(16), b.top - dp(16), b.right + dp(16), b.bottom + dp(16));
+                if (event.getAction() == MotionEvent.ACTION_DOWN && AndroidUtilities.rectTmp.contains((int) event.getX(), (int) event.getY())) {
+                maybeClickLeft = true;
+                touchDownLeftX = event.getX();
+                touchDownLeftY = event.getY();
+                getParent().requestDisallowInterceptTouchEvent(true);
+            } else if (event.getAction() == MotionEvent.ACTION_MOVE && maybeClickLeft) {
+                if (Math.abs(event.getX() - touchDownLeftX) >= AndroidUtilities.touchSlop || Math.abs(event.getY() - touchDownLeftY) >= AndroidUtilities.touchSlop) {
+                    maybeClickLeft = false;
+                    getParent().requestDisallowInterceptTouchEvent(false);
+                }
+            } else if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
+                if (maybeClickLeft && event.getAction() == MotionEvent.ACTION_UP) {
+                    leftDrawableOnClickListener.onClick(this);
+                }
+                maybeClickLeft = false;
+                getParent().requestDisallowInterceptTouchEvent(false);
+            }
+        }
+        }
+        return super.onTouchEvent(event) || maybeClick || maybeClickRight2 || maybeClickLeft;
     }
 
     public static interface PressableDrawable {

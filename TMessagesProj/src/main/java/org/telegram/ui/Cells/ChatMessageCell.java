@@ -1754,6 +1754,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     private String nameStatusSlug;
     public AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable currentNameStatusDrawable;
     public AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable currentNameEmojiStatusDrawable;
+    private Drawable customBadgeDrawable;
 
     private TLRPC.User currentForwardUser;
     private TLRPC.User currentViaBotUser;
@@ -18801,6 +18802,21 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             } else {
                 currentNameString = "";
             }
+            customBadgeDrawable = null;
+            long badgeCheckId = messageObject.getDialogId();
+            if (badgeCheckId == 0 && currentUser != null) {
+                badgeCheckId = currentUser.id;
+            }
+            if (badgeCheckId != 0) {
+                String badgeDesc = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().getDescription(badgeCheckId);
+                FileLog.d("badge: dialogId=" + badgeCheckId + " desc=" + badgeDesc + " count=" + zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().badgeCount());
+                if (badgeDesc != null) {
+                    customBadgeDrawable = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().createDrawable(true, getResourcesProvider());
+                    if (customBadgeDrawable != null) {
+                        customBadgeDrawable.setCallback(this);
+                    }
+                }
+            }
             int additionalWidth = dp(currentMessageObject.isSponsored() ? -24 : 0);
             CharSequence nameStringFinal = AndroidUtilities.removeDiacritics(currentNameString.replace('\n', ' ').replace('\u200F', ' '));
             try {
@@ -18890,6 +18906,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                     nameWidth += dp(4 + 12 + 4);
                 }
                 if (currentNameBotVerificationId != 0) {
+                    nameWidth += dp(4 + 12 + 4);
+                }
+                if (customBadgeDrawable != null) {
                     nameWidth += dp(4 + 12 + 4);
                 }
                 nameWidth -= additionalWidth;
@@ -20007,6 +20026,37 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     @Override
     protected void onDraw(Canvas canvas) {
         drawInternal(canvas);
+        if (customBadgeDrawable == null && currentMessageObject != null) {
+            long checkId = currentMessageObject.getDialogId();
+            if (checkId == 0 && currentUser != null) {
+                checkId = currentUser.id;
+            }
+            if (checkId != 0) {
+                String desc = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().getDescription(checkId);
+                android.util.Log.d("badge", "lazy init checkId=" + checkId + " desc=" + desc + " count=" + zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().badgeCount());
+                if (desc != null) {
+                    customBadgeDrawable = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().createDrawable(true, getResourcesProvider());
+                    if (customBadgeDrawable != null) {
+                        customBadgeDrawable.setCallback(this);
+                    }
+                }
+            }
+        }
+        if (customBadgeDrawable != null) {
+            android.util.Log.d("badge", "drawing in onDraw, nameLayout=" + (nameLayout != null));
+            int w = customBadgeDrawable.getIntrinsicWidth();
+            int h = customBadgeDrawable.getIntrinsicHeight();
+            float badgeX, badgeY;
+            if (nameLayout != null) {
+                badgeX = nameX + nameOffsetX + (viaNameWidth > 0 ? viaNameWidth : nameLayoutWidth) + dp(4);
+                badgeY = nameY + nameLayout.getHeight() / 2f;
+            } else {
+                badgeX = getMeasuredWidth() - dp(4) - w;
+                badgeY = dp(14);
+            }
+            customBadgeDrawable.setBounds((int) badgeX, (int) (badgeY - h / 2), (int) (badgeX + w), (int) (badgeY + h / 2));
+            customBadgeDrawable.draw(canvas);
+        }
     }
     public void drawInternal(Canvas canvas) {
         if (currentMessageObject == null) {
