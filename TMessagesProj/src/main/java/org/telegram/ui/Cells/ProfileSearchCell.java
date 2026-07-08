@@ -68,6 +68,8 @@ import org.telegram.ui.FilterCreateActivity;
 import org.telegram.ui.NotificationsSettingsActivity;
 import org.telegram.ui.Stories.StoriesUtilities;
 
+import zxc.iconic.xenon.helpers.CustomBadgeController;
+
 import java.util.Locale;
 
 public class ProfileSearchCell extends BaseCell implements NotificationCenter.NotificationCenterDelegate, Theme.Colorable {
@@ -135,6 +137,7 @@ public class ProfileSearchCell extends BaseCell implements NotificationCenter.No
     private AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable botVerificationDrawable;
     private AnimatedEmojiDrawable.SwapAnimatedEmojiDrawable statusDrawable;
     private Drawable customBadgeDrawable;
+    private boolean attachedToWindow;
     public StoriesUtilities.AvatarStoryParams avatarStoryParams = new StoriesUtilities.AvatarStoryParams(false);
 
     private final RectF adBounds = new RectF();
@@ -327,6 +330,7 @@ public class ProfileSearchCell extends BaseCell implements NotificationCenter.No
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
+        attachedToWindow = false;
         avatarImage.onDetachedFromWindow();
         NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.emojiLoaded);
         if (showPremiumBlocked) {
@@ -334,11 +338,15 @@ public class ProfileSearchCell extends BaseCell implements NotificationCenter.No
         }
         statusDrawable.detach();
         botVerificationDrawable.detach();
+        if (customBadgeDrawable != null) {
+            CustomBadgeController.getInstance().onDetachedFromWindow(customBadgeDrawable, this);
+        }
     }
 
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
+        attachedToWindow = true;
         avatarImage.onAttachedToWindow();
         NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.emojiLoaded);
         if (showPremiumBlocked) {
@@ -346,6 +354,9 @@ public class ProfileSearchCell extends BaseCell implements NotificationCenter.No
         }
         statusDrawable.attach();
         botVerificationDrawable.attach();
+        if (customBadgeDrawable != null) {
+            CustomBadgeController.getInstance().onAttachedToWindow(customBadgeDrawable, this);
+        }
     }
 
     @Override
@@ -478,16 +489,8 @@ public class ProfileSearchCell extends BaseCell implements NotificationCenter.No
                 });
             }
         }
-        customBadgeDrawable = null;
-        if (dialog_id != 0) {
-            String badgeDesc = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().getDescription(dialog_id);
-            if (badgeDesc != null) {
-                customBadgeDrawable = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().createDrawable(true, resourcesProvider);
-                if (customBadgeDrawable != null) {
-                    customBadgeDrawable.setCallback(this);
-                }
-            }
-        }
+        customBadgeDrawable = CustomBadgeController.getInstance()
+                .updateBadgeDrawable(customBadgeDrawable, dialog_id, currentAccount, this, attachedToWindow, true, resourcesProvider);
         if (!LocaleController.isRTL) {
             statusLeft = dp(AndroidUtilities.leftBaseline);
         } else {
@@ -632,11 +635,10 @@ public class ProfileSearchCell extends BaseCell implements NotificationCenter.No
             }
         }
         if (customBadgeDrawable != null) {
-            if (LocaleController.isRTL) {
-                nameWidth -= customBadgeDrawable.getIntrinsicWidth();
-            } else {
-                nameLeft += customBadgeDrawable.getIntrinsicWidth();
-            }
+            // The badge is drawn right next to the end of the name (after the status
+            // drawable, if any), so reserve space by shrinking the name width on both
+            // LTR and RTL layouts.
+            nameWidth -= customBadgeDrawable.getIntrinsicWidth() + dp(6);
         }
 
         if (nameWidth < 0) {
@@ -1004,16 +1006,18 @@ public class ProfileSearchCell extends BaseCell implements NotificationCenter.No
             statusDrawable.draw(canvas);
 
             if (customBadgeDrawable != null) {
+                // Offset past the status (emoji) drawable so the two never overlap.
+                int statusW = statusDrawable.isEmpty() ? 0 : statusDrawable.getIntrinsicWidth() + dp(3);
                 int bx;
                 if (LocaleController.isRTL) {
                     if (nameLayout.getLineLeft(0) == 0) {
-                        bx = nameLeft - dp(3) - customBadgeDrawable.getIntrinsicWidth();
+                        bx = nameLeft - dp(3) - statusW - customBadgeDrawable.getIntrinsicWidth();
                     } else {
                         float w = nameLayout.getLineWidth(0);
-                        bx = (int) (nameLeft + nameWidth - Math.ceil(w) - dp(3) - customBadgeDrawable.getIntrinsicWidth());
+                        bx = (int) (nameLeft + nameWidth - Math.ceil(w) - dp(3) - statusW - customBadgeDrawable.getIntrinsicWidth());
                     }
                 } else {
-                    bx = (int) (nameLeft + nameLayout.getLineRight(0) + dp(6));
+                    bx = (int) (nameLeft + nameLayout.getLineRight(0) + dp(6) + statusW);
                 }
                 setDrawableBounds(customBadgeDrawable, bx, nameTop + (nameLayout.getHeight() - customBadgeDrawable.getIntrinsicHeight()) / 2f);
                 customBadgeDrawable.draw(canvas);

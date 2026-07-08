@@ -157,13 +157,14 @@ public class FilterTabsView extends FrameLayout {
             }
 
             final int counterResultWidth;
+            int textSpace = NekoConfig.tabsTitleType != NekoConfig.TITLE_TYPE_ICON ? dp(5) : 0;
             if (c > 0) {
                 String counterText = String.format("%d", c);
                 int counterWidth = (int) Math.ceil(textCounterPaint.measureText(counterText));
                 int countWidth = Math.max(dp(TAB_COUNTER_HEIGHT - 10), counterWidth) + dp(10);
-                counterResultWidth = countWidth + dp(-2);
+                counterResultWidth = textSpace + countWidth;
             } else {
-                counterResultWidth = !isDefault && isEditing ? dp(TAB_COUNTER_HEIGHT - 5) : 0;
+                counterResultWidth = (!isDefault && isEditing) ? textSpace + dp(TAB_COUNTER_HEIGHT) : 0;
             }
             width += counterResultWidth;
 
@@ -410,10 +411,12 @@ public class FilterTabsView extends FrameLayout {
             }
 
             tabCounterVisible = (countWidth != 0 && !animateCounterRemove) ? (counterText != null ? 1.0f : editingStartAnimationProgress) : 0;
+            int textSpace = NekoConfig.tabsTitleType != NekoConfig.TITLE_TYPE_ICON ? dp(5) : 0;
+            float counterSpace = textSpace * (counterText != null ? 1.0f : editingStartAnimationProgress);
             if (NekoConfig.tabsTitleType != NekoConfig.TITLE_TYPE_ICON) {
-                tabWidth = currentTab.iconWidth + currentTab.titleWidth + ((countWidth != 0 && !animateCounterRemove) ? countWidth + dp(-2 * (counterText != null ? 1.0f : editingStartAnimationProgress)) : 0);
+                tabWidth = currentTab.iconWidth + currentTab.titleWidth + ((countWidth != 0 && !animateCounterRemove) ? (int) (countWidth + counterSpace) : 0);
             } else {
-                tabWidth = currentTab.iconWidth + ((countWidth != 0 && !animateCounterRemove) ? countWidth + dp(-2 * (counterText != null ? 1.0f : editingStartAnimationProgress)) : 0);
+                tabWidth = currentTab.iconWidth + ((countWidth != 0 && !animateCounterRemove) ? (int) (countWidth + counterSpace) : 0);
             }
             float textX = ((getMeasuredWidth() - tabWidth) / 2f) + currentTab.iconWidth;
             if (animateTextX) {
@@ -535,11 +538,10 @@ public class FilterTabsView extends FrameLayout {
                 if (animateTextChange) {
                     titleWidth = animateFromTitleWidth * (1f - changeProgress) + currentTab.titleWidth * changeProgress;
                 }
-                int textSpace = NekoConfig.tabsTitleType != NekoConfig.TITLE_TYPE_ICON ? dp(5) : 0;
                 if (animateTextChange && titleAnimateOutLayout == null) {
-                    x = textX - titleXOffset + titleOffsetX + titleWidth + textSpace;
+                    x = textX - titleXOffset + titleOffsetX + titleWidth + counterSpace;
                 } else {
-                    x = textX + titleWidth + textSpace;
+                    x = textX + titleWidth + counterSpace;
                 }
                 int countTop = (getMeasuredHeight() - dp(TAB_COUNTER_HEIGHT)) / 2;
 
@@ -728,10 +730,12 @@ public class FilterTabsView extends FrameLayout {
                 countWidth = 0;
             }
             int tabWidth;
+            int textSpace = NekoConfig.tabsTitleType != NekoConfig.TITLE_TYPE_ICON ? dp(5) : 0;
+            float counterSpace = textSpace * (counterText != null ? 1.0f : editingStartAnimationProgress);
             if (NekoConfig.tabsTitleType != NekoConfig.TITLE_TYPE_ICON) {
-                tabWidth = currentTab.iconWidth + currentTab.titleWidth + (countWidth != 0 ? countWidth + dp(6 * (counterText != null ? 1.0f : editingStartAnimationProgress)) : 0);
+                tabWidth = currentTab.iconWidth + currentTab.titleWidth + (countWidth != 0 ? (int) (countWidth + counterSpace) : 0);
             } else {
-                tabWidth = currentTab.iconWidth + (countWidth != 0 ? countWidth + dp(6 * (counterText != null ? 1.0f : editingStartAnimationProgress)) : 0);
+                tabWidth = currentTab.iconWidth + (countWidth != 0 ? (int) (countWidth + counterSpace) : 0);
             }
             int textX = (getMeasuredWidth() - tabWidth) / 2 + currentTab.iconWidth;
 
@@ -1597,7 +1601,7 @@ public class FilterTabsView extends FrameLayout {
                 indicatorWidth = Math.max(dp(16), indicatorWidthC);
 
                 float viewWidth = tabView.animateTabWidth ?
-                        lerp(tabView.animateFromTabWidth+ dp(20), tabView.getMeasuredWidth(), tabView.changeProgress):
+                        lerp(tabView.animateFromWidth, tabView.getMeasuredWidth(), tabView.changeProgress):
                         tabView.getMeasuredWidth();
                 indicatorX = (int) (tabView.getX() + (viewWidth - indicatorWidth) / 2);
 

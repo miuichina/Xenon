@@ -61,6 +61,8 @@ import org.telegram.ui.NotificationsSettingsActivity;
 import org.telegram.ui.Stories.StoriesListPlaceProvider;
 import org.telegram.ui.Stories.StoriesUtilities;
 
+import zxc.iconic.xenon.helpers.CustomBadgeController;
+
 public class UserCell extends FrameLayout implements NotificationCenter.NotificationCenterDelegate {
 
     public BackupImageView avatarImageView;
@@ -548,7 +550,8 @@ public class UserCell extends FrameLayout implements NotificationCenter.Notifica
             if (currentChat.photo != null) {
                 photo = currentChat.photo.photo_small;
             }
-            dialogId = currentChat.id;
+            // Dialog form (-chat.id) so badge lookup matches DialogCell / ChatActivity / gist -100 form.
+            dialogId = -currentChat.id;
         }
 
         if (mask != 0) {
@@ -717,13 +720,21 @@ public class UserCell extends FrameLayout implements NotificationCenter.Notifica
             nameTextView.setRightDrawableTopPadding(0);
         }
         nameTextView.setRightDrawable2(null);
+        long badgeEntityId = 0;
         if (currentUser != null) {
-            String badgeDesc = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().getDescription(currentUser.id);
-            if (badgeDesc != null) {
-                Drawable badge = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().createDrawable(true, resourcesProvider);
-                nameTextView.setRightDrawable2(badge);
-                nameTextView.setRightDrawableOutside(true);
-            }
+            badgeEntityId = currentUser.id;
+        } else if (currentChat != null) {
+            badgeEntityId = -currentChat.id;
+        }
+        if (badgeEntityId != 0 && CustomBadgeController.getInstance().hasBadge(badgeEntityId)) {
+            Drawable badge = CustomBadgeController.getInstance()
+                    .createBadge(badgeEntityId, this, true, resourcesProvider);
+            nameTextView.setRightDrawable2(badge);
+            nameTextView.setRightDrawableOutside(true);
+        } else {
+            // Reset for recycled cells, otherwise the emoji-status drawable of peers
+            // WITHOUT a badge keeps the "outside" positioning of the previous peer.
+            nameTextView.setRightDrawableOutside(false);
         }
         if (currentStatus != null) {
             statusTextView.setTextColor(statusColor);

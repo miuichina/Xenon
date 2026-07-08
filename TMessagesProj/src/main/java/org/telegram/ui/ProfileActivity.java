@@ -342,6 +342,7 @@ import zxc.iconic.xenon.BackButtonMenuRecent;
 import zxc.iconic.xenon.NekoConfig;
 import zxc.iconic.xenon.SimpleTextViewSwitcher;
 import zxc.iconic.xenon.helpers.NonIslandHelper;
+import zxc.iconic.xenon.helpers.CustomBadgeController;
 import zxc.iconic.xenon.helpers.PopupHelper;
 import zxc.iconic.xenon.helpers.remote.ConfigHelper;
 import zxc.iconic.xenon.settings.NekoSettingsActivity;
@@ -11591,18 +11592,21 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 } else {
                     nameTextView[a].setLeftDrawableOutside(false);
                 }
-                String badgeDesc = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().getDescription(dialogId != 0 ? dialogId : userId);
-                if (badgeDesc != null) {
+                // Use getDialogId() — the dialogId field stays 0 for normal (non-encrypted) peers.
+                long badgeEntityId = getDialogId();
+                CustomBadgeController.BadgeInfo badgeInfo =
+                        CustomBadgeController.getInstance().getBadgeInfo(badgeEntityId);
+                if (badgeInfo != null) {
                     nameTextView[a].setRightDrawableOutside(true);
-                    Drawable badge = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().createDrawable(true, resourcesProvider);
-                    String finalDesc = badgeDesc;
+                    Drawable badge = CustomBadgeController.getInstance()
+                            .createBadge(badgeEntityId, currentAccount, nameTextView[a], true, resourcesProvider);
+                    String localizedDesc = badgeInfo.getLocalizedDesc();
                     nameTextView[a].setRightDrawable2(badge);
-                    nameTextView[a].setRightDrawable2OnClick(v -> {
-                        BulletinFactory.of(ProfileActivity.this).createSimpleBulletin(R.raw.chats_infotip, finalDesc).show();
-                    });
-                } else {
-                    nameTextView[a].setRightDrawable2(null);
+                    nameTextView[a].setRightDrawable2OnClick(v ->
+                            BulletinFactory.of(ProfileActivity.this)
+                                    .createSimpleBulletin(R.raw.chats_infotip, localizedDesc).show());
                 }
+                // When no custom badge: keep scam/verified already set above (do not null rightDrawable2).
                 nameTextView[a].setLeftDrawable(leftIcon);
                 if (a == 1 && (rightIconIsStatus || rightIconIsPremium)) {
                     nameTextView[a].setRightDrawableOutside(true);
@@ -11939,18 +11943,21 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                 } else {
                     nameTextView[a].setLeftDrawable(null);
                 }
-                String badgeDesc = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().getDescription(dialogId);
-                if (badgeDesc != null) {
+                // dialogId field is 0 for channel/group profiles; getDialogId() returns -chatId.
+                long badgeEntityId = getDialogId();
+                CustomBadgeController.BadgeInfo chatBadgeInfo =
+                        CustomBadgeController.getInstance().getBadgeInfo(badgeEntityId);
+                if (chatBadgeInfo != null) {
                     nameTextView[a].setRightDrawableOutside(true);
-                    Drawable badge = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().createDrawable(true, resourcesProvider);
+                    Drawable badge = CustomBadgeController.getInstance()
+                            .createBadge(badgeEntityId, currentAccount, nameTextView[a], true, resourcesProvider);
                     nameTextView[a].setRightDrawable2(badge);
-                    String finalDesc = badgeDesc;
-                    nameTextView[a].setRightDrawable2OnClick(v -> {
-                        BulletinFactory.of(ProfileActivity.this).createSimpleBulletin(R.raw.chats_infotip, finalDesc).show();
-                    });
-                } else {
-                    nameTextView[a].setRightDrawable2(null);
+                    String localizedDesc = chatBadgeInfo.getLocalizedDesc();
+                    nameTextView[a].setRightDrawable2OnClick(v ->
+                            BulletinFactory.of(ProfileActivity.this)
+                                    .createSimpleBulletin(R.raw.chats_infotip, localizedDesc).show());
                 }
+                // When no custom badge: keep scam/verified/mute already set above.
                 if (a == 0 && onlineTextOverride != null) {
                     onlineTextView[a].setText(onlineTextOverride);
                 } else {

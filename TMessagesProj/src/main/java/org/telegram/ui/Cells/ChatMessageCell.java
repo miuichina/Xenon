@@ -241,6 +241,7 @@ import org.telegram.ui.Stories.recorder.DominantColors;
 
 import zxc.iconic.xenon.NekoConfig;
 import zxc.iconic.xenon.accessibility.AccConfig;
+import zxc.iconic.xenon.helpers.CustomBadgeController;
 import zxc.iconic.xenon.helpers.MessageFilterHelper;
 import zxc.iconic.xenon.helpers.MessageHelper;
 import zxc.iconic.xenon.helpers.WhisperHelper;
@@ -6419,6 +6420,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         if (currentNameEmojiStatusDrawable != null) {
             currentNameEmojiStatusDrawable.detach();
         }
+        if (customBadgeDrawable != null) {
+            CustomBadgeController.getInstance().onDetachedFromWindow(customBadgeDrawable, this);
+        }
 
         if (mediaSpoilerEffect2 != null) {
             mediaSpoilerEffect2.detach(this);
@@ -6539,6 +6543,9 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
         }
         if (currentNameEmojiStatusDrawable != null) {
             currentNameEmojiStatusDrawable.attach();
+        }
+        if (customBadgeDrawable != null) {
+            CustomBadgeController.getInstance().onAttachedToWindow(customBadgeDrawable, this);
         }
         if (mediaSpoilerEffect2 != null) {
             if (mediaSpoilerEffect2.destroyed) {
@@ -18802,21 +18809,20 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
             } else {
                 currentNameString = "";
             }
-            customBadgeDrawable = null;
-            long badgeCheckId = messageObject.getDialogId();
-            if (badgeCheckId == 0 && currentUser != null) {
+            // Badge for the message author: user id, or channel/chat dialog id (-chat.id).
+            // Prefer the author peer (currentUser / currentChat used for the name header),
+            // then fall back to the message dialog id.
+            long badgeCheckId = 0;
+            if (currentUser != null) {
                 badgeCheckId = currentUser.id;
+            } else if (currentChat != null) {
+                badgeCheckId = -currentChat.id;
             }
-            if (badgeCheckId != 0) {
-                String badgeDesc = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().getDescription(badgeCheckId);
-                FileLog.d("badge: dialogId=" + badgeCheckId + " desc=" + badgeDesc + " count=" + zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().badgeCount());
-                if (badgeDesc != null) {
-                    customBadgeDrawable = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().createDrawable(true, getResourcesProvider());
-                    if (customBadgeDrawable != null) {
-                        customBadgeDrawable.setCallback(this);
-                    }
-                }
+            if (badgeCheckId == 0 && messageObject != null) {
+                badgeCheckId = messageObject.getDialogId();
             }
+            customBadgeDrawable = CustomBadgeController.getInstance()
+                    .updateBadgeDrawable(customBadgeDrawable, badgeCheckId, currentAccount, this, attachedToWindow, true, getResourcesProvider());
             int additionalWidth = dp(currentMessageObject.isSponsored() ? -24 : 0);
             CharSequence nameStringFinal = AndroidUtilities.removeDiacritics(currentNameString.replace('\n', ' ').replace('\u200F', ' '));
             try {
@@ -18909,7 +18915,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
                     nameWidth += dp(4 + 12 + 4);
                 }
                 if (customBadgeDrawable != null) {
-                    nameWidth += dp(4 + 12 + 4);
+                    nameWidth += customBadgeDrawable.getIntrinsicWidth() + dp(4);
                 }
                 nameWidth -= additionalWidth;
                 if (adminString != null) {
@@ -20026,35 +20032,17 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     @Override
     protected void onDraw(Canvas canvas) {
         drawInternal(canvas);
-        if (customBadgeDrawable == null && currentMessageObject != null) {
-            long checkId = currentMessageObject.getDialogId();
-            if (checkId == 0 && currentUser != null) {
-                checkId = currentUser.id;
-            }
-            if (checkId != 0) {
-                String desc = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().getDescription(checkId);
-                android.util.Log.d("badge", "lazy init checkId=" + checkId + " desc=" + desc + " count=" + zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().badgeCount());
-                if (desc != null) {
-                    customBadgeDrawable = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().createDrawable(true, getResourcesProvider());
-                    if (customBadgeDrawable != null) {
-                        customBadgeDrawable.setCallback(this);
-                    }
-                }
-            }
-        }
-        if (customBadgeDrawable != null) {
-            android.util.Log.d("badge", "drawing in onDraw, nameLayout=" + (nameLayout != null));
+        // Only draw the badge when the author name header is actually visible;
+        // never fall back to a floating badge in the message corner.
+        if (customBadgeDrawable != null && drawNameLayout && nameLayout != null) {
             int w = customBadgeDrawable.getIntrinsicWidth();
             int h = customBadgeDrawable.getIntrinsicHeight();
-            float badgeX, badgeY;
-            if (nameLayout != null) {
-                badgeX = nameX + nameOffsetX + (viaNameWidth > 0 ? viaNameWidth : nameLayoutWidth) + dp(4);
-                badgeY = nameY + nameLayout.getHeight() / 2f;
-            } else {
-                badgeX = getMeasuredWidth() - dp(4) - w;
-                badgeY = dp(14);
-            }
-            customBadgeDrawable.setBounds((int) badgeX, (int) (badgeY - h / 2), (int) (badgeX + w), (int) (badgeY + h / 2));
+            // Skip past the emoji status reservation so the badge doesn't overlap it
+            // (viaNameWidth already includes this reservation when set).
+            float statusOffset = viaNameWidth <= 0 && currentNameStatus != null ? dp(4 + 12 + 4) : 0;
+            float badgeX = nameX + nameOffsetX + (viaNameWidth > 0 ? viaNameWidth : nameLayoutWidth + statusOffset) + dp(4);
+            float badgeY = nameY + nameLayout.getHeight() / 2f;
+            customBadgeDrawable.setBounds((int) badgeX, (int) (badgeY - h / 2f), (int) (badgeX + w), (int) (badgeY - h / 2f) + h);
             customBadgeDrawable.draw(canvas);
         }
     }

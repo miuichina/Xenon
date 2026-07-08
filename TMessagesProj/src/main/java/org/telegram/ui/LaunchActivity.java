@@ -450,6 +450,9 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         if (Build.VERSION.SDK_INT >= 24) {
             AndroidUtilities.isInMultiwindow = isInMultiWindowMode();
         }
+        // Load custom badges independently of plugins so channel/user badges
+        // work even when the plugin engine is disabled or fails to start.
+        zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().init();
         // Boot the plugin engine once on app start so registered hooks (e.g.
         // onResume, onSendMessage) are live by the time the UI is interactive.
         zxc.iconic.xenon.plugins.PluginManager.getInstance().reloadAll();

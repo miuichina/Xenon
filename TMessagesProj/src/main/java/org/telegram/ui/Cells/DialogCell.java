@@ -147,6 +147,7 @@ import java.util.Stack;
 
 import zxc.iconic.xenon.NekoConfig;
 import zxc.iconic.xenon.accessibility.AccConfig;
+import zxc.iconic.xenon.helpers.CustomBadgeController;
 import zxc.iconic.xenon.helpers.MessageFilterHelper;
 import me.vkryl.android.animator.BoolAnimator;
 
@@ -856,13 +857,15 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
         this.preloader = preloader;
     }
 
-    @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         isSliding = false;
         drawRevealBackground = false;
         currentRevealProgress = 0.0f;
         attachedToWindow = false;
+        if (customBadgeDrawable != null) {
+            CustomBadgeController.getInstance().onDetachedFromWindow(customBadgeDrawable, this);
+        }
         reorderIconProgress = getIsPinned() && drawReorder ? 1.0f : 0.0f;
         avatarImage.onDetachedFromWindow();
         for (int i = 0; i < thumbImage.length; ++i) {
@@ -898,6 +901,9 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
         avatarImage.onAttachedToWindow();
         for (int i = 0; i < thumbImage.length; ++i) {
             thumbImage[i].onAttachedToWindow();
+        }
+        if (customBadgeDrawable != null) {
+            CustomBadgeController.getInstance().onAttachedToWindow(customBadgeDrawable, this);
         }
         resetPinnedArchiveState();
         animatedEmojiStack = AnimatedEmojiSpan.update(AnimatedEmojiDrawable.CACHE_TYPE_MESSAGES, this, animatedEmojiStack, messageLayout);
@@ -1190,6 +1196,9 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
         drawNameLock = false;
         drawVerified = false;
         drawBotVerified = false;
+        if (customBadgeDrawable != null && attachedToWindow) {
+            CustomBadgeController.getInstance().onDetachedFromWindow(customBadgeDrawable, this);
+        }
         customBadgeDrawable = null;
         drawPremium = false;
         drawForwardIcon = false;
@@ -1421,15 +1430,8 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                             }
                         }
                     }
-                    if (customBadgeDrawable == null) {
-                        String badgeDesc = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().getDescription(currentDialogId);
-                        if (badgeDesc != null) {
-                            customBadgeDrawable = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().createDrawable(true, resourcesProvider);
-                            if (customBadgeDrawable != null) {
-                                customBadgeDrawable.setCallback(this);
-                            }
-                        }
-                    }
+                    customBadgeDrawable = CustomBadgeController.getInstance()
+                        .updateBadgeDrawable(customBadgeDrawable, currentDialogId, this, attachedToWindow, true, resourcesProvider);
                     if (dialogBotVerificationIcon != 0 && drawBotVerified) {
                         botVerification.set(dialogBotVerificationIcon, false);
                     }
@@ -2274,6 +2276,14 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
         }
         if (drawBotVerified) {
             nameWidth -= dp(21);
+        }
+        if (customBadgeDrawable != null) {
+            int w = dp(4) + customBadgeDrawable.getIntrinsicWidth();
+            nameWidth -= w;
+            nameAdditionalsForChannelSubscriber += w;
+            if (LocaleController.isRTL) {
+                nameLeft += w;
+            }
         }
         if (namePaddingEnd > 0) {
             nameWidth -= namePaddingEnd;
@@ -4356,11 +4366,15 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                 (drawScam == 1 ? Theme.dialogs_scamDrawable : Theme.dialogs_fakeDrawable).draw(canvas);
             }
             if (customBadgeDrawable != null) {
-                int y = dp(useForceThreeLines || SharedConfig.useThreeLinesLayout ? 12.5f : 15.5f);
+                // Center the badge vertically on the name row (same visual center as the
+                // emoji status / premium star icons) instead of hanging below the text.
+                int centerY = dp(useForceThreeLines || SharedConfig.useThreeLinesLayout ? 19.5f : 22.5f);
                 if ((!(useForceThreeLines || SharedConfig.useThreeLinesLayout) || isForumCell()) && hasTags()) {
-                    y -= dp(9);
+                    centerY -= dp(9);
                 }
                 int size = customBadgeDrawable.getIntrinsicWidth();
+                int badgeH = customBadgeDrawable.getIntrinsicHeight();
+                int y = centerY - badgeH / 2;
                 int iconRight = nameMuteLeft;
                 if (drawVerified) {
                     iconRight = nameMuteLeft - dp(1) + Theme.dialogs_verifiedDrawable.getIntrinsicWidth();
@@ -4378,10 +4392,9 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                     badgeLeft,
                     y,
                     badgeLeft + size,
-                    y + size
+                    y + badgeH
                 );
                 customBadgeDrawable.draw(canvas);
-                invalidate();
             }
 
             if (drawReorder || reorderIconProgress != 0) {

@@ -2817,7 +2817,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             }
 
             if (backgroundState == PROGRESS_EMPTY || backgroundState == PROGRESS_CANCEL || previousBackgroundState == PROGRESS_EMPTY || previousBackgroundState == PROGRESS_CANCEL) {
-                int diff = dp(10);
+                int diff = (int) (dp(10) * scale);
                 if (previousBackgroundState != -2) {
                     progressPaint.setAlpha((int) (255 * animatedAlphaValue * alpha));
                 } else {
@@ -2826,6 +2826,11 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                 progressRect.set(x + diff, y + diff, x + sizeScaled - diff, y + sizeScaled - diff);
                 float sweep = Math.max(4, 360 * animatedProgressValue);
                 float absSweep = Math.abs(sweep);
+                float inset = AndroidUtilities.dp(1f) * scale;
+                RectF insetRect = new RectF(progressRect);
+                insetRect.inset(inset, inset);
+                float originalStrokeWidth = progressPaint.getStrokeWidth();
+                progressPaint.setStrokeWidth(originalStrokeWidth * scale);
                 if (absSweep < 360) {
                     int bgAlpha = progressPaint.getAlpha();
                     progressPaint.setAlpha(bgAlpha * 40 / 100);
@@ -2835,15 +2840,13 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                     float dir = sweep >= 0 ? 1 : -1;
                     float bgSweep = 360 - absSweep - 2 * gap;
                     if (bgSweep > 0) {
-                        canvas.drawArc(progressRect, radOffset + sweep + dir * gap, dir * bgSweep, false, progressPaint);
+                        canvas.drawArc(insetRect, radOffset + sweep + dir * gap, dir * bgSweep, false, progressPaint);
                     }
                     progressPaint.setStrokeWidth(saveWidth);
                     progressPaint.setAlpha(bgAlpha);
                 }
-                float inset = AndroidUtilities.dp(1f);
-                RectF insetRect = new RectF(progressRect);
-                insetRect.inset(inset, inset);
                 drawWavyArc(canvas, insetRect, radOffset, sweep, progressPaint);
+                progressPaint.setStrokeWidth(originalStrokeWidth);
                 updateAnimation(true);
             } else {
                 updateAnimation(false);

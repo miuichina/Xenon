@@ -42,6 +42,8 @@ import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.Emoji;
 import org.telegram.ui.Cells.DialogCell;
 import org.telegram.ui.Components.AnimatedEmojiDrawable;
+
+import zxc.iconic.xenon.helpers.CustomBadgeController;
 import org.telegram.ui.Components.AnimatedEmojiSpan;
 import org.telegram.ui.Components.EmptyStubSpan;
 import org.telegram.ui.Components.StaticLayoutEx;
@@ -175,6 +177,9 @@ public class SimpleTextView extends View implements Drawable.Callback {
         super.onAttachedToWindow();
         attachedToWindow = true;
         emojiStack = AnimatedEmojiSpan.update(emojiCacheType, this, emojiStack, layout);
+        if (rightDrawable2 != null) {
+            CustomBadgeController.getInstance().onAttachedToWindow(rightDrawable2, this);
+        }
     }
 
     public void setEmojiCacheType(int cacheType) {
@@ -192,6 +197,9 @@ public class SimpleTextView extends View implements Drawable.Callback {
         super.onDetachedFromWindow();
         attachedToWindow = false;
         AnimatedEmojiSpan.release(this, emojiStack);
+        if (rightDrawable2 != null) {
+            CustomBadgeController.getInstance().onDetachedFromWindow(rightDrawable2, this);
+        }
         wasLayout = false;
     }
 
@@ -669,10 +677,16 @@ public class SimpleTextView extends View implements Drawable.Callback {
         }
         if (rightDrawable2 != null) {
             rightDrawable2.setCallback(null);
+            if (attachedToWindow) {
+                CustomBadgeController.getInstance().onDetachedFromWindow(rightDrawable2, this);
+            }
         }
         rightDrawable2 = drawable;
         if (drawable != null) {
             drawable.setCallback(this);
+            if (attachedToWindow) {
+                CustomBadgeController.getInstance().onAttachedToWindow(rightDrawable2, this);
+            }
         }
         if (!recreateLayoutMaybe()) {
             invalidate();
@@ -1132,20 +1146,36 @@ public class SimpleTextView extends View implements Drawable.Callback {
             rightDrawable.draw(canvas);
         }
         if (rightDrawable2 != null && rightDrawableOutside) {
-            int x = Math.min(
-                    textOffsetX + textWidth + drawablePadding + (scrollingOffset == 0 ? -nextScrollX : (int) -scrollingOffset) + nextScrollX,
-                    getMaxTextWidth() - paddingRight + drawablePadding
-            );
+            // Place after the text (and after rightDrawable if present). Prefer the
+            // natural text-end position so the badge sits next to the title; only
+            // clamp so the whole badge stays inside the view (was easy to push
+            // fully off-screen with getMaxTextWidth math when paddingRight > 0).
+            int dw = (int) (rightDrawable2.getIntrinsicWidth() * rightDrawableScale);
+            int dh = (int) (rightDrawable2.getIntrinsicHeight() * rightDrawableScale);
+            int x = textOffsetX + textWidth + drawablePadding
+                    + (scrollingOffset == 0 ? -nextScrollX : (int) -scrollingOffset) + nextScrollX;
             if (rightDrawable != null) {
                 x += (int) (rightDrawable.getIntrinsicWidth() * rightDrawableScale) + drawablePadding;
             }
-            int dw = (int) (rightDrawable2.getIntrinsicWidth() * rightDrawableScale);
-            int dh = (int) (rightDrawable2.getIntrinsicHeight() * rightDrawableScale);
+            int maxX = Math.max(0, getMeasuredWidth() - getPaddingRight() - dw);
+            if (x > maxX) {
+                x = maxX;
+            }
+            if (x < 0) {
+                x = 0;
+            }
             int y;
             if ((gravity & Gravity.VERTICAL_GRAVITY_MASK) == Gravity.CENTER_VERTICAL) {
                 y = (getMeasuredHeight() - dh) / 2 + rightDrawableTopPadding;
             } else {
                 y = getPaddingTop() + (textHeight - dh) / 2 + rightDrawableTopPadding;
+            }
+            // Keep vertical bounds inside the view as well.
+            if (y < 0) {
+                y = 0;
+            }
+            if (y + dh > getMeasuredHeight()) {
+                y = Math.max(0, getMeasuredHeight() - dh);
             }
             rightDrawable2.setBounds(x, y, x + dw, y + dh);
             rightDrawable2.draw(canvas);

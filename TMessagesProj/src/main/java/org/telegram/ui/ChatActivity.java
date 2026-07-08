@@ -330,6 +330,7 @@ import zxc.iconic.xenon.forward.ForwardPopupWrapper;
 import zxc.iconic.xenon.MessageDetailsActivity;
 import zxc.iconic.xenon.NekoConfig;
 import zxc.iconic.xenon.telega.TelegaDetector;
+import zxc.iconic.xenon.helpers.CustomBadgeController;
 import zxc.iconic.xenon.helpers.MessageHelper;
 import zxc.iconic.xenon.helpers.QrHelper;
 import zxc.iconic.xenon.helpers.EmojiHelper;
@@ -20140,14 +20141,23 @@ public class ChatActivity extends BaseFragment implements
             leftIcon = avatarContainer.getBotVerificationDrawable(DialogObject.getBotVerificationIcon(currentUser), false);
         }
         avatarContainer.setTitleIcons(leftIcon, rightIcon);
-        String badgeDesc = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().getDescription(dialog_id);
-        if (badgeDesc != null) {
-            Drawable badge = zxc.iconic.xenon.helpers.CustomBadgeController.getInstance().createDrawable(true, getResourceProvider());
-            avatarContainer.getTitleTextView().setRightDrawable2(badge);
-            avatarContainer.getTitleTextView().setRightDrawable2OnClick(v -> {
-                org.telegram.ui.Components.BulletinFactory.of(ChatActivity.this).createSimpleBulletin(org.telegram.messenger.R.raw.chats_infotip, badgeDesc).show();
-            });
-            avatarContainer.getTitleTextView().setRightDrawableOutside(true);
+        // Custom badge for users and channels (dialog_id is -chatId for chats/channels).
+        // Only overwrite rightDrawable2 when a badge exists — otherwise keep verified/mute from setTitle/setTitleIcons.
+        CustomBadgeController.BadgeInfo badgeInfo =
+                CustomBadgeController.getInstance().getBadgeInfo(dialog_id);
+        if (badgeInfo != null) {
+            SimpleTextView titleView = avatarContainer.getTitleTextView();
+            Drawable badge = CustomBadgeController.getInstance()
+                    .createBadge(dialog_id, currentAccount, titleView, true, getResourceProvider());
+            titleView.setRightDrawableOutside(true);
+            titleView.setRightDrawable2(badge);
+            String localizedDesc = badgeInfo.getLocalizedDesc();
+            titleView.setRightDrawable2OnClick(v ->
+                    BulletinFactory.of(ChatActivity.this)
+                            .createSimpleBulletin(R.raw.chats_infotip, localizedDesc).show());
+            // Re-measure so outside badge width is reserved and not clipped by parent.
+            titleView.requestLayout();
+            avatarContainer.requestLayout();
         }
         if (!forceToggleMuted && muteItem != null) {
             if (isMuted) {
