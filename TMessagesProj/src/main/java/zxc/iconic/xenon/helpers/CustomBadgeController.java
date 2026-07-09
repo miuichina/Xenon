@@ -1,7 +1,15 @@
 package zxc.iconic.xenon.helpers;
 
 import android.content.SharedPreferences;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.ColorFilter;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.PixelFormat;
+import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
+import android.os.SystemClock;
 import android.view.View;
 
 import org.json.JSONArray;
@@ -35,6 +43,22 @@ public class CustomBadgeController {
     private static final long CACHE_TTL_MS = 3 * 60 * 60 * 1000L; // 3 hours
     private static final long CHANNEL_ID_OFFSET = 1_000_000_000_000L;
 
+    /** Maps small badge_id values to actual animated emoji document IDs. */
+    private static long badgeIdToDocumentId(long badgeId) {
+        if (badgeId == 2) {
+            return 5195282850303197154L; // 🥀
+        }
+        return badgeId;
+    }
+
+    /** Resolves the actual document ID for a badge, considering custom IDs. */
+    private static long getDocIdForBadge(BadgeInfo info) {
+        if (info.badgeDocumentId == 3 && info.customDocumentId != 0) {
+            return info.customDocumentId;
+        }
+        return badgeIdToDocumentId(info.badgeDocumentId);
+    }
+
     /**
      * Holds all data for a single badge entry from the remote list.
      *
@@ -51,11 +75,18 @@ public class CustomBadgeController {
         public final String descRu;
         /** 0 = octagon, 1 = text-only, >1 = animated-emoji document ID */
         public final long badgeDocumentId;
+        /** Custom document ID for badge_id == 3 (from 5th CSV column). */
+        public final long customDocumentId;
 
         public BadgeInfo(String descEn, String descRu, long badgeDocumentId) {
+            this(descEn, descRu, badgeDocumentId, 0);
+        }
+
+        public BadgeInfo(String descEn, String descRu, long badgeDocumentId, long customDocumentId) {
             this.descEn = descEn != null ? descEn : "";
             this.descRu = descRu != null ? descRu : "";
             this.badgeDocumentId = badgeDocumentId;
+            this.customDocumentId = customDocumentId;
         }
 
         /** Returns the description in the current app locale (ru → ru_desc, else en_desc). */
@@ -74,7 +105,7 @@ public class CustomBadgeController {
 
         /** Short display text that goes inside the badge shape (for non-emoji types). */
         public String getDisplayText() {
-            return getLocalizedDesc();
+            return ":3";
         }
     }
 
@@ -99,14 +130,10 @@ public class CustomBadgeController {
     }
 
     public void init() {
-        long lastFetch = getPrefs().getLong(KEY_CACHE_TIME, 0);
-        boolean expired = System.currentTimeMillis() - lastFetch > CACHE_TTL_MS;
-        // Always refetch when the in-memory map is empty so channels/users get badges
-        // even if the cache file was wiped or failed to parse.
-        if (expired || badges.isEmpty()) {
-            FileLog.d("CustomBadgeController: refetching (expired=" + expired + ", empty=" + badges.isEmpty() + ")");
-            Utilities.globalQueue.postRunnable(this::fetchBadges);
-        }
+        // Always fetch from URL on cold start. Cache (loaded in constructor) is used
+        // as fallback until the network response arrives.
+        FileLog.d("CustomBadgeController: fetching badges from URL");
+        Utilities.globalQueue.postRunnable(this::fetchBadges);
     }
 
     // -------------------------------------------------------------------------
@@ -203,12 +230,23 @@ public class CustomBadgeController {
 
         if (info.badgeDocumentId > 1) {
             // Animated premium emoji – same pipeline as emoji status
+            long docId = getDocIdForBadge(info);
             AnimatedEmojiDrawable emoji = AnimatedEmojiDrawable.make(
-                    currentAccount, AnimatedEmojiDrawable.CACHE_TYPE_EMOJI_STATUS, info.badgeDocumentId);
-            if (callbackView != null) {
-                emoji.setCallback(callbackView);
+                    currentAccount, AnimatedEmojiDrawable.CACHE_TYPE_EMOJI_STATUS, docId);
+            if (info.badgeDocumentId == 3) {
+                emoji.sizedp = 20;
+                AnimatedEmojiWithStarsDrawable wrapper = new AnimatedEmojiWithStarsDrawable(emoji);
+                if (callbackView != null) {
+                    wrapper.setCallback(callbackView);
+                }
+                return wrapper;
+            } else {
+                emoji.sizedp = 17;
+                if (callbackView != null) {
+                    emoji.setCallback(callbackView);
+                }
+                return emoji;
             }
-            return emoji;
         } else if (info.badgeDocumentId == 1) {
             // Plain text badge, no background
             return new TextBadgeDrawable(info.getDisplayText(), small, rp);
@@ -236,12 +274,16 @@ public class CustomBadgeController {
     public void onAttachedToWindow(Drawable badge, View view) {
         if (badge instanceof AnimatedEmojiDrawable) {
             ((AnimatedEmojiDrawable) badge).addView(view);
+        } else if (badge instanceof AnimatedEmojiWithStarsDrawable) {
+            ((AnimatedEmojiWithStarsDrawable) badge).addView(view);
         }
     }
 
     public void onDetachedFromWindow(Drawable badge, View view) {
         if (badge instanceof AnimatedEmojiDrawable) {
             ((AnimatedEmojiDrawable) badge).removeView(view);
+        } else if (badge instanceof AnimatedEmojiWithStarsDrawable) {
+            ((AnimatedEmojiWithStarsDrawable) badge).removeView(view);
         }
     }
 
@@ -270,8 +312,8 @@ public class CustomBadgeController {
                     line = line.trim();
                     if (line.isEmpty()) continue;
 
-                    // Split into at most 4 parts
-                    String[] parts = line.split(",", 4);
+                    // Split into at most 5 parts
+                    String[] parts = line.split(",", 5);
                     if (parts.length < 2) continue;
 
                     String idStr = parts[0].trim();
@@ -289,7 +331,15 @@ public class CustomBadgeController {
                                 FileLog.d("CustomBadgeController: bad badge_id in line: " + line);
                             }
                         }
-                        parsed.put(id, new BadgeInfo(descEn, descRu, badgeDocId));
+                        long customDocId = 0;
+                        if (badgeDocId == 3 && parts.length >= 5) {
+                            try {
+                                customDocId = Long.parseLong(parts[4].trim());
+                            } catch (NumberFormatException e) {
+                                FileLog.d("CustomBadgeController: bad doc_id in line: " + line);
+                            }
+                        }
+                        parsed.put(id, new BadgeInfo(descEn, descRu, badgeDocId, customDocId));
                     } catch (NumberFormatException e) {
                         FileLog.d("CustomBadgeController: bad id in line: " + line);
                     }
@@ -333,7 +383,8 @@ public class CustomBadgeController {
                 // Backward compat: old cache used "desc" only
                 if (descEn.isEmpty()) descEn = obj.optString("desc", "");
                 long badgeDocId = obj.optLong("bid", 0);
-                parsed.put(id, new BadgeInfo(descEn, descRu, badgeDocId));
+                long customDocId = obj.optLong("cid", 0);
+                parsed.put(id, new BadgeInfo(descEn, descRu, badgeDocId, customDocId));
             }
             badges = parsed;
         } catch (Exception e) {
@@ -350,6 +401,9 @@ public class CustomBadgeController {
                 obj.put("en", entry.getValue().descEn);
                 obj.put("ru", entry.getValue().descRu);
                 obj.put("bid", entry.getValue().badgeDocumentId);
+                if (entry.getValue().customDocumentId != 0) {
+                    obj.put("cid", entry.getValue().customDocumentId);
+                }
                 arr.put(obj);
             }
             getPrefs().edit()
@@ -385,7 +439,11 @@ public class CustomBadgeController {
             String text = info.getDisplayText();
             if (info.badgeDocumentId > 1
                     && current instanceof AnimatedEmojiDrawable
-                    && ((AnimatedEmojiDrawable) current).getDocumentId() == info.badgeDocumentId) {
+                    && ((AnimatedEmojiDrawable) current).getDocumentId() == getDocIdForBadge(info)) {
+                return current;
+            } else if (info.badgeDocumentId == 3
+                    && current instanceof AnimatedEmojiWithStarsDrawable
+                    && ((AnimatedEmojiWithStarsDrawable) current).emoji.getDocumentId() == getDocIdForBadge(info)) {
                 return current;
             } else if (info.badgeDocumentId == 1
                     && current instanceof TextBadgeDrawable
@@ -412,5 +470,171 @@ public class CustomBadgeController {
             }
         }
         return next;
+    }
+
+    /**
+     * Wraps an {@link AnimatedEmojiDrawable} with floating star particles.
+     * Used for badge_id == 3 to add the sparkle effect around the emoji.
+     */
+    private static class AnimatedEmojiWithStarsDrawable extends Drawable {
+
+        private final AnimatedEmojiDrawable emoji;
+        private final Paint particlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Path starPath = new Path();
+        private final RectF boundsRect = new RectF();
+        private final StarParticle[] particles = new StarParticle[10];
+        private long lastUpdateTime;
+
+        private int baseParticleColor = 0xCCFFFFFF;
+        private int alpha = 255;
+
+        AnimatedEmojiWithStarsDrawable(AnimatedEmojiDrawable emoji) {
+            this.emoji = emoji;
+            particlePaint.setStyle(Paint.Style.FILL);
+            particlePaint.setColor(0xCCFFFFFF);
+            long now = SystemClock.elapsedRealtime();
+            for (int i = 0; i < particles.length; i++) {
+                particles[i] = new StarParticle();
+                resetParticle(particles[i], now, true);
+            }
+        }
+
+        void addView(View view) {
+            emoji.addView(view);
+        }
+
+        void removeView(View view) {
+            emoji.removeView(view);
+        }
+
+        @Override
+        public void draw(Canvas canvas) {
+            boundsRect.set(getBounds());
+            if (boundsRect.width() <= 0 || boundsRect.height() <= 0) return;
+
+            long now = SystemClock.elapsedRealtime();
+            if (lastUpdateTime == 0) lastUpdateTime = now;
+            float frameDt = Math.min(now - lastUpdateTime, 50) / 16.67f;
+            lastUpdateTime = now;
+
+            drawParticles(canvas, boundsRect, frameDt, now);
+
+            emoji.setBounds(getBounds());
+            emoji.draw(canvas);
+
+            Callback cb = getCallback();
+            if (cb != null) cb.invalidateDrawable(this);
+        }
+
+        @Override
+        public int getIntrinsicWidth() {
+            return emoji.getIntrinsicWidth();
+        }
+
+        @Override
+        public int getIntrinsicHeight() {
+            return emoji.getIntrinsicHeight();
+        }
+
+        @Override
+        public void setAlpha(int alpha) {
+            this.alpha = alpha;
+            emoji.setAlpha(alpha);
+        }
+
+        @Override
+        public int getAlpha() {
+            return alpha;
+        }
+
+        @Override
+        public void setColorFilter(ColorFilter colorFilter) {}
+
+        @Override
+        public int getOpacity() {
+            return PixelFormat.TRANSLUCENT;
+        }
+
+        // --- Particle system (adapted from OctagonBadgeDrawable) ---
+
+        private static int ColorUtils_setAlpha(int color, int alpha) {
+            int a = (Color.alpha(color) * alpha) / 255;
+            return (color & 0x00FFFFFF) | (a << 24);
+        }
+
+        private static class StarParticle {
+            float x, y, vx, vy, alpha, scale;
+            long lifeTime, bornTime;
+            float sizeFactor;
+        }
+
+        private void resetParticle(StarParticle p, long now, boolean randomPhase) {
+            float angle = (float) (Math.random() * 2 * Math.PI);
+            float dist = 0.55f + (float) Math.random() * 0.25f;
+            float speed = 0.006f + (float) Math.random() * 0.010f;
+            p.x = (float) Math.cos(angle) * dist;
+            p.y = (float) Math.sin(angle) * dist;
+            p.vx = (float) Math.cos(angle) * speed;
+            p.vy = (float) Math.sin(angle) * speed;
+            p.alpha = 0.7f + (float) Math.random() * 0.3f;
+            p.scale = 0.4f + (float) Math.random() * 0.5f;
+            p.lifeTime = 2000 + (long) (Math.random() * 2000);
+            p.sizeFactor = 0.16f + (float) Math.random() * 0.10f;
+            if (randomPhase) {
+                p.bornTime = now - (long) (Math.random() * p.lifeTime);
+                float dt = (now - p.bornTime) / 16.67f;
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+            } else {
+                p.bornTime = now;
+            }
+        }
+
+        private void buildStarPath(float r) {
+            starPath.reset();
+            for (int i = 0; i < 8; i++) {
+                float radius = i % 2 == 0 ? r : r * 0.35f;
+                float angle = (float) Math.toRadians(i * 45);
+                float px = radius * (float) Math.cos(angle);
+                float py = radius * (float) Math.sin(angle);
+                if (i == 0) starPath.moveTo(px, py);
+                else starPath.lineTo(px, py);
+            }
+            starPath.close();
+        }
+
+        private void drawParticles(Canvas canvas, RectF bounds, float frameDt, long now) {
+            float cx = bounds.centerX();
+            float cy = bounds.centerY();
+            float radius = Math.min(bounds.width(), bounds.height()) / 2f;
+            if (radius <= 0) return;
+
+            for (StarParticle p : particles) {
+                long elapsed = now - p.bornTime;
+                if (elapsed >= p.lifeTime) {
+                    resetParticle(p, now, false);
+                    elapsed = 0;
+                }
+                p.x += p.vx * frameDt;
+                p.y += p.vy * frameDt;
+                if (p.x * p.x + p.y * p.y > 1.35f * 1.35f) {
+                    resetParticle(p, now, false);
+                    elapsed = 0;
+                }
+                float progress = elapsed / (float) p.lifeTime;
+                float a = p.alpha * (1f - progress * progress);
+                float s = p.scale * (1f - progress * 0.3f);
+
+                canvas.save();
+                canvas.translate(cx + p.x * radius, cy + p.y * radius);
+                canvas.scale(s, s);
+                buildStarPath(p.sizeFactor * radius);
+                int prev = particlePaint.getAlpha();
+                particlePaint.setAlpha(Math.max(0, Math.min(255, (int) (prev * a))));
+                canvas.drawPath(starPath, particlePaint);
+                particlePaint.setAlpha(prev);
+                canvas.restore();
+            }
+        }
     }
 }
