@@ -99,11 +99,17 @@ public final class PluginSafeMode {
         String trace = buildCrashTrace(thread, throwable);
         writeCrashLog(trace);
 
+        // Use commit() (synchronous) so the crash flag is guaranteed to be
+        // persisted before the process terminates. apply() is asynchronous and
+        // may not finish writing to disk if the process is killed immediately
+        // after the uncaught handler returns, which would cause the next launch
+        // to miss the crash flag and fall back to the "hang" detection path
+        // (showing "Failed to start" instead of "Crashed!").
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .edit()
                 .putBoolean(KEY_CRASH_FLAG, true)
                 .putLong(KEY_CRASH_TIME, System.currentTimeMillis())
-                .apply();
+                .commit();
     }
 
     private static String buildCrashTrace(Thread thread, Throwable throwable) {
@@ -291,6 +297,11 @@ public final class PluginSafeMode {
      * {@link org.telegram.ui.LaunchActivity#onResume} once the UI is ready.
      * Clears the boot flag so the next start doesn't mistake this one for a
      * hang/crash.
+     *
+     * <p>Uses {@code commit()} (synchronous) instead of {@code apply()} so the
+     * write is guaranteed to persist to disk even if the process is killed
+     * immediately after. This prevents a false "Failed to start" on the next
+     * launch when the OS reclaims memory right after onResume.
      */
     public static void markBootCompleted() {
         Context ctx = ApplicationLoader.applicationContext;
@@ -298,7 +309,7 @@ public final class PluginSafeMode {
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .edit()
                 .putBoolean(KEY_BOOT_FLAG, false)
-                .apply();
+                .commit();
     }
 
     /**
@@ -351,18 +362,23 @@ public final class PluginSafeMode {
         String reason = crashed ? "crash" : "hang";
 
         // Disable plugins immediately so the next start is clean.
-        NekoConfig.pluginsEnabled = false;
-        ctx.getSharedPreferences("nekoconfig", Context.MODE_PRIVATE)
-                .edit().putBoolean("pluginsEnabled", false).apply();
-        PluginManager.getInstance().onEnabledChanged();
+        try {
+            NekoConfig.pluginsEnabled = false;
+            ctx.getSharedPreferences("nekoconfig", Context.MODE_PRIVATE)
+                    .edit().putBoolean("pluginsEnabled", false).commit();
+            PluginManager.getInstance().onEnabledChanged();
+        } catch (Throwable t) {
+            FileLog.e("checkAndHandleCrash: onEnabledChanged threw", t);
+        }
 
         // Clear the flags so we don't show this sheet twice, and reset boot
-        // tracking for THIS launch.
+        // tracking for THIS launch. Use commit() (synchronous) so the write
+        // is guaranteed to persist even if the process dies immediately after.
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .edit()
                 .putBoolean(KEY_CRASH_FLAG, false)
                 .putBoolean(KEY_BOOT_FLAG, false)
-                .apply();
+                .commit();
 
         if (hung && !crashed) {
             // No Java stack trace for a hang; leave a note in the log so the

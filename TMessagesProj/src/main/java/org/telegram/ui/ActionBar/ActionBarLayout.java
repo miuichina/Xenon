@@ -80,6 +80,7 @@ import org.telegram.ui.EmptyBaseFragment;
 import org.telegram.ui.GradientHeaderActivity;
 import org.telegram.ui.MainTabsActivity;
 import org.telegram.ui.bots.BotWebViewSheet;
+import org.telegram.ui.ChatActivity;
 import org.telegram.ui.Components.Bulletin;
 import org.telegram.ui.Components.ChatAttachAlert;
 import org.telegram.ui.Components.CubicBezierInterpolator;
@@ -363,8 +364,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
             isKeyboardVisible = usableViewHeight - (rect.bottom - rect.top) > 0;
             if (waitingForKeyboardCloseRunnable != null && !containerView.isKeyboardVisible && !containerViewBack.isKeyboardVisible) {
                 AndroidUtilities.cancelRunOnUIThread(waitingForKeyboardCloseRunnable);
-                waitingForKeyboardCloseRunnable.run();
-                waitingForKeyboardCloseRunnable = null;
+                AndroidUtilities.runOnUIThread(waitingForKeyboardCloseRunnable, 50);
             }
         }
 
@@ -615,6 +615,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
     private View layoutToIgnore;
     private boolean beginTrackingSent;
     private boolean transitionAnimationInProgress;
+    private boolean isPresentingFragment;
     private boolean transitionAnimationPreviewMode;
     private ArrayList<int[]> animateStartColors = new ArrayList<>();
     private ArrayList<int[]> animateEndColors = new ArrayList<>();
@@ -1834,6 +1835,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         animationInProgress = false;
         startedTracking = false;
         m3PredictiveActive = false;
+        isPresentingFragment = false;
     }
 
     @Override
@@ -2103,6 +2105,9 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
 
     @Override
     public boolean presentFragment(NavigationParams params) {
+        if (isPresentingFragment) {
+            return false;
+        }
         if (waitingForKeyboardCloseRunnable != null || delayedOpenAnimationRunnable != null) {
             if (waitingForKeyboardCloseRunnable != null) {
                 AndroidUtilities.cancelRunOnUIThread(waitingForKeyboardCloseRunnable);
@@ -2115,10 +2120,6 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
             transitionAnimationInProgress = false;
         }
 
-        if (predictiveBackInProgress) {
-            cancelAndResetAnimations();
-        }
-
         BaseFragment fragment = params.fragment;
         boolean removeLast = params.removeLast;
         boolean forceWithoutAnimation = params.noAnimation;
@@ -2129,6 +2130,10 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         if (fragment == null || checkTransitionAnimation() || delegate != null && check && !delegate.needPresentFragment(this, params) || !fragment.onFragmentCreate()) {
             return false;
         }
+
+        if (predictiveBackInProgress) {
+            return false;
+        }
         final boolean isSupportEdgeToEdge = fragment.isSupportEdgeToEdge();
         final boolean drawNavigationBar = fragment.drawEdgeNavigationBar();
 
@@ -2137,13 +2142,17 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         if (dialog == null && LaunchActivity.instance != null && LaunchActivity.instance.getVisibleDialog() != null) {
             dialog = LaunchActivity.instance.getVisibleDialog();
         }
-        if (lastFragment != null && shouldOpenFragmentOverlay(dialog)) {
+        boolean isFullScreenTarget = fragment instanceof ChatActivity;
+        if (lastFragment != null && shouldOpenFragmentOverlay(dialog) && !isFullScreenTarget) {
             BaseFragment.BottomSheetParams bottomSheetParams = new BaseFragment.BottomSheetParams();
             bottomSheetParams.transitionFromLeft = true;
             bottomSheetParams.allowNestedScroll = false;
             lastFragment.showAsSheet(fragment, bottomSheetParams);
             return true;
+        } else if (dialog != null && isFullScreenTarget) {
+            dialog.dismiss();
         }
+        isPresentingFragment = true;
         if (BuildVars.LOGS_ENABLED) {
             FileLog.d("present fragment " + fragment.getClass().getSimpleName() + " args=" + fragment.getArguments());
         }
@@ -2299,6 +2308,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                     }
                     fragment.onTransitionAnimationEnd(true, false);
                     fragment.onBecomeFullyVisible();
+                    isPresentingFragment = false;
                 };
                 ArrayList<Animator> animators = new ArrayList<>();
                 animators.add(ObjectAnimator.ofFloat(this, View.ALPHA, 0.0f, 1.0f));
@@ -2347,6 +2357,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                     }
                     fragment.onTransitionAnimationEnd(true, false);
                     fragment.onBecomeFullyVisible();
+                    isPresentingFragment = false;
                 };
                 boolean noDelay;
                 if (noDelay = (!fragment.needDelayOpenAnimation() || NekoConfig.removeChatDelay)) {
@@ -2377,7 +2388,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                         if (NekoConfig.alternativeTransition) {
                             containerView.setTranslationX(getWidth());
                         } else {
-                            containerView.setTranslationX(48.0f);
+                            containerView.setTranslationX(dp(48));
                         }
                         containerView.setScaleX(1.0f);
                         containerView.setScaleY(1.0f);
@@ -2461,6 +2472,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
             fragment.onTransitionAnimationStart(true, false);
             fragment.onTransitionAnimationEnd(true, false);
             fragment.onBecomeFullyVisible();
+            isPresentingFragment = false;
         }
         AnalyticsHelper.trackFragmentLifecycle("created", fragment);
         return true;

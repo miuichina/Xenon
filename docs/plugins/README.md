@@ -45,6 +45,7 @@ Everything the host exposes lives under the global `xenon` table:
 | [Timers & watchers](./timers.md) | `setTimeout`, `clearTimeout`, `startMessageWatcher`, `stopMessageWatcher` |
 | [UI](./ui.md) | `toast`, `bulletin`, `bulletinButton`, `createDialog`, `createBottomSheet`, `openChatPicker`, `promptText` |
 | [App integration](./app-integration.md) | `getOpenChatId`, `getPeerName`, `openActivity`, `openPluginSettings`, `finish` |
+| [Reflection & advanced hooks](./reflection.md) | `hookMethod`, `observeNotification`, `getPrivateField`, `setPrivateField` (God Mode) |
 | [Manifest](./manifest.md) | `plugin_id`, `plugin_name`, `plugin_description`, `plugin_settings`, `plugin_scopes`, `plugin_author`, `plugin_version` |
 | [Security](./security.md) | Sandbox, scopes (`GENERAL`, `MESSAGING`), God Mode |
 | [Safe Mode](./safe-mode.md) | How to recover if a plugin breaks the app (hold volume at launch) |

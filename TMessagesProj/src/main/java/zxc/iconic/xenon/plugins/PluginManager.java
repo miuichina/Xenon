@@ -171,7 +171,7 @@ public class PluginManager {
     }
 
     private void ensureLoaded() {
-        if (initialized && isEnabled()) return;
+        if (initialized) return;
         initialized = true;
         Log.d(TAG, "ensureLoaded: pluginsEnabled=" + isEnabled());
         if (isEnabled()) {

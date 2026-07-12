@@ -792,6 +792,10 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
 
                     private boolean started = false;
                     private boolean invoked = false;
+                    // No fragment-transition to animate (e.g. we're at the root of the stack) but the
+                    // current fragment has its own overlay (like DialogsActivity's search) that can still
+                    // be scrubbed closed by gesture progress.
+                    private DialogsActivity predictiveBackSearchFragment;
 
                     @Override
                     public void onBackInvoked() {
@@ -800,6 +804,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                             locker.unlock();
                             locked = false;
                         }
+                        predictiveBackSearchFragment = null;
 
                         if (AndroidUtilities.isTablet()) {
                             onBackPressed();
@@ -819,6 +824,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                         started = true;
                         invoked = false;
                         predictiveBackStarted = false;
+                        predictiveBackSearchFragment = null;
                     }
 
                     private void onBackStartedInternal(BackEvent backEvent) {
@@ -829,6 +835,8 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                             if (started && !locked) {
                                 locker.lock();
                                 locked = true;
+                            } else if (!started) {
+                                predictiveBackSearchFragment = getPredictiveBackSearchFragment();
                             }
                         }
                     }
@@ -853,6 +861,9 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                         if (actionBarLayout != null) {
                             actionBarLayout.onBackProgress(fixedProgress);
                         }
+                        if (predictiveBackSearchFragment != null) {
+                            predictiveBackSearchFragment.predictiveBackSearchProgress(fixedProgress);
+                        }
                     }
 
                     @Override
@@ -862,6 +873,10 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                         if (locked) {
                             locker.unlock();
                             locked = false;
+                        }
+                        if (predictiveBackSearchFragment != null) {
+                            predictiveBackSearchFragment.predictiveBackSearchCancelled(true);
+                            predictiveBackSearchFragment = null;
                         }
 
                         if (AndroidUtilities.isTablet()) return;
@@ -921,6 +936,27 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
 
     private Object onBackAnimationCallback;
     private Object onBackInvokedCallback;
+
+    // Resolves the chat-list fragment (through MainTabsActivity, if present) when it has its
+    // search overlay open, so a predictive back gesture can scrub it closed even though there's
+    // no previous fragment on the stack to animate a transition with.
+    private DialogsActivity getPredictiveBackSearchFragment() {
+        if (actionBarLayout == null) {
+            return null;
+        }
+        List<BaseFragment> stack = actionBarLayout.getFragmentStack();
+        if (stack.isEmpty()) {
+            return null;
+        }
+        BaseFragment fragment = stack.get(stack.size() - 1);
+        if (fragment instanceof MainTabsActivity) {
+            fragment = ((MainTabsActivity) fragment).getDialogsActivity();
+        }
+        if (fragment instanceof DialogsActivity && ((DialogsActivity) fragment).canHandlePredictiveBackSearch()) {
+            return (DialogsActivity) fragment;
+        }
+        return null;
+    }
 
     public static void showAttachMenuBot(LaunchActivity launchActivity, int currentAccount, TLRPC.TL_attachMenuBot attachMenuBot, String startApp, boolean sidemenu) {
         BaseFragment lastFragment = getLastFragment();
@@ -7084,7 +7120,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                 getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback((OnBackAnimationCallback) onBackAnimationCallback);
             }
         } else if (Build.VERSION.SDK_INT >= 33) {
-            if (onBackAnimationCallback instanceof OnBackInvokedCallback) {
+            if (onBackInvokedCallback instanceof OnBackInvokedCallback) {
                 getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback((OnBackInvokedCallback) onBackInvokedCallback);
             }
         }
@@ -7261,22 +7297,27 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         // plugins and show the crash sheet before anything else plugin-related
         // runs. Also: if the user held a volume key at cold launch, activate
         // Safe Mode manually.
-        zxc.iconic.xenon.plugins.PluginSafeMode.consumeVolumeKeySafeMode(this);
-        zxc.iconic.xenon.plugins.PluginSafeMode.checkAndHandleCrash(this);
+        try {
+            zxc.iconic.xenon.plugins.PluginSafeMode.consumeVolumeKeySafeMode(this);
+            zxc.iconic.xenon.plugins.PluginSafeMode.checkAndHandleCrash(this);
 
-        // Plugins use this to get the hosting Activity for UI operations
-        // (presenting fragments, etc.). Must be set before firing onResume.
-        zxc.iconic.xenon.plugins.PluginManager.setCurrentActivity(this);
+            // Plugins use this to get the hosting Activity for UI operations
+            // (presenting fragments, etc.). Must be set before firing onResume.
+            zxc.iconic.xenon.plugins.PluginManager.setCurrentActivity(this);
 
-        // Plugin hook: any plugin that registered via xenon.on("onResume", ...)
-        // gets notified every time the app returns to the foreground.
-        zxc.iconic.xenon.plugins.PluginManager.getInstance().fire("onResume");
-
-        // Reached here = this launch made it all the way to an interactive UI.
-        // Clear the boot-in-progress flag so the next start doesn't mistake us
-        // for a hang/crash. (If a plugin's onResume handler hangs above, we
-        // never reach this line — which is exactly what we want.)
-        zxc.iconic.xenon.plugins.PluginSafeMode.markBootCompleted();
+            // Plugin hook: any plugin that registered via xenon.on("onResume", ...)
+            // gets notified every time the app returns to the foreground.
+            zxc.iconic.xenon.plugins.PluginManager.getInstance().fire("onResume");
+        } catch (Throwable t) {
+            org.telegram.messenger.FileLog.e("Plugin boot sequence threw", t);
+        } finally {
+            // Reached here = this launch made it all the way to an interactive UI.
+            // Clear the boot-in-progress flag so the next start doesn't mistake us
+            // for a hang/crash. MUST be in finally so an exception in any plugin
+            // code above doesn't leave the flag set (which would cause a false
+            // "Failed to start" sheet on every subsequent launch).
+            zxc.iconic.xenon.plugins.PluginSafeMode.markBootCompleted();
+        }
     }
 
     public static Runnable whenResumed;

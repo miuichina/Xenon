@@ -1752,7 +1752,7 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
         } else {
             super.show();
         }
-        if (Build.VERSION.SDK_INT >= 34 && zxc.iconic.xenon.NekoConfig.predictiveBackAnimation) {
+        if (Build.VERSION.SDK_INT >= 34 && (zxc.iconic.xenon.NekoConfig.predictiveBackAnimation || zxc.iconic.xenon.NekoConfig.alternativeTransition)) {
             registerPredictiveBack();
         }
         setShowing(true);
@@ -2694,6 +2694,10 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
 
     public void setSkipDismissAnimation(boolean skip) {
         this.skipDismissAnimation = skip;
+    }
+
+    public boolean canDismiss() {
+        return delegate == null || delegate.canDismiss();
     }
 
     public void predictiveBackFinish() {

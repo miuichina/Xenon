@@ -1058,6 +1058,7 @@ public class ChatActivity extends BaseFragment implements
     private ActionBarMenuSubItem menuDeleteItem;
     private ImageView popupBlurOverlayView;
     private Bitmap popupBlurOverlayBitmap;
+    private ActionBarPopupWindow popupBlurOverlayOwner;
     private android.view.Choreographer.FrameCallback popupBlurRefreshCallback;
     private int popupBlurRefreshFrameCounter;
     private final Runnable updateDeleteItemRunnable = new Runnable() {
@@ -31131,9 +31132,9 @@ public class ChatActivity extends BaseFragment implements
         int dh = decorView.getHeight();
         if (dw <= 0 || dh <= 0) return;
         removePopupBlur();
-        if (scrimPopupWindow != null) {
+if (scrimPopupWindow != null) {
             View cv = scrimPopupWindow.getContentView();
-            if (cv != null) addPopupDetachListener(cv);
+            if (cv != null) addPopupDetachListener(cv, scrimPopupWindow);
         }
         int pixelation = NekoConfig.blurPixelation;
         int downscale = Math.max(1, 1 + pixelation / 5);
@@ -31166,6 +31167,7 @@ public class ChatActivity extends BaseFragment implements
             if (content != null) {
                 content.addView(imageView);
                 popupBlurOverlayView = imageView;
+                popupBlurOverlayOwner = scrimPopupWindow;
                 if (NekoConfig.blurSmoothly) {
                     ValueAnimator animator = ValueAnimator.ofFloat(0f, targetBlur);
                     animator.setDuration(NekoConfig.blurAnimationDuration);
@@ -31281,14 +31283,16 @@ public class ChatActivity extends BaseFragment implements
         }
     }
 
-    private void addPopupDetachListener(View contentView) {
+    private void addPopupDetachListener(View contentView, ActionBarPopupWindow owner) {
         contentView.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
             @Override
             public void onViewAttachedToWindow(View v) {}
             @Override
             public void onViewDetachedFromWindow(View v) {
                 v.removeOnAttachStateChangeListener(this);
-                removePopupBlur(true);
+                if (scrimPopupWindow == owner) {
+                    removePopupBlur(true);
+                }
             }
         });
     }

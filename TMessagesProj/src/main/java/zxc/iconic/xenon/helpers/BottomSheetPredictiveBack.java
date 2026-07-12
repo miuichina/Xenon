@@ -34,6 +34,7 @@ public final class BottomSheetPredictiveBack {
         private float maxTranslateY = 0f;
         private float lastP = 0f;
         private float currentEased = 0f;
+        private boolean allowDismiss = true;
 
         Callback(BottomSheet sheet) {
             this.sheet = sheet;
@@ -49,6 +50,8 @@ public final class BottomSheetPredictiveBack {
             isButton = false;
             lastP = 0f;
             currentEased = 0f;
+            allowDismiss = sheet.canDismiss();
+            if (!allowDismiss) return;
             View cv = sheet.getSheetContainer();
             if (cv == null) return;
             maxTranslateY = cv.getHeight()
@@ -59,6 +62,7 @@ public final class BottomSheetPredictiveBack {
 
         @Override
         public void onBackProgressed(BackEvent backEvent) {
+            if (!allowDismiss) return;
             if (!attached) {
                 if (backEvent.getProgress() <= LAZY_START) return;
                 attached = true;
@@ -82,7 +86,7 @@ public final class BottomSheetPredictiveBack {
         @Override
         public void onBackCancelled() {
             isButton = false;
-            if (!attached) {
+            if (!allowDismiss || !attached) {
                 return;
             }
             runFinishAnim(true);
@@ -90,6 +94,9 @@ public final class BottomSheetPredictiveBack {
 
         @Override
         public void onBackInvoked() {
+            if (!allowDismiss) {
+                return;
+            }
             if (!attached || isButton) {
                 sheet.dismiss();
                 return;
