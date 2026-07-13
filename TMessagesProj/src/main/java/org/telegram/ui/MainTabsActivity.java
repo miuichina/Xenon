@@ -328,6 +328,9 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
 
         tabsViewWrapper = new FrameLayout(context);
         tabsViewWrapper.setOnClickListener(v -> {});
+        if (zxc.iconic.xenon.helpers.NonIslandHelper.bottomBar()) {
+            tabsViewWrapper.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite, resourceProvider));
+        }
         tabsViewWrapper.addView(tabsView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, zxc.iconic.xenon.helpers.NonIslandHelper.bottomBar() ? DialogsActivity.MAIN_TABS_HEIGHT + DialogsActivity.MAIN_TABS_MARGIN : DialogsActivity.MAIN_TABS_HEIGHT_WITH_MARGINS, Gravity.BOTTOM | (zxc.iconic.xenon.helpers.NonIslandHelper.bottomBar() ? 0 : Gravity.CENTER_HORIZONTAL)));
         tabsViewWrapper.setClipToPadding(false);
         tabsViewWrapper.setVisibility(NekoConfig.showMainTabs ? View.VISIBLE : View.GONE);
@@ -692,7 +695,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
     @NonNull
     @Override
     protected WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat insets) {
-        int bottomInset = zxc.iconic.xenon.helpers.NonIslandHelper.bottomBar() ? 0 : insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom;
+        int bottomInset = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom;
         navigationBarHeight = bottomInset;
         final boolean isUpdateLayoutVisible = updateLayoutWrapper.isUpdateLayoutVisible();
         final int updateLayoutHeight = isUpdateLayoutVisible ? dp(UpdateLayoutWrapper.HEIGHT) : 0;
@@ -720,18 +723,14 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         }
 
         if (zxc.iconic.xenon.helpers.NonIslandHelper.bottomBar()) {
-            // In non-island mode the wrapper has no bottom padding so the blur drawable
-            // extends under the system navigation bar. The tabsView itself gets a
-            // bottom padding equal to the navigation-bar height so the buttons
-            // stay above it, and we grow its LayoutParams height accordingly.
-            tabsViewWrapper.setPadding(0, 0, 0, 0);
-            final int tabsFullHeight = dp(DialogsActivity.MAIN_TABS_HEIGHT + DialogsActivity.MAIN_TABS_MARGIN) + navigationBarHeight;
+            tabsViewWrapper.setPadding(0, 0, 0, navigationBarHeight);
+            final int tabsFullHeight = dp(DialogsActivity.MAIN_TABS_HEIGHT + DialogsActivity.MAIN_TABS_MARGIN);
             ViewGroup.LayoutParams tabsLp = tabsView.getLayoutParams();
             if (tabsLp != null && tabsLp.height != tabsFullHeight) {
                 tabsLp.height = tabsFullHeight;
                 tabsView.setLayoutParams(tabsLp);
             }
-            tabsView.setPadding(0, 0, 0, navigationBarHeight);
+            tabsView.setPadding(0, 0, 0, 0);
         } else {
             tabsViewWrapper.setPadding(0, 0, 0, navigationBarHeight);
         }
