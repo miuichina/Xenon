@@ -52,14 +52,14 @@ public class AnalyticsHelper {
     }
 
     public static void trackFragmentLifecycle(String lifecycle, BaseFragment fragment) {
-        if (analyticsDisabled || fragment == null) return;
+        if (analyticsDisabled || firebaseAnalytics == null || fragment == null) return;
         if ("created".equals(lifecycle)) {
             firebaseAnalytics.logEvent(FirebaseAnalytics.Event.SCREEN_VIEW, null);
         }
     }
 
     public static void trackEvent(String event, HashMap<String, String> map) {
-        if (analyticsDisabled) return;
+        if (analyticsDisabled || firebaseAnalytics == null) return;
         Bundle bundle = new Bundle();
         for (String key : map.keySet()) {
             bundle.putString(key, map.get(key));
