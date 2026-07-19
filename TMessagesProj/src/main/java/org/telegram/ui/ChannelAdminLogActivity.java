@@ -141,6 +141,7 @@ import org.telegram.ui.Components.PhonebookShareAlert;
 import org.telegram.ui.Components.PipRoundVideoView;
 import org.telegram.ui.Components.RecyclerAnimationScrollHelper;
 import org.telegram.ui.Components.CircularProgressDrawable;
+import org.telegram.ui.Components.RadialProgressView;
 import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.ShareAlert;
 import org.telegram.ui.Components.SizeNotifierFrameLayout;
@@ -178,9 +179,9 @@ import me.vkryl.core.reference.ReferenceList;
 import zxc.iconic.xenon.MessageDetailsActivity;
 import zxc.iconic.xenon.NekoConfig;
 import zxc.iconic.xenon.helpers.WebAppHelper;
+import tw.nekomimi.nekogram.tlv.TlViewer;
 
 public class ChannelAdminLogActivity extends BaseFragment implements NotificationCenter.NotificationCenterDelegate {
-
     private final @NonNull BlurredBackgroundSourceWrapped navbarContentSourceWallpaper;
     private final @NonNull BlurredBackgroundDrawableViewFactory navbarContentDrawableFactory;
 
@@ -201,7 +202,7 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
 
     private FrameLayout progressView;
     private View progressView2;
-    private ImageView progressBar;
+    private RadialProgressView progressBar;
     private ChatListRecyclerView chatListView;
     private UndoView undoView;
     private LinearLayoutManager chatLayoutManager;
@@ -1163,8 +1164,6 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
 
         contentView.setOccupyStatusBar(!AndroidUtilities.isTablet());
         contentView.setBackgroundImage(Theme.getCachedWallpaper(), Theme.isWallpaperMotion());
-        boolean nonIsland = zxc.iconic.xenon.helpers.NonIslandHelper.chatElements();
-        actionBar.inu_nonIsland = nonIsland;
         actionBar.setupGlass(glassBackgroundDrawableFactory, BlurredBackgroundProviderImpl.topPanelChatActivity(resourceProvider));
         emptyViewContainer = new FrameLayout(context);
         emptyViewContainer.setVisibility(View.INVISIBLE);
@@ -1348,23 +1347,6 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
         chatListView.setVerticalScrollBarEnabled(true);
         chatListView.setAdapter(chatAdapter = new ChatActivityAdapter(context));
         chatListView.setClipToPadding(false);
-        chatListView.addEdgeEffectListener(new org.telegram.ui.Components.EdgeEffectTrackerFactory.OnEdgeEffectListener() {
-            private final Runnable invalidator = new Runnable() {
-                @Override
-                public void run() {
-                    invalidateMergedVisibleBlurredPositionsAndSources(BLUR_INVALIDATE_FLAG_SCROLL | BLUR_INVALIDATE_FLAG_CLIP);
-                    if (chatListView.hasActiveEdgeEffects()) {
-                        chatListView.postOnAnimation(this);
-                    }
-                }
-            };
-
-            @Override
-            public void onEdgeEffectVisibilityChange(int direction, boolean isVisible) {
-                chatListView.removeCallbacks(invalidator);
-                chatListView.postOnAnimation(invalidator);
-            }
-        });
         chatListView.setPadding(0,
             recommendedAdditionalSizeY + AndroidUtilities.statusBarHeight + ActionBar.getCurrentActionBarHeight() + dp(4), 0,
             recommendedAdditionalSizeY + dp(44 + 9 + 7) + AndroidUtilities.navigationBarHeight);
@@ -1499,8 +1481,9 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
         progressView2.setBackground(Theme.createServiceDrawable(dp(18), progressView2, contentView));
         progressView.addView(progressView2, LayoutHelper.createFrame(36, 36, Gravity.CENTER));
 
-        progressBar = new ImageView(context);
-        progressBar.setImageDrawable(new CircularProgressDrawable(AndroidUtilities.dp(40), AndroidUtilities.dp(2.25f), 0xffffffff));
+        progressBar = new RadialProgressView(context);
+        progressBar.setSize(dp(28));
+        progressBar.setProgressColor(Theme.getColor(Theme.key_chat_serviceText));
         progressView.addView(progressBar, LayoutHelper.createFrame(32, 32, Gravity.CENTER));
 
         floatingDateView = new ChatActionCell(context);
@@ -1513,13 +1496,10 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
         bottomOverlayChat2 = new ChatActivityChannelButtonsLayout(context, resourceProvider,
             BlurredBackgroundProviderImpl.bottomPanelChatActivity(resourceProvider), glassBackgroundDrawableFactory);
         bottomOverlayChat2.setTotalVisibilityFactor(1f);
-        bottomOverlayChat2.setTranslationY(nonIsland ? 0 : -AndroidUtilities.navigationBarHeight);
+        bottomOverlayChat2.setTranslationY(-AndroidUtilities.navigationBarHeight);
         bottomOverlayChat2.showButton(ChatActivityChannelButtonsLayout.BUTTON_RECENT_ACTIONS_INFO, true, false);
         bottomOverlayChat2.setupDrawableForContainer();
-        if (nonIsland) {
-            bottomOverlayChat2.setClipToPadding(false);
-        }
-        contentView.addView(bottomOverlayChat2, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 56, Gravity.BOTTOM, nonIsland ? 0 : 54, 0, 0, nonIsland ? 0 : (44 - 56) / 2 + 9));
+        contentView.addView(bottomOverlayChat2, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 56, Gravity.BOTTOM, 54, 0, 0, (44 - 56) / 2 + 9));
 
         bottomOverlayChatText = new TextView(context);
         bottomOverlayChatText.setOnClickListener(view -> {
@@ -1544,12 +1524,8 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
         bottomOverlayChatText.setTypeface(AndroidUtilities.bold());
         bottomOverlayChatText.setTextColor(Theme.getColor(Theme.key_chat_fieldOverlayText));
         bottomOverlayChatText.setText(getString(R.string.SETTINGS));
-        bottomOverlayChatText.setGravity(Gravity.CENTER);
         bottomOverlayChatText.setPadding(dp(24), 0, dp(24), 0);
-        if (nonIsland) {
-            bottomOverlayChatText.setBackground(Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector)));
-        }
-        bottomOverlayChat2.getContainer().addView(bottomOverlayChatText, LayoutHelper.createFrame(nonIsland ? LayoutHelper.MATCH_PARENT : LayoutHelper.WRAP_CONTENT, nonIsland ? LayoutHelper.MATCH_PARENT : LayoutHelper.WRAP_CONTENT, Gravity.CENTER));
+        bottomOverlayChat2.getContainer().addView(bottomOverlayChatText, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER));
         bottomOverlayChat2.makeViewWrapContent(bottomOverlayChatText);
         bottomOverlayChat2.updateWrappingVisible(false);
 
@@ -2406,7 +2382,7 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
     private boolean processSelectedOptionLongClick(int option) {
         switch (option) {
             case OPTION_DETAILS: {
-                WebAppHelper.openTLViewer(this, selectedObject.currentEvent);
+                TlViewer.openTlViewer(this, selectedObject.currentEvent);
                 return true;
             }
         }
@@ -3910,7 +3886,7 @@ public class ChannelAdminLogActivity extends BaseFragment implements Notificatio
 
         themeDescriptions.add(new ThemeDescription(emptyView, ThemeDescription.FLAG_TEXTCOLOR, null, null, null, null, Theme.key_chat_serviceText));
 
-        themeDescriptions.add(new ThemeDescription(progressBar, ThemeDescription.FLAG_IMAGECOLOR, null, null, null, null, Theme.key_chat_serviceText));
+        themeDescriptions.add(new ThemeDescription(progressBar, ThemeDescription.FLAG_PROGRESSBAR, null, null, null, null, Theme.key_chat_serviceText));
 
         themeDescriptions.add(new ThemeDescription(chatListView, ThemeDescription.FLAG_USEBACKGROUNDDRAWABLE, new Class[]{ChatUnreadCell.class}, new String[]{"backgroundLayout"}, null, null, null, Theme.key_chat_unreadMessagesStartBackground));
         themeDescriptions.add(new ThemeDescription(chatListView, ThemeDescription.FLAG_IMAGECOLOR, new Class[]{ChatUnreadCell.class}, new String[]{"imageView"}, null, null, null, Theme.key_chat_unreadMessagesStartArrowIcon));

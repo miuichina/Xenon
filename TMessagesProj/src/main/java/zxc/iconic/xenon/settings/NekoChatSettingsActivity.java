@@ -601,15 +601,6 @@ public class NekoChatSettingsActivity extends BaseNekoSettingsActivity implement
         return "c";
     }
 
-    @Override
-    public void didReceivedNotification(int id, int account, Object... args) {
-        if (id == NotificationCenter.emojiLoaded) {
-            if (listView != null) {
-                listView.invalidateViews();
-            }
-        }
-    }
-
     private static class StickerSizeCellFactory extends UItem.UItemFactory<StickerSizeCell> {
         static {
             setup(new StickerSizeCellFactory());
@@ -641,6 +632,15 @@ public class NekoChatSettingsActivity extends BaseNekoSettingsActivity implement
         @Override
         public boolean isClickable() {
             return false;
+        }
+    }
+
+    @Override
+    public void didReceivedNotification(int id, int account, Object... args) {
+        if (id == NotificationCenter.emojiLoaded) {
+            if (listView != null) {
+                listView.invalidateViews();
+            }
         }
     }
 

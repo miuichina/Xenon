@@ -10,6 +10,7 @@ package org.telegram.ui.ActionBar;
 
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.os.Build;
 import android.view.MotionEvent;
@@ -33,7 +34,6 @@ public class DrawerLayoutContainer extends FrameLayout {
     private INavigationLayout parentActionBarLayout;
 
     private final Paint backgroundPaint = new Paint();
-
     private int behindKeyboardColor;
 
     private boolean hasCutout;
@@ -203,7 +203,7 @@ public class DrawerLayoutContainer extends FrameLayout {
                 getMeasuredHeight() - insets.bottom,
                 getMeasuredWidth(),
                 getMeasuredHeight(),
-                internalNavbarPaint
+                backgroundPaint
             );
         }
 

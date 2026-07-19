@@ -9,6 +9,7 @@
 package org.telegram.ui.ActionBar;
 
 import static org.telegram.messenger.AndroidUtilities.dp;
+import static org.telegram.messenger.AndroidUtilities.dpf2;
 import static org.telegram.messenger.AndroidUtilities.find;
 import static org.telegram.messenger.AndroidUtilities.lerp;
 import static org.telegram.messenger.LocaleController.getString;
@@ -68,6 +69,7 @@ import org.telegram.ui.Components.SectionsScrollView;
 import org.telegram.ui.Components.SizeNotifierFrameLayout;
 import org.telegram.ui.Components.SnowflakesEffect;
 import org.telegram.ui.Components.blur3.BlurredBackgroundDrawableViewFactory;
+import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
 import org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundColorProvider;
 
 import java.util.ArrayList;
@@ -88,7 +90,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         }
     }
 
-    private Drawable glassDrawable;
+    private BlurredBackgroundDrawable glassDrawable;
     private Drawable glassDrawableBack;
     private Drawable glassDrawableMenu;
     public boolean inu_nonIsland;
@@ -192,16 +194,30 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
     }
 
     private boolean glassMode;
+    private boolean glassOnlyBack;
+    private boolean glassModeIsForum;
+
     private ChatAvatarContainer chatAvatarContainer;
+
+    public void setGlassOnlyBack() {
+        glassOnlyBack = true;
+    }
 
     public void setChatAvatarContainer(ChatAvatarContainer chatAvatarContainer) {
         this.chatAvatarContainer = chatAvatarContainer;
     }
 
     public void setupGlass(BlurredBackgroundDrawableViewFactory factory, BlurredBackgroundColorProvider colorProvider) {
+        setupGlass(factory, colorProvider, false);
+    }
+
+    public void setupGlass(BlurredBackgroundDrawableViewFactory factory,
+                           BlurredBackgroundColorProvider colorProvider,
+                           boolean isForum) {
         setBackground(null);
         setClipChildren(false);
         glassMode = true;
+        glassModeIsForum = isForum;
 
         final int glassRadius = inu_nonIsland ? 0 : 23;
         final int glassPadding = inu_nonIsland ? 0 : 6;
@@ -210,6 +226,13 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
             .setColorProvider(colorProvider)
             .setRadius(dp(glassRadius))
             .setPadding(dp(glassPadding));
+        if (!inu_nonIsland) {
+            if (isForum) {
+                glassDrawable.setRadius(dp(18.33f), dp(23), dp(23), dp(18.33f));
+            } else {
+                glassDrawable.setRadius(dp(23));
+            }
+        }
 
         glassDrawableBack = factory.create(this)
             .setColorProvider(colorProvider)
@@ -813,6 +836,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
             return;
         }
         actionModeVisible = true;
+        checkMenuItemsWidth();
         if (animated) {
             ArrayList<Animator> animators = new ArrayList<>();
             animators.add(ObjectAnimator.ofFloat(actionMode, View.ALPHA, 0.0f, 1.0f));
@@ -999,6 +1023,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         }
         actionMode.hideAllPopupMenus();
         actionModeVisible = false;
+        checkMenuItemsWidth();
         ArrayList<Animator> animators = new ArrayList<>();
         animators.add(ObjectAnimator.ofFloat(actionMode, View.ALPHA, 0.0f));
         if (actionModeHidingViews != null) {
@@ -1182,6 +1207,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
 
     public void onSearchFieldVisibilityChanged(boolean visible) {
         isSearchFieldVisible = visible;
+        checkMenuItemsWidth();
         if (searchVisibleAnimator != null) {
             searchVisibleAnimator.cancel();
         }
@@ -1203,6 +1229,17 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         ValueAnimator alphaUpdate = ValueAnimator.ofFloat(searchFieldVisibleAlpha, visible ? 1f : 0f);
         alphaUpdate.addUpdateListener(anm -> {
             searchFieldVisibleAlpha = (float) anm.getAnimatedValue();
+
+            if (glassDrawable != null && glassModeIsForum) {
+                final float r1 = dp(23);
+                final float r2 = lerp(dp(18.33f), dp(23), searchFieldVisibleAlpha);
+                glassDrawable.setRadius(r2, r1, r1, r2);
+                invalidate();
+            }
+
+            if (glassMode && menu != null) {
+                menu.setTranslationX(-lerp((float) dp(10), dp(5), searchFieldVisibleAlpha));
+            }
             if (backgroundUpdateListener != null) {
                 backgroundUpdateListener.run();
             }
@@ -1358,6 +1395,13 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         super.onViewAdded(child);
     }
 
+    private int additionalTextLeft;
+
+    public void setAdditionalTextLeft(int x) {
+        additionalTextLeft = x;
+    }
+
+
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         int width = MeasureSpec.getSize(widthMeasureSpec);
@@ -1384,6 +1428,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         } else {
             textLeft = dp(AndroidUtilities.isTablet() ? 26 : 18);
         }
+        // textLeft += additionalTextLeft;
 
         if (menu != null && menu.getVisibility() != GONE) {
             int menuWidth;
@@ -1500,6 +1545,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         } else {
             textLeft = glassMode ? dp(24) : dp(AndroidUtilities.isTablet() ? 26 : 18);
         }
+        textLeft += additionalTextLeft;
 
         if (menu != null && menu.getVisibility() != GONE) {
             int menuLeft = menu.searchFieldVisible() ? dp(menuOccupyBack ? 0 : AndroidUtilities.isTablet() ? 74 : 66) : (right - left) - menu.getMeasuredWidth();
@@ -2103,6 +2149,9 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
     private final FactorAnimator animatorAvatarContainerWidth = new FactorAnimator(0, this, CubicBezierInterpolator.EASE_OUT_QUINT, 380);
     private final BoolAnimator animatorAvatarContainerHasAvatar = new BoolAnimator(0, this, CubicBezierInterpolator.EASE_OUT_QUINT, 380);
 
+    private final FactorAnimator animatorMenuItemsWidth = new FactorAnimator(0, this, CubicBezierInterpolator.EASE_OUT_QUINT, 320);
+    private final BoolAnimator animatorHasMenuItems = new BoolAnimator(0, this, CubicBezierInterpolator.EASE_OUT_QUINT, 320);
+
     @Override
     public void onFactorChanged(int id, float factor, float fraction, FactorAnimator callee) {
         invalidate();
@@ -2119,6 +2168,23 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         }
     }
 
+    private boolean isAnimationsAllowed;
+
+    public void checkMenuItemsWidth() {
+        final int defaultMenuWidth = Math.max(0, menu != null ? (int) menu.getItemsWidth() - dp(1) - dp(1) : 0);
+        final int actionMenuWidth = Math.max(0, actionMode != null ? actionMode.getItemsWidth() - dp(1) - dp(1) : 0);
+        final int searchMenuWidth = dp(46);
+        final int width = /*isSearchFieldVisible ? searchMenuWidth :*/ (actionModeVisible ? actionMenuWidth : defaultMenuWidth);
+
+        animatorHasMenuItems.setValue(width > 0, isAnimationsAllowed);
+        if (animatorMenuItemsWidth.getToFactor() != width) {
+            if (isAnimationsAllowed) {
+                animatorMenuItemsWidth.animateTo(width);
+            } else {
+                animatorMenuItemsWidth.forceFactor(width);
+            }
+        }
+    }
 
     @Override
     protected void dispatchDraw(Canvas canvas) {
@@ -2126,17 +2192,15 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         final int s = dp(46);
 
         final float actionModeFactor = getActionModeFactor();
-        final int defaultMenuWidth = Math.max(0, menu != null ? menu.getItemsWidth() - dp(1) - dp(1) : 0);
-        final int actionMenuWidth = Math.max(0, actionMode != null ? actionMode.getItemsWidth() - dp(1) - dp(1) : 0);
-        final int menuWidth = hasForcedMenuWidth ? forcedMenuWidth : lerp(defaultMenuWidth, actionMenuWidth, getActionModeFactor());
+        final int menuWidth = hasForcedMenuWidth ? forcedMenuWidth : (int) animatorMenuItemsWidth.getFactor();
 
         final boolean hasBackButton = backButtonImageView != null && backButtonImageView.getVisibility() == View.VISIBLE;
 
         final int t = getHeight() - (getCurrentActionBarHeight() + s) / 2 - p;
         final int b = t + s + p * 2;
 
-        if (glassDrawable != null) {
-            final int menuWidthWithPadding = menuWidth > 0 ? (menuWidth + p) : 0;
+        if (glassDrawable != null && !glassOnlyBack) {
+            final int menuWidthWithPadding = menuWidth + (hasForcedMenuWidth ? (menuWidth > 0 ? p : 0) : (int) (p * animatorHasMenuItems.getFloatValue()));
             final int rightOffset = lerp(menuWidthWithPadding, Math.max(menuWidthWithPadding, p + s), chatAvatarContainer == null ? 0f : 1f - animatorAvatarContainerHasAvatar.getFloatValue());
 
             final int leftDefault = lerp(hasBackButton ? s + p : 0, s + p, chatAvatarContainer == null? 0f : 1f - animatorAvatarContainerHasAvatar.getFloatValue());
@@ -2167,8 +2231,9 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
             glassDrawableBack.setBounds(0, t, s + p * 2, b);
             glassDrawableBack.draw(canvas);
         }
-        if (glassDrawableMenu != null && menuWidth > 0 && !inu_nonIsland) {
-            glassDrawableMenu.setBounds(getWidth() - menuWidth - p * 2, t, getWidth(), b);
+        if (glassDrawableMenu != null && menuWidth > 0 && !inu_nonIsland && !glassOnlyBack) {
+            glassDrawableMenu.setBounds(getWidth() - Math.max(s, menuWidth) - p * 2, t, getWidth(), b);
+            glassDrawableMenu.setAlpha(hasForcedMenuWidth ? 255 : (int) (255 * animatorHasMenuItems.getFloatValue()));
             glassDrawableMenu.draw(canvas);
         }
 
@@ -2182,6 +2247,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
             }
         }
 
+        isAnimationsAllowed = true;
         if (doNotDrawChild) {
             return;
         }
@@ -2349,11 +2415,19 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
                 titleTextView[0].setAlpha(1.0f - onTopAnimated);
             }
         }
-        setBackgroundColor(ColorUtils.blendARGB(
-            adaptive_topColorKey == -1 ? 0 : Theme.getColor(adaptive_lowerColorKey, resourcesProvider),
-            adaptive_topColorKey == -1 ? 0 : Theme.getColor(adaptive_topColorKey, resourcesProvider),
-            onTopAnimated
-        ));
+
+        final float factor = onTopAnimated;
+        int lowerColor = adaptive_lowerColorKey == -1 ? 0 : Theme.getColor(adaptive_lowerColorKey, resourcesProvider);
+        int topColor = adaptive_topColorKey == -1 ? 0 : Theme.getColor(adaptive_topColorKey, resourcesProvider);
+
+        if (topColor == 0) {
+            topColor = ColorUtils.setAlphaComponent(lowerColor, 0);
+        }
+        if (lowerColor == 0) {
+            lowerColor = ColorUtils.setAlphaComponent(topColor, 0);
+        }
+
+        setBackgroundColor(ColorUtils.blendARGB(lowerColor, topColor, factor));
         setShadowAlpha((int) ((1.0f - onTopAnimated) * 0xFF));
         if (blurredBackground) {
             invalidate();
