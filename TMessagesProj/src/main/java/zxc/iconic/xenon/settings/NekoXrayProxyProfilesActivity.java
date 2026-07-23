@@ -4,14 +4,20 @@ import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.text.InputType;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.View;
 import android.widget.LinearLayout;
 
+import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.ApplicationLoader;
+import org.telegram.messenger.FileLog;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
+import org.telegram.messenger.Utilities;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.Components.AlertsCreator;
 import org.telegram.ui.Components.EditTextBoldCursor;
@@ -20,7 +26,12 @@ import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.UniversalAdapter;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.List;
 
 import zxc.iconic.xenon.proxy.XrayConfigSummary;
 import zxc.iconic.xenon.proxy.XrayConfigValidator;
@@ -36,6 +47,8 @@ public class NekoXrayProxyProfilesActivity extends BaseNekoSettingsActivity {
 
     private final int addClipboardRow = rowId++;
     private final int addUriRow = rowId++;
+    private final int addFileRow = rowId++;
+    private final int addEmptyRow = rowId++;
 
     /** Row ids for profile rows start from this offset. */
     private final int profileStartRow = 100;
@@ -64,6 +77,12 @@ public class NekoXrayProxyProfilesActivity extends BaseNekoSettingsActivity {
         items.add(UItem.asButton(addUriRow, R.drawable.msg_link2,
                         LocaleController.getString(R.string.XrayProxyAddFromUri))
                 .slug("xrayProfileAddUri"));
+        items.add(UItem.asButton(addFileRow, R.drawable.msg_log,
+                        LocaleController.getString(R.string.XrayProxyAddFromFile))
+                .slug("xrayProfileAddFile"));
+        items.add(UItem.asButton(addEmptyRow, R.drawable.msg_add,
+                        LocaleController.getString(R.string.XrayProxyAddEmptyProfile))
+                .slug("xrayProfileAddEmpty").accent());
         items.add(UItem.asShadow(LocaleController.getString(R.string.XrayProxyProfilesHint)));
 
         if (profiles.isEmpty()) {
@@ -98,6 +117,16 @@ public class NekoXrayProxyProfilesActivity extends BaseNekoSettingsActivity {
         }
         if (id == addUriRow) {
             showUriImportDialog();
+            return;
+        }
+        if (id == addFileRow) {
+            openFilePicker();
+            return;
+        }
+        if (id == addEmptyRow) {
+            XrayProxyProfileStore.Profile empty = XrayProxyProfileStore.createEmptyProfile();
+            XrayProxyProfileStore.addProfile(empty, true);
+            presentFragment(NekoXrayProxyProfileEditActivity.forProfile(empty.id));
             return;
         }
         if (id >= profileStartRow) {
@@ -186,15 +215,96 @@ public class NekoXrayProxyProfilesActivity extends BaseNekoSettingsActivity {
     /**
      * Imports a profile from clipboard URI/subscription and stores it as a new profile.
      */
-    private void addFromClipboard() {
-        String clipText = readClipboardText();
-        XrayProxyProfileStore.Profile template = XrayProxyProfileStore.createEmptyProfile();
-        XrayUriConfigFactory.ParseResult result = XrayUriConfigFactory.fromClipboardText(clipText, template.localPort);
-        if (!result.valid) {
-            showError(result.message);
+    private static final int REQUEST_CODE_FILE_PICKER = 1199;
+
+    private void openFilePicker() {
+        Activity activity = getParentActivity();
+        if (activity == null) {
             return;
         }
-        createProfileFromParseResult(result, template.localPort);
+        try {
+            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+            intent.setType("text/*");
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            startActivityForResult(Intent.createChooser(intent, LocaleController.getString(R.string.XrayProxyAddFromFile)), REQUEST_CODE_FILE_PICKER);
+        } catch (Throwable t) {
+            try {
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.setType("*/*");
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                startActivityForResult(Intent.createChooser(intent, LocaleController.getString(R.string.XrayProxyAddFromFile)), REQUEST_CODE_FILE_PICKER);
+            } catch (Throwable e) {
+                showError(e.getMessage());
+            }
+        }
+    }
+
+    @Override
+    public void onActivityResultFragment(int requestCode, int resultCode, Intent data) {
+        super.onActivityResultFragment(requestCode, resultCode, data);
+        if (requestCode == REQUEST_CODE_FILE_PICKER && resultCode == Activity.RESULT_OK && data != null && data.getData() != null) {
+            importProfilesFromFile(data.getData());
+        }
+    }
+
+    private void importProfilesFromFile(Uri uri) {
+        Activity activity = getParentActivity();
+        if (activity == null || uri == null) {
+            return;
+        }
+
+        AlertDialog progressDialog = new AlertDialog(activity, 3);
+        progressDialog.setCanceledOnTouchOutside(false);
+        progressDialog.show();
+
+        Utilities.globalQueue.postRunnable(() -> {
+            String text = null;
+            try (InputStream is = ApplicationLoader.applicationContext.getContentResolver().openInputStream(uri);
+                 BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+                StringBuilder sb = new StringBuilder();
+                char[] buffer = new char[8192];
+                int read;
+                int totalRead = 0;
+                int maxBytes = 10 * 1024 * 1024;
+                while ((read = reader.read(buffer, 0, buffer.length)) != -1) {
+                    sb.append(buffer, 0, read);
+                    totalRead += read;
+                    if (totalRead > maxBytes) {
+                        break;
+                    }
+                }
+                text = sb.toString();
+            } catch (Throwable t) {
+                FileLog.e(t);
+            }
+
+            final String fileContent = text;
+            if (TextUtils.isEmpty(fileContent)) {
+                AndroidUtilities.runOnUIThread(() -> {
+                    progressDialog.dismiss();
+                    showError(LocaleController.getString(R.string.XrayProxyErrorImportFailed));
+                });
+                return;
+            }
+
+            processBulkImportInBackground(fileContent, progressDialog);
+        });
+    }
+
+    private void addFromClipboard() {
+        String clipText = readClipboardText();
+        if (TextUtils.isEmpty(clipText)) {
+            showError(LocaleController.getString(R.string.XrayProxyErrorImportFailed));
+            return;
+        }
+        Activity activity = getParentActivity();
+        if (activity == null) {
+            return;
+        }
+        AlertDialog progressDialog = new AlertDialog(activity, 3);
+        progressDialog.setCanceledOnTouchOutside(false);
+        progressDialog.show();
+        processBulkImportInBackground(clipText, progressDialog);
     }
 
     private void showUriImportDialog() {
@@ -232,16 +342,89 @@ public class NekoXrayProxyProfilesActivity extends BaseNekoSettingsActivity {
         if (positive != null) {
             positive.setOnClickListener(v -> {
                 String raw = editText.getText() == null ? "" : editText.getText().toString().trim();
-                XrayProxyProfileStore.Profile template = XrayProxyProfileStore.createEmptyProfile();
-                XrayUriConfigFactory.ParseResult result = XrayUriConfigFactory.fromLink(raw, template.localPort);
-                if (!result.valid) {
-                    showError(result.message);
+                dialog.dismiss();
+                if (TextUtils.isEmpty(raw)) {
                     return;
                 }
-                createProfileFromParseResult(result, template.localPort);
-                dialog.dismiss();
+                AlertDialog progressDialog = new AlertDialog(context, 3);
+                progressDialog.setCanceledOnTouchOutside(false);
+                progressDialog.show();
+                processBulkImportInBackground(raw, progressDialog);
             });
         }
+    }
+
+    private void processBulkImportInBackground(String rawText, AlertDialog progressDialog) {
+        Utilities.globalQueue.postRunnable(() -> {
+            XrayProxyProfileStore.Profile template = XrayProxyProfileStore.createEmptyProfile();
+            int basePort = template.localPort;
+
+            List<XrayUriConfigFactory.ParseResult> results = XrayUriConfigFactory.fromBulkText(rawText, basePort);
+            if (results == null || results.isEmpty()) {
+                AndroidUtilities.runOnUIThread(() -> {
+                    if (progressDialog != null) {
+                        progressDialog.dismiss();
+                    }
+                    showError(LocaleController.getString(R.string.XrayProxyImportNoValid));
+                });
+                return;
+            }
+
+            ArrayList<XrayProxyProfileStore.Profile> newProfiles = new ArrayList<>();
+            int count = 0;
+            for (XrayUriConfigFactory.ParseResult res : results) {
+                if (res == null || !res.valid || res.config == null) {
+                    continue;
+                }
+                String json;
+                try {
+                    json = res.config.toString(2);
+                } catch (Throwable ignore) {
+                    json = res.config.toString();
+                }
+
+                int port = basePort + count;
+                if (port > 65535) {
+                    port = 10808 + (count % 50000);
+                }
+
+                XrayConfigValidator.ValidationResult val = XrayConfigValidator.validate(json, port);
+                if (!val.valid) {
+                    continue;
+                }
+
+                XrayProxyProfileStore.Profile profile = new XrayProxyProfileStore.Profile();
+                profile.id = XrayProxyProfileStore.generateId();
+                profile.localPort = port;
+                profile.configJson = json;
+                profile.name = TextUtils.isEmpty(res.nodeName)
+                        ? (res.protocol + " " + res.host + ":" + res.port)
+                        : res.nodeName;
+                profile.checkUrl = XrayProxyProfileStore.DEFAULT_CHECK_URL;
+                newProfiles.add(profile);
+                count++;
+            }
+
+            int addedCount = XrayProxyProfileStore.addProfilesBatch(newProfiles, false);
+
+            AndroidUtilities.runOnUIThread(() -> {
+                if (progressDialog != null) {
+                    progressDialog.dismiss();
+                }
+                if (addedCount > 0) {
+                    if (listView != null && listView.adapter != null) {
+                        listView.adapter.update(true);
+                    }
+                    AlertsCreator.showSimpleAlert(
+                            NekoXrayProxyProfilesActivity.this,
+                            LocaleController.getString(R.string.XrayProxyTitle),
+                            LocaleController.formatStringSimple(
+                                    LocaleController.getString(R.string.XrayProxyImportSuccess), addedCount));
+                } else {
+                    showError(LocaleController.getString(R.string.XrayProxyImportNoValid));
+                }
+            });
+        });
     }
 
     private void createProfileFromParseResult(XrayUriConfigFactory.ParseResult result, int localPort) {

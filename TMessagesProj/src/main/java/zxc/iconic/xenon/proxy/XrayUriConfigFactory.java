@@ -88,6 +88,43 @@ public final class XrayUriConfigFactory {
     }
 
     /**
+     * Parses bulk text or subscription content (plain text or Base64 encoded) and extracts
+     * all valid proxy URIs as ParseResults. Memory-safe and bounded to max 5000 entries.
+     */
+    public static List<ParseResult> fromBulkText(String text, int startLocalPort) {
+        if (TextUtils.isEmpty(text)) {
+            return Collections.emptyList();
+        }
+        String trimmed = text.trim();
+        String decoded = tryDecodeBase64(trimmed);
+        if (!TextUtils.isEmpty(decoded)) {
+            Matcher testMatcher = LINK_PATTERN.matcher(decoded);
+            if (testMatcher.find()) {
+                trimmed = decoded;
+            }
+        }
+
+        List<ParseResult> results = new ArrayList<>();
+        Matcher matcher = LINK_PATTERN.matcher(trimmed);
+        int maxCap = 5000;
+        int currentPort = startLocalPort;
+        while (matcher.find() && results.size() < maxCap) {
+            String link = cleanupLink(matcher.group());
+            if (!TextUtils.isEmpty(link)) {
+                ParseResult res = fromLink(link, currentPort);
+                if (res.valid && res.config != null) {
+                    results.add(res);
+                    currentPort++;
+                    if (currentPort > 65535) {
+                        currentPort = 10808;
+                    }
+                }
+            }
+        }
+        return results;
+    }
+
+    /**
      * Converts a single share URI into full Xray JSON config with local socks inbound.
      * Supports vless, vmess, trojan, shadowsocks, socks and http links.
      */

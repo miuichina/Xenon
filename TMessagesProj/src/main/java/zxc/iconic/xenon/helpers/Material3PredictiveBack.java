@@ -327,7 +327,7 @@ public final class Material3PredictiveBack {
             if (enterBg != null && enterBg.getConstantState() != null) {
                 newBg = enterBg.getConstantState().newDrawable();
             }
-            cvb.setBackground(newBg != null ? newBg : new ColorDrawable(Theme.getColor(Theme.key_windowBackgroundWhite)));
+            cvb.setBackground(newBg != null ? newBg : new ColorDrawable(Theme.getColor(Theme.key_actionBarDefault)));
             cvb.setForeground(scrim);
             // Promote entering children to HW layers so per-frame scale/translate is texture-only.
             originalLayerTypes.clear();

@@ -8177,7 +8177,6 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
             if (message_id != 0) {
                 args.putInt("message_id", message_id);
-                closeSearch();
             } else if (!isGlobalSearch) {
                 closeSearch();
             } else {

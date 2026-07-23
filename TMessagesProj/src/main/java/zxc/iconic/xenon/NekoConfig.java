@@ -201,6 +201,7 @@ public class NekoConfig {
     private static final String XRAY_DEFAULT_CHECK_URL = "https://www.gstatic.com/generate_204";
 
     public static boolean xrayAppProxyEnabled = false;
+    public static boolean xrayVpnMode = false;
     public static int xrayAppProxyLocalPort = 10808;
     public static String xrayAppProxyConfigJson = "";
     public static String xrayAppProxyCheckUrl = XRAY_DEFAULT_CHECK_URL;
@@ -395,6 +396,7 @@ public class NekoConfig {
             hidePhoneNumber = preferences.getBoolean("hidePhoneNumber", false);
             autoInlineBot = preferences.getBoolean("autoInlineBot", false);
             xrayAppProxyEnabled = preferences.getBoolean("xrayAppProxyEnabled", false);
+            xrayVpnMode = preferences.getBoolean("xrayVpnMode", false);
             xrayAppProxyLocalPort = preferences.getInt("xrayAppProxyLocalPort", 10808);
             xrayAppProxyConfigJson = preferences.getString("xrayAppProxyConfigJson", "");
             xrayAppProxyCheckUrl = normalizeXrayCheckUrl(preferences.getString("xrayAppProxyCheckUrl", XRAY_DEFAULT_CHECK_URL));
@@ -1457,7 +1459,15 @@ public class NekoConfig {
         xrayAppProxyEnabled = enabled;
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
-        editor.putBoolean("xrayAppProxyEnabled", xrayAppProxyEnabled);
+        editor.putBoolean("xrayAppProxyEnabled", enabled);
+        editor.apply();
+    }
+
+    public static void setXrayVpnMode(boolean enabled) {
+        xrayVpnMode = enabled;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("xrayVpnMode", enabled);
         editor.apply();
     }
 

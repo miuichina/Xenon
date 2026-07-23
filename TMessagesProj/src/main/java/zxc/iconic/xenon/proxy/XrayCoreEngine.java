@@ -152,8 +152,11 @@ final class XrayCoreEngine {
     /**
      * Starts embedded Xray core with runtime config and verifies local SOCKS endpoint availability.
      * Edge cases: empty config, malformed JSON, duplicate start requests, stale state after failures.
+     *
+     * @param tunFd  tun file descriptor forwarded as the second argument to
+     *               {@code CoreController.startLoop(config, fd)}; {@code 0} for app-only (no VPN).
      */
-    static void start(String configJson, XrayAppProxyManager.StartCallback callback) {
+    static void start(String configJson, int tunFd, XrayAppProxyManager.StartCallback callback) {
         addLog("start requested");
         if (!isLibraryAvailable()) {
             addLog("start rejected: unsupported ABI or missing library");
@@ -195,7 +198,7 @@ final class XrayCoreEngine {
                 }
 
                 String activeConfig = configJson;
-                startCoreLoop(controller, activeConfig);
+                startCoreLoop(controller, activeConfig, tunFd);
                 if (!isControllerRunning(controller)) {
                     throw new Exception("Core did not switch to running state");
                 }
@@ -226,7 +229,7 @@ final class XrayCoreEngine {
                         activeConfig = rebindConfigToPort(configJson, newPort);
                         activeConfig = XrayLocalSocksAuth.applyCredentials(activeConfig, newPort, newCreds);
 
-                        startCoreLoop(controller, activeConfig);
+                        startCoreLoop(controller, activeConfig, tunFd);
                         if (!isControllerRunning(controller)) {
                             throw new Exception("Core did not switch to running state after port rebind");
                         }
@@ -412,17 +415,18 @@ final class XrayCoreEngine {
      * Stops then starts the core with a fresh config. Mirrors v2rayNG's {@code MSG_STATE_RESTART}
      * which performs stop + 500 ms gap + start. The internal stop+start are serialized through
      * the same single-threaded executor as {@link #start} and {@link #stop}.
+     *
+     * @param tunFd  tun fd forwarded to {@code startLoop(config, fd)}; {@code 0} for app-only mode.
      */
-    static void restart(String configJson, XrayAppProxyManager.StartCallback callback) {
+    static void restart(String configJson, int tunFd, XrayAppProxyManager.StartCallback callback) {
         addLog("restart requested");
         stop((stopOk, stopMsg) -> {
-            // brief gap allows the OS to release listening sockets before re-bind, matching v2rayNG behaviour
             try {
                 Thread.sleep(500L);
             } catch (InterruptedException ie) {
                 Thread.currentThread().interrupt();
             }
-            start(configJson, (startOk, startMsg) -> {
+            start(configJson, tunFd, (startOk, startMsg) -> {
                 if (callback == null) {
                     return;
                 }
@@ -436,6 +440,10 @@ final class XrayCoreEngine {
                 }
             });
         });
+    }
+
+    static void restart(String configJson, XrayAppProxyManager.StartCallback callback) {
+        restart(configJson, 0, callback);
     }
 
     private static ArrayList<String> buildDelayUrlChain(String requestedUrl) {
@@ -574,21 +582,37 @@ final class XrayCoreEngine {
     }
 
     private static boolean isControllerRunning(CoreController controller) {
+        if (running) {
+            return true;
+        }
         if (controller == null) {
             return false;
         }
         try {
             return controller.getIsRunning();
         } catch (Throwable t) {
-            return running;
+            return false;
         }
     }
 
-    private static void startCoreLoop(CoreController controller, String configJson) throws Exception {
+    /**
+     * Invokes {@code startLoop(config)} (forcing bakа single-arg form is invalid for entries tun.fd,
+     * but kept for compatibility with older JNI bindings) or {@code startLoop(config, tunFd)}.
+     *
+     * <p>When {@code tunFd} is {@code 0} and {@code startLoop} has the two-arg form, {@code 0} is
+     * forwarded as-is (matching app-only mode where Xray-core ignores the tun fd because the config
+     * has no tun inbound). When {@code tunFd > 0}, the live fd is forwarded so the core can dup and
+     * bind the tun interface passed by {@link XrayVpnService}.
+     */
+    private static void startCoreLoop(CoreController controller, String configJson, int tunFd) throws Exception {
         Method method = resolveStartLoopMethod(controller);
+        if (tunFd > 0 && method.getParameterTypes().length != 2) {
+            FileLog.e("[XrayCoreEngine] startLoop signature mismatch: VPN mode requires startLoop(String, int), but resolved: " + method.toGenericString());
+            throw new IllegalStateException("CoreController does not support startLoop(String, int) required for VPN mode with tunFd=" + tunFd);
+        }
         try {
             if (method.getParameterTypes().length == 2) {
-                method.invoke(controller, configJson, 0);
+                method.invoke(controller, configJson, tunFd);
             } else {
                 method.invoke(controller, configJson);
             }
@@ -620,6 +644,7 @@ final class XrayCoreEngine {
             }
             method.setAccessible(true);
             startLoopMethod = method;
+            FileLog.d("[XrayCoreEngine] startLoop signature resolved: " + method.toGenericString());
             addLog("startLoop signature resolved: " + method.toGenericString());
             return method;
         }
@@ -886,10 +911,10 @@ final class XrayCoreEngine {
             return false;
         }
         String abi = primaryAbi.toLowerCase(Locale.US);
-        if (abi.startsWith("x86") || abi.startsWith("riscv") || abi.startsWith("mips")) {
+        if (abi.startsWith("riscv") || abi.startsWith("mips")) {
             return false;
         }
-        return abi.startsWith("arm64") || abi.startsWith("armeabi");
+        return abi.startsWith("arm64") || abi.startsWith("armeabi") || abi.startsWith("x86");
     }
 
     private static String getPrimaryAbi() {

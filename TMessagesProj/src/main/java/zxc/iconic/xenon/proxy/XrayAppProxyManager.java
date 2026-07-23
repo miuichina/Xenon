@@ -57,14 +57,24 @@ public final class XrayAppProxyManager {
     }
 
     /**
-     * Starts embedded Xray core with provided runtime JSON config.
+     * Starts embedded Xray core with provided runtime JSON config and an optional tun fd.
+     * When {@code tunFd} is > 0, the fd is forwarded to {@code CoreController.startLoop(config, fd)}
+     * as a separate argument (Xray core reads the fd from the call site, not from the JSON),
+     * matching v2rayNG's {@code doStartCoreLoop}.
      */
-    public static void start(String configJson, StartCallback callback) {
+    public static void start(String configJson, int tunFd, StartCallback callback) {
         if (!isLibraryAvailable()) {
             notifyStart(callback, false, UNSUPPORTED_ABI_MESSAGE);
             return;
         }
-        XrayCoreEngine.start(configJson, callback);
+        XrayCoreEngine.start(configJson, tunFd, callback);
+    }
+
+    /**
+     * Starts embedded Xray core with provided runtime JSON config (no tun fd).
+     */
+    public static void start(String configJson, StartCallback callback) {
+        start(configJson, 0, callback);
     }
 
     /**
@@ -83,12 +93,16 @@ public final class XrayAppProxyManager {
      * {@code MSG_STATE_RESTART} which performs stop + small delay + start. The callback fires
      * once the second start completes (success message reflects the start outcome).
      */
-    public static void restart(String configJson, StartCallback callback) {
+    public static void restart(String configJson, int tunFd, StartCallback callback) {
         if (!isLibraryAvailable()) {
             notifyStart(callback, false, UNSUPPORTED_ABI_MESSAGE);
             return;
         }
-        XrayCoreEngine.restart(configJson, callback);
+        XrayCoreEngine.restart(configJson, tunFd, callback);
+    }
+
+    public static void restart(String configJson, StartCallback callback) {
+        restart(configJson, 0, callback);
     }
 
     /**
@@ -181,10 +195,10 @@ public final class XrayAppProxyManager {
             return false;
         }
         String abi = primaryAbi.toLowerCase(Locale.US);
-        if (abi.startsWith("x86") || abi.startsWith("riscv") || abi.startsWith("mips")) {
+        if (abi.startsWith("riscv") || abi.startsWith("mips")) {
             return false;
         }
-        return abi.startsWith("arm64") || abi.startsWith("armeabi");
+        return abi.startsWith("arm64") || abi.startsWith("armeabi") || abi.startsWith("x86");
     }
 
     private static String getPrimaryAbi() {

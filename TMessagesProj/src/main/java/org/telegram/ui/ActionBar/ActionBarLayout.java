@@ -2389,7 +2389,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                     isPresentingFragment = false;
                 };
                 boolean noDelay;
-                if (noDelay = (!fragment.needDelayOpenAnimation() || NekoConfig.removeChatDelay)) {
+                if (noDelay = !fragment.needDelayOpenAnimation()) {
                     if (currentFragment != null) {
                         currentFragment.onTransitionAnimationStart(false, false);
                     }
@@ -2444,7 +2444,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                                     if (delayedAnimationResumed) {
                                         delayedOpenAnimationRunnable.run();
                                     } else {
-                                        AndroidUtilities.runOnUIThread(delayedOpenAnimationRunnable, 200);
+                                        AndroidUtilities.runOnUIThread(delayedOpenAnimationRunnable, NekoConfig.removeChatDelay ? 0 : 200);
                                     }
                                 }
                             }
@@ -2479,6 +2479,26 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                             }
                         };
                         AndroidUtilities.runOnUIThread(delayedOpenAnimationRunnable, 200);
+                    } else if (fragment.needDelayOpenAnimation() && NekoConfig.removeChatDelay) {
+                        // removeChatDelay: keep the runnable so resumeDelayedFragmentAnimation()
+                        // can cancel it and start the animation the moment ChatActivity signals
+                        // readiness (firstLoading=false). Posting with 0 delay yields one layout
+                        // pass so the new fragment view is measured before we animate it in.
+                        delayedOpenAnimationRunnable = new Runnable() {
+                            @Override
+                            public void run() {
+                                if (delayedOpenAnimationRunnable != this) {
+                                    return;
+                                }
+                                delayedOpenAnimationRunnable = null;
+                                if (currentFragment != null) {
+                                    currentFragment.onTransitionAnimationStart(false, false);
+                                }
+                                fragment.onTransitionAnimationStart(true, false);
+                                startLayoutAnimation(true, true, preview);
+                            }
+                        };
+                        AndroidUtilities.runOnUIThread(delayedOpenAnimationRunnable, 0);
                     } else {
                         startLayoutAnimation(true, true, preview);
                     }

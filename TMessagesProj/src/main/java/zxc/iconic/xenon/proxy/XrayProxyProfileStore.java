@@ -366,7 +366,53 @@ public final class XrayProxyProfileStore {
         return value >= 1024 && value <= 65535 ? value : 10808;
     }
 
-    private static String generateId() {
-        return "xray_" + System.currentTimeMillis() + "_" + ((int) (Math.random() * 100000));
+    public static String generateId() {
+        return "xray_" + System.currentTimeMillis() + "_" + System.nanoTime() + "_" + ((int) (Math.random() * 100000));
+    }
+
+    /**
+     * Adds multiple profiles in a single atomic batch and persists them once.
+     */
+    public static int addProfilesBatch(ArrayList<Profile> profilesBatch, boolean setActiveFirst) {
+        if (profilesBatch == null || profilesBatch.isEmpty()) {
+            return 0;
+        }
+        synchronized (LOCK) {
+            ensureLoadedLocked();
+            int added = 0;
+            java.util.Set<Integer> usedPorts = new java.util.HashSet<>();
+            for (int i = 0; i < cachedProfiles.size(); i++) {
+                usedPorts.add(cachedProfiles.get(i).localPort);
+            }
+            int nextPort = 10808;
+
+            for (int i = 0; i < profilesBatch.size(); i++) {
+                Profile profile = profilesBatch.get(i);
+                if (profile == null) {
+                    continue;
+                }
+                Profile safeProfile = normalizeProfile(profile);
+                while (nextPort <= 65535 && usedPorts.contains(nextPort)) {
+                    nextPort++;
+                }
+                if (nextPort > 65535) {
+                    nextPort = 10808;
+                }
+                safeProfile.localPort = nextPort;
+                usedPorts.add(nextPort);
+                nextPort++;
+
+                cachedProfiles.add(safeProfile);
+                if ((added == 0 && setActiveFirst) || cachedProfiles.size() == 1) {
+                    cachedActiveProfileId = safeProfile.id;
+                }
+                added++;
+            }
+            if (added > 0) {
+                persistLocked();
+                syncLegacyFromActiveLocked();
+            }
+            return added;
+        }
     }
 }
