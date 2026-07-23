@@ -12,6 +12,7 @@ import org.telegram.messenger.BuildConfig;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.SharedConfig;
 import zxc.iconic.xenon.NekoConfig;
+import zxc.iconic.xenon.proxy.XrayLocalSocksAuth;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -60,6 +61,15 @@ public class GitHubUpdateHelper {
         java.net.Proxy proxy = java.net.Proxy.NO_PROXY;
         if (NekoConfig.xrayAppProxyEnabled) {
             proxy = new java.net.Proxy(java.net.Proxy.Type.SOCKS, new java.net.InetSocketAddress("127.0.0.1", NekoConfig.xrayAppProxyLocalPort));
+            XrayLocalSocksAuth.Credentials creds = XrayLocalSocksAuth.getOrCreateCredentials();
+            final String user = creds.username;
+            final String pass = creds.password;
+            java.net.Authenticator.setDefault(new java.net.Authenticator() {
+                @Override
+                protected java.net.PasswordAuthentication getPasswordAuthentication() {
+                    return new java.net.PasswordAuthentication(user, pass.toCharArray());
+                }
+            });
         } else if (SharedConfig.isProxyEnabled()) {
             SharedConfig.ProxyInfo info = SharedConfig.currentProxy;
             if (info != null && (info.secret == null || info.secret.isEmpty())) {
