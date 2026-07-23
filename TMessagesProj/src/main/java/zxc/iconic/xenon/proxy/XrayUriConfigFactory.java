@@ -6,7 +6,11 @@ import android.util.Base64;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.URL;
 import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -122,6 +126,58 @@ public final class XrayUriConfigFactory {
             }
         }
         return results;
+    }
+
+    /**
+     * Fetches content from a remote subscription URL and parses all found proxy URIs.
+     * Supports http/https URLs pointing to plain text or Base64-encoded subscription content.
+     */
+    public static List<ParseResult> fromRemoteUrl(String url, int startLocalPort) {
+        if (TextUtils.isEmpty(url)) {
+            return Collections.emptyList();
+        }
+        String trimmed = url.trim();
+        String lower = trimmed.toLowerCase(Locale.US);
+        if (!lower.startsWith("http://") && !lower.startsWith("https://")) {
+            return Collections.emptyList();
+        }
+
+        String content = null;
+        HttpURLConnection connection = null;
+        try {
+            connection = (HttpURLConnection) new URL(trimmed).openConnection();
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0");
+            connection.setConnectTimeout(15000);
+            connection.setReadTimeout(30000);
+
+            int code = connection.getResponseCode();
+            if (code != 200) {
+                return Collections.emptyList();
+            }
+
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(connection.getInputStream(), "UTF-8"));
+            StringBuilder sb = new StringBuilder(4096);
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line).append('\n');
+            }
+            reader.close();
+            content = sb.toString();
+        } catch (Throwable t) {
+            return Collections.emptyList();
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+
+        if (TextUtils.isEmpty(content)) {
+            return Collections.emptyList();
+        }
+
+        return fromBulkText(content, startLocalPort);
     }
 
     /**

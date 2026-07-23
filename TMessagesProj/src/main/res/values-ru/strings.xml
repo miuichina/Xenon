@@ -431,6 +431,8 @@
     <string name="XrayVpnSession">Xray VPN активен</string>
     <string name="XrayVpnServiceDesc">Системный VPN-туннель для Xray proxy</string>
     <string name="XrayProxyAddFromFile">Импортировать из файла (.txt)</string>
+    <string name="XrayProxyAddFromUrl">Импорт по URL</string>
+    <string name="XrayProxyImportUrlHint">Вставьте URL подписки (http/https)</string>
     <string name="XrayProxyAddConfigOptions">Добавить конфигурацию</string>
     <string name="XrayProxyImporting">Импорт профилей…</string>
     <string name="XrayProxyImportSuccess">Успешно импортировано профилей: %d</string>

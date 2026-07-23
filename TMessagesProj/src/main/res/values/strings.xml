@@ -11331,6 +11331,8 @@
     <string name="XrayVpnSession">Xray VPN is active</string>
     <string name="XrayVpnServiceDesc">System-wide VPN tunnel for Xray proxy</string>
     <string name="XrayProxyAddFromFile">Import from file (.txt)</string>
+    <string name="XrayProxyAddFromUrl">Import from URL</string>
+    <string name="XrayProxyImportUrlHint">Paste subscription URL (http/https)</string>
     <string name="XrayProxyAddConfigOptions">Add Configuration</string>
     <string name="XrayProxyImporting">Importing profiles…</string>
     <string name="XrayProxyImportSuccess">Successfully imported %d profiles.</string>

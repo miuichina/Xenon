@@ -864,6 +864,17 @@
             </intent-filter>
         </service>
 
+        <service
+            android:name="zxc.iconic.xenon.proxy.XrayVpnTileService"
+            android:label="@string/XrayProxyTitle"
+            android:icon="@drawable/ic_vpn_tile"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <meta-data android:name="com.google.android.gms.vision.DEPENDENCIES" android:value="face,barcode" />
 
         <meta-data android:name="android.max_aspect" android:value="2.5" />
