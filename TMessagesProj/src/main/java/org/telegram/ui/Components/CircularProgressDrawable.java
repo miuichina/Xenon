@@ -36,24 +36,40 @@ public class CircularProgressDrawable extends Drawable {
     }
 
     private long start = -1;
-    public static final FastOutSlowInInterpolator interpolator = new FastOutSlowInInterpolator();
-    private float[] segment = new float[2];
-    private void updateSegment() {
-        final long now = SystemClock.elapsedRealtime();
-        final long t = (now - start) % 5400;
-        getSegments(t, segment);
-    }
+    private long lastUpdateTime;
+
+    private float rotationOffset;
+    private float indeterminateArcLength = 10;
+    private long indeterminatePhaseStartTime;
+    private int indeterminatePhase;
+    private static final float INDETERMINATE_MIN_ARC = 10;
+    private static final float INDETERMINATE_MAX_ARC = 313;
+    private static final int INDET_GROW = 0;
+    private static final int INDET_MAX = 1;
+    private static final int INDET_SHRINK = 2;
+    private static final int INDET_PAUSE = 3;
+    private static final long INDET_GROW_DURATION = 2500;
+    private static final long INDET_MAX_DURATION = 417;
+    private static final long INDET_SHRINK_DURATION = 833;
+    private static final long INDET_PAUSE_DURATION = 2083;
+
+    private long kickPhaseStartTime;
+    private static final long KICK_INTERVAL = 1458;
+    private static final long KICK_DURATION = 250;
+    private static final float KICK_SPEED_MULTIPLIER = 3f;
+    private static final float BASE_ROTATION_SPEED = 360f / 2083f;
 
     private long lastWavyUpdate;
     private float wavePhaseAngle;
     private float wavyAmplitudeSmooth = 1f;
     private float wavyLastAmplitudeSmooth = 1f;
-    private float bgThicknessScale;
     private final Path wavyProgressPath = new Path();
     private final PathMeasure wavyProgressPathMeasure = new PathMeasure();
     private final Path wavySegmentPath = new Path();
     private RectF wavyLastOval = new RectF();
     private int wavyLastGeneration;
+
+    public static final FastOutSlowInInterpolator interpolator = new FastOutSlowInInterpolator();
 
     public static void getSegments(float t, float[] segments) {
         segments[0] = Math.max(0, 1520 * t / 5400f - 20);
@@ -75,41 +91,100 @@ public class CircularProgressDrawable extends Drawable {
 
     @Override
     public void draw(@NonNull Canvas canvas) {
-        if (start < 0) {
-            start = SystemClock.elapsedRealtime();
-        }
-        updateSegment();
-
         long now = SystemClock.elapsedRealtime();
+        if (start < 0) {
+            start = now;
+            indeterminatePhaseStartTime = now;
+            kickPhaseStartTime = now;
+            lastWavyUpdate = now;
+            lastUpdateTime = now;
+        }
+
+        long dt = now - lastUpdateTime;
+        if (dt > 17) dt = 17;
+        lastUpdateTime = now;
+
         if (lastWavyUpdate != 0) {
-            long dt = now - lastWavyUpdate;
-            if (dt > 50) dt = 50;
-            wavePhaseAngle += (dt * NekoConfig.wavySpeed) / 1000f;
+            long wavyDt = now - lastWavyUpdate;
+            if (wavyDt > 50) wavyDt = 50;
+            wavePhaseAngle += (wavyDt * NekoConfig.wavySpeed) / 1000f;
             wavePhaseAngle %= 360f;
-            wavyAmplitudeSmooth += (1f - wavyAmplitudeSmooth) * Math.min(1f, dt / 80f);
+            wavyAmplitudeSmooth += (1f - wavyAmplitudeSmooth) * Math.min(1f, wavyDt / 80f);
         }
         lastWavyUpdate = now;
 
+        long kickElapsed = now - kickPhaseStartTime;
+        if (kickElapsed >= KICK_INTERVAL) {
+            kickPhaseStartTime = now;
+            kickElapsed = 0;
+        }
+        float rotSpeed = BASE_ROTATION_SPEED;
+        if (kickElapsed < KICK_DURATION) {
+            rotSpeed *= KICK_SPEED_MULTIPLIER;
+        }
+        rotationOffset += rotSpeed * dt;
+        while (rotationOffset > 360) rotationOffset -= 360;
+
+        if (indeterminatePhaseStartTime == 0) {
+            indeterminatePhaseStartTime = now;
+            kickPhaseStartTime = now;
+        }
+        long elapsed = now - indeterminatePhaseStartTime;
+        switch (indeterminatePhase) {
+            case INDET_GROW: {
+                float t = Math.min(1f, (float) elapsed / INDET_GROW_DURATION);
+                float smooth = t * t * (3 - 2 * t);
+                indeterminateArcLength = INDETERMINATE_MIN_ARC + (INDETERMINATE_MAX_ARC - INDETERMINATE_MIN_ARC) * smooth;
+                if (t >= 1f) {
+                    indeterminatePhase = INDET_MAX;
+                    indeterminatePhaseStartTime = now;
+                }
+                break;
+            }
+            case INDET_MAX: {
+                indeterminateArcLength = INDETERMINATE_MAX_ARC;
+                if (elapsed >= INDET_MAX_DURATION) {
+                    indeterminatePhase = INDET_SHRINK;
+                    indeterminatePhaseStartTime = now;
+                }
+                break;
+            }
+            case INDET_SHRINK: {
+                float t = Math.min(1f, (float) elapsed / INDET_SHRINK_DURATION);
+                float smooth = t * t * (3 - 2 * t);
+                indeterminateArcLength = INDETERMINATE_MAX_ARC - (INDETERMINATE_MAX_ARC - INDETERMINATE_MIN_ARC) * smooth;
+                if (t >= 1f) {
+                    indeterminatePhase = INDET_PAUSE;
+                    indeterminatePhaseStartTime = now;
+                }
+                break;
+            }
+            case INDET_PAUSE: {
+                if (elapsed >= INDET_PAUSE_DURATION) {
+                    indeterminatePhase = INDET_GROW;
+                    indeterminatePhaseStartTime = now;
+                    kickPhaseStartTime = now;
+                }
+                break;
+            }
+        }
+
+        float rad = Math.max(4, indeterminateArcLength);
         float inset = AndroidUtilities.dp(2.5f);
         RectF insetOval = new RectF(bounds);
         insetOval.inset(inset, inset);
-        float sweep = segment[1] - segment[0];
-        float absSweep = Math.abs(sweep);
-        if (absSweep < 360) {
+
+        if (Math.abs(rad) < 360) {
             int alpha = paint.getAlpha();
             paint.setAlpha(alpha * 40 / 100);
-            float saveWidth = paint.getStrokeWidth();
-            paint.setStrokeWidth(saveWidth * bgThicknessScale);
-            float gap = 16;
-            float dir = sweep >= 0 ? 1 : -1;
-            float bgSweep = 360 - absSweep - 2 * gap;
+            float gap = 22;
+            float bgSweep = 360 - rad - 2 * gap;
             if (bgSweep > 0) {
-                canvas.drawArc(insetOval, angleOffset + segment[1] + dir * gap, dir * bgSweep, false, paint);
+                canvas.drawArc(insetOval, angleOffset + rotationOffset + rad + gap, bgSweep, false, paint);
             }
-            paint.setStrokeWidth(saveWidth);
             paint.setAlpha(alpha);
         }
-        drawWavyArc(canvas, insetOval, angleOffset + segment[0], sweep, paint);
+        drawWavyArc(canvas, insetOval, angleOffset + rotationOffset, rad, paint);
         invalidateSelf();
     }
 
@@ -170,7 +245,13 @@ public class CircularProgressDrawable extends Drawable {
 
     public void reset() {
         start = -1;
+        indeterminatePhaseStartTime = 0;
+        indeterminateArcLength = INDETERMINATE_MIN_ARC;
+        indeterminatePhase = INDET_GROW;
+        kickPhaseStartTime = 0;
+        rotationOffset = 0;
         lastWavyUpdate = 0;
+        wavyAmplitudeSmooth = 1f;
     }
 
     public void setAngleOffset(float angleOffset) {
