@@ -1695,16 +1695,20 @@ public class BottomSheet extends Dialog implements BaseFragment.AttachedSheet {
                 int bw = Math.max(1, dw / downscale);
                 int bh = Math.max(1, dh / downscale);
                 Bitmap newBitmap = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888);
-                PixelCopy.request(window, newBitmap, refreshResult -> {
-                    if (refreshResult == PixelCopy.SUCCESS && !dismissed) {
-                        applyBlurUpdate(newBitmap, currentRadius);
-                    } else {
-                        newBitmap.recycle();
-                    }
-                    if (!dismissed && zxc.iconic.xenon.NekoConfig.blurOverlayRefresh) {
-                        Choreographer.getInstance().postFrameCallback(blurRefreshCallback);
-                    }
-                }, new Handler(Looper.getMainLooper()));
+                try {
+                    PixelCopy.request(window, newBitmap, refreshResult -> {
+                        if (refreshResult == PixelCopy.SUCCESS && !dismissed) {
+                            applyBlurUpdate(newBitmap, currentRadius);
+                        } else {
+                            newBitmap.recycle();
+                        }
+                        if (!dismissed && zxc.iconic.xenon.NekoConfig.blurOverlayRefresh) {
+                            Choreographer.getInstance().postFrameCallback(blurRefreshCallback);
+                        }
+                    }, new Handler(Looper.getMainLooper()));
+                } catch (Exception e) {
+                    newBitmap.recycle();
+                }
             }
         };
         Choreographer.getInstance().postFrameCallback(blurRefreshCallback);
