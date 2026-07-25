@@ -76,19 +76,19 @@ public class MediaActionDrawable extends Drawable {
     private long indeterminatePhaseStartTime;
     private int indeterminatePhase;
     private static final float INDETERMINATE_MIN_ARC = 10;
-    private static final float INDETERMINATE_MAX_ARC = 324;
+    private static final float INDETERMINATE_MAX_ARC = 313;
     private static final int INDET_GROW = 0;
     private static final int INDET_MAX = 1;
     private static final int INDET_SHRINK = 2;
     private static final int INDET_PAUSE = 3;
-    private static final long INDET_GROW_DURATION = 3000;
-    private static final long INDET_MAX_DURATION = 500;
-    private static final long INDET_SHRINK_DURATION = 1000;
-    private static final long INDET_PAUSE_DURATION = 2500;
+    private static final long INDET_GROW_DURATION = 2500;
+    private static final long INDET_MAX_DURATION = 417;
+    private static final long INDET_SHRINK_DURATION = 833;
+    private static final long INDET_PAUSE_DURATION = 2083;
 
     private long kickPhaseStartTime;
-    private static final long KICK_INTERVAL = 1750;
-    private static final long KICK_DURATION = 300;
+    private static final long KICK_INTERVAL = 1458;
+    private static final long KICK_DURATION = 250;
     private static final float KICK_SPEED_MULTIPLIER = 3f;
 
     private final Path wavyProgressPath = new Path();
@@ -306,10 +306,10 @@ public class MediaActionDrawable extends Drawable {
             }
             downloadProgressAnimationStart = animatedDownloadProgress;
         }
-        boolean wasDeterminate = downloadProgress >= 0.02f;
+        boolean wasDeterminate = downloadProgress >= 0.01f;
         downloadProgress = value;
         downloadProgressTime = 0;
-        if (value < 0.02f && wasDeterminate) {
+        if (value < 0.01f && wasDeterminate) {
             indeterminatePhaseStartTime = 0;
             indeterminateArcLength = INDETERMINATE_MIN_ARC;
             indeterminatePhase = INDET_GROW;
@@ -649,7 +649,7 @@ public class MediaActionDrawable extends Drawable {
             }
             if ((currentIcon == ICON_CANCEL || currentIcon == ICON_CANCEL_FILL || currentIcon == ICON_NONE && (nextIcon == ICON_CANCEL_FILL || nextIcon == ICON_CANCEL)) && alpha != 0) {
                 float rad;
-                if (downloadProgress < 0.05f) {
+                if (downloadProgress < 0.01f) {
                     rad = Math.max(4, indeterminateArcLength);
                 } else {
                     rad = Math.max(4, 360 * animatedDownloadProgress);
@@ -667,16 +667,24 @@ public class MediaActionDrawable extends Drawable {
                 insetRect.inset(inset, inset);
                 if (Math.abs(rad) < 360) {
                     int bgAlpha = paint.getAlpha();
-                    paint.setAlpha(bgAlpha * 40 / 100);
-                    float saveWidth = paint.getStrokeWidth();
-                    paint.setStrokeWidth(saveWidth * bgThicknessScale);
-                    float gap = 22;
+                    float gap;
+                    if (downloadProgress < 0.01f) {
+                        gap = 22;
+                    } else {
+                        float target = Math.min(22, Math.max(0, (360f - rad - 25.2f) / 2f));
+                        if (downloadProgress < 0.05f) {
+                            float t = (downloadProgress - 0.01f) / 0.04f;
+                            gap = 22 + (target - 22) * t;
+                        } else {
+                            gap = target;
+                        }
+                    }
                     float bgSweep = 360 - rad - 2 * gap;
                     if (bgSweep > 0) {
+                        paint.setAlpha(bgAlpha * 40 / 100);
                         canvas.drawArc(insetRect, downloadRadOffset + rad + gap, bgSweep, false, paint);
+                        paint.setAlpha(bgAlpha);
                     }
-                    paint.setStrokeWidth(saveWidth);
-                    paint.setAlpha(bgAlpha);
                 }
                 drawWavyArc(canvas, insetRect, downloadRadOffset, rad, paint);
             }
@@ -697,7 +705,7 @@ public class MediaActionDrawable extends Drawable {
                 applyShaderMatrix(false);
                 paint.setAlpha((int) (alpha * overrideAlpha));
                 float rad;
-                if (downloadProgress < 0.05f) {
+                if (downloadProgress < 0.01f) {
                     rad = Math.max(4, indeterminateArcLength);
                 } else {
                     rad = Math.max(4, 360 * animatedDownloadProgress);
@@ -709,16 +717,24 @@ public class MediaActionDrawable extends Drawable {
                 insetRect.inset(inset, inset);
                 if (Math.abs(rad) < 360) {
                     int bgAlpha = paint.getAlpha();
-                    paint.setAlpha(bgAlpha * 40 / 100);
-                    float saveWidth = paint.getStrokeWidth();
-                    paint.setStrokeWidth(saveWidth * bgThicknessScale);
-                    float gap = 22;
+                    float gap;
+                    if (downloadProgress < 0.01f) {
+                        gap = 22;
+                    } else {
+                        float target = Math.min(22, Math.max(0, (360f - rad - 25.2f) / 2f));
+                        if (downloadProgress < 0.05f) {
+                            float t = (downloadProgress - 0.01f) / 0.04f;
+                            gap = 22 + (target - 22) * t;
+                        } else {
+                            gap = target;
+                        }
+                    }
                     float bgSweep = 360 - rad - 2 * gap;
                     if (bgSweep > 0) {
+                        paint.setAlpha(bgAlpha * 40 / 100);
                         canvas.drawArc(insetRect, downloadRadOffset + rad + gap, bgSweep, false, paint);
+                        paint.setAlpha(bgAlpha);
                     }
-                    paint.setStrokeWidth(saveWidth);
-                    paint.setAlpha(bgAlpha);
                 }
                 drawWavyArc(canvas, insetRect, downloadRadOffset, rad, paint);
             }
@@ -1000,13 +1016,17 @@ public class MediaActionDrawable extends Drawable {
         wavePhaseAngle += (dt * NekoConfig.wavySpeed) / 1000f;
         wavePhaseAngle %= 360f;
 
-        float targetScale = (downloadProgress > 0.05f && downloadProgress < 0.90f) ? 1f : 0f;
-        wavyAmplitudeSmooth += (targetScale - wavyAmplitudeSmooth) * Math.min(1f, dt / 80f);
+        float targetScale = (downloadProgress < 0.01f || (downloadProgress > 0.03f && downloadProgress < 0.90f)) ? 1f : 0f;
+        if (downloadProgress >= 0.01f && downloadProgress <= 0.03f) {
+            wavyAmplitudeSmooth = 0f;
+        } else {
+            wavyAmplitudeSmooth += (targetScale - wavyAmplitudeSmooth) * Math.min(1f, dt / 80f);
+        }
 
         float progressFade = (downloadProgress > 0.90f) ? Math.max(0f, (1f - downloadProgress) / 0.05f) : 1f;
         bgThicknessScale += (progressFade - bgThicknessScale) * Math.min(1f, dt / 50f);
 
-        if (downloadProgress >= 0.05f) {
+        if (downloadProgress >= 0.01f) {
             downloadRadOffset = -90;
         } else if (currentIcon == ICON_CANCEL || currentIcon == ICON_CANCEL_FILL || currentIcon == ICON_NONE && nextIcon == ICON_CANCEL_FILL || currentIcon == ICON_EMPTY || currentIcon == ICON_CANCEL_PERCENT) {
             long kickElapsed = newTime - kickPhaseStartTime;
@@ -1014,7 +1034,7 @@ public class MediaActionDrawable extends Drawable {
                 kickPhaseStartTime = newTime;
                 kickElapsed = 0;
             }
-            float rotSpeed = 360 / 2500.0f;
+            float rotSpeed = 360 / 2083.0f;
             if (kickElapsed < KICK_DURATION) {
                 rotSpeed *= KICK_SPEED_MULTIPLIER;
             }
@@ -1027,17 +1047,17 @@ public class MediaActionDrawable extends Drawable {
                 float progressDiff = downloadProgress - downloadProgressAnimationStart;
                 if (progressDiff > 0) {
                     downloadProgressTime += dt;
-                    if (downloadProgressTime >= 200.0f) {
+                    if (downloadProgressTime >= 700.0f) {
                         animatedDownloadProgress = downloadProgress;
                         downloadProgressAnimationStart = downloadProgress;
                         downloadProgressTime = 0;
                     } else {
-                        animatedDownloadProgress = downloadProgressAnimationStart + progressDiff * interpolator.getInterpolation(downloadProgressTime / 200.0f);
+                        animatedDownloadProgress = downloadProgressAnimationStart + progressDiff * interpolator.getInterpolation(downloadProgressTime / 700.0f);
                     }
                 }
             }
 
-            if (downloadProgress < 0.05f) {
+            if (downloadProgress < 0.01f) {
                 if (indeterminatePhaseStartTime == 0) {
                     indeterminatePhaseStartTime = newTime;
                     kickPhaseStartTime = newTime;
@@ -1076,6 +1096,7 @@ public class MediaActionDrawable extends Drawable {
                         if (elapsed >= INDET_PAUSE_DURATION) {
                             indeterminatePhase = INDET_GROW;
                             indeterminatePhaseStartTime = newTime;
+                            kickPhaseStartTime = newTime;
                         }
                         break;
                     }
