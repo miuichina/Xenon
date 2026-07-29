@@ -126,6 +126,7 @@
     <string name="MainTabsAppearance">Внешний вид</string>
     <string name="MainTabsPreviewHint">Нажмите на таб чтобы включить или отключить его. Долгое нажатие и перетаскивание — изменение порядка.</string>
     <string name="MainTabsShowTitle">Показывать названия табов</string>
+    <string name="MainTabsFeed">Лента</string>
     <string name="AutoPauseVideo">Авто-пауза видео</string>
     <string name="AutoPauseVideoAbout">Останавливать воспроизведение видео при блокировке экрана или сворачивании приложения.</string>
     <string name="DisableProximityEvents">Отключить датчик приближения</string>

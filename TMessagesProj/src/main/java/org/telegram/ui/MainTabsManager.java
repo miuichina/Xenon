@@ -16,14 +16,15 @@ import java.util.List;
 public final class MainTabsManager {
     private static final String PREFS_NAME = "mainconfig";
     private static final String KEY_MAIN_TABS_ORDER = "XN_MainTabsOrder";
-    private static final String DEFAULT_ORDER = "CHATS,CALLS,SETTINGS,PROFILE,!CONTACTS";
+    private static final String DEFAULT_ORDER = "CHATS,CALLS,SETTINGS,PROFILE,!CONTACTS,!FEED";
 
     public enum TabType {
         CHATS,
         CONTACTS,
         CALLS,
         SETTINGS,
-        PROFILE
+        PROFILE,
+        FEED
     }
 
     public static class Tab {
@@ -97,6 +98,8 @@ public final class MainTabsManager {
                 return GlassTabView.createMainTab(context, resourceProvider, GlassTabView.TabAnimation.CALLS, R.string.Calls);
             case SETTINGS:
                 return GlassTabView.createMainTab(context, resourceProvider, GlassTabView.TabAnimation.SETTINGS, R.string.Settings);
+            case FEED:
+                return GlassTabView.createMainTab(context, resourceProvider, GlassTabView.TabAnimation.FEED, R.string.MainTabsFeed);
             case PROFILE:
             default:
                 return GlassTabView.createAvatar(context, resourceProvider, currentAccount, R.string.MainTabsProfile);
