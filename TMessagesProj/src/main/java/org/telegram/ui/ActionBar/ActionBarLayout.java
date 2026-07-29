@@ -81,7 +81,6 @@ import org.telegram.ui.EmptyBaseFragment;
 import org.telegram.ui.GradientHeaderActivity;
 import org.telegram.ui.MainTabsActivity;
 import org.telegram.ui.bots.BotWebViewSheet;
-import org.telegram.ui.ChatActivity;
 import org.telegram.ui.Components.Bulletin;
 import org.telegram.ui.Components.ChatAttachAlert;
 import org.telegram.ui.Components.CubicBezierInterpolator;
@@ -365,7 +364,16 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
             isKeyboardVisible = usableViewHeight - (rect.bottom - rect.top) > 0;
             if (waitingForKeyboardCloseRunnable != null && !containerView.isKeyboardVisible && !containerViewBack.isKeyboardVisible) {
                 AndroidUtilities.cancelRunOnUIThread(waitingForKeyboardCloseRunnable);
-                AndroidUtilities.runOnUIThread(waitingForKeyboardCloseRunnable, 50);
+                if (NekoConfig.removeChatDelay) {
+                    // Avoid triggering startLayoutAnimation() mid-layout-pass which causes
+                    // a missed first frame or a visual "jump" at animation start.
+                    final Runnable run = waitingForKeyboardCloseRunnable;
+                    waitingForKeyboardCloseRunnable = null;
+                    containerView.post(run);
+                } else {
+                    waitingForKeyboardCloseRunnable.run();
+                    waitingForKeyboardCloseRunnable = null;
+                }
             }
         }
 
@@ -616,7 +624,6 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
     private View layoutToIgnore;
     private boolean beginTrackingSent;
     private boolean transitionAnimationInProgress;
-    private boolean isPresentingFragment;
     private boolean transitionAnimationPreviewMode;
     private ArrayList<int[]> animateStartColors = new ArrayList<>();
     private ArrayList<int[]> animateEndColors = new ArrayList<>();
@@ -1827,6 +1834,9 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         }
         if (delayedOpenAnimationRunnable != null) {
             AndroidUtilities.cancelRunOnUIThread(delayedOpenAnimationRunnable);
+            if (NekoConfig.removeChatDelay && containerView != null) {
+                containerView.removeCallbacks(delayedOpenAnimationRunnable);
+            }
             delayedOpenAnimationRunnable = null;
         }
         onAnimationEndCheck(true);
@@ -1836,7 +1846,6 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         animationInProgress = false;
         startedTracking = false;
         m3PredictiveActive = false;
-        isPresentingFragment = false;
     }
 
     @Override
@@ -2087,6 +2096,11 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
             return;
         }
         AndroidUtilities.cancelRunOnUIThread(delayedOpenAnimationRunnable);
+        // When removeChatDelay is on the runnable may have been queued via containerView.post()
+        // instead of runOnUIThread; cancelRunOnUIThread won't reach it, so remove it explicitly.
+        if (NekoConfig.removeChatDelay && containerView != null) {
+            containerView.removeCallbacks(delayedOpenAnimationRunnable);
+        }
         delayedOpenAnimationRunnable.run();
         delayedOpenAnimationRunnable = null;
     }
@@ -2106,9 +2120,6 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
 
     @Override
     public boolean presentFragment(NavigationParams params) {
-        if (isPresentingFragment) {
-            return false;
-        }
         if (waitingForKeyboardCloseRunnable != null || delayedOpenAnimationRunnable != null) {
             if (waitingForKeyboardCloseRunnable != null) {
                 AndroidUtilities.cancelRunOnUIThread(waitingForKeyboardCloseRunnable);
@@ -2116,9 +2127,16 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
             }
             if (delayedOpenAnimationRunnable != null) {
                 AndroidUtilities.cancelRunOnUIThread(delayedOpenAnimationRunnable);
+                if (NekoConfig.removeChatDelay && containerView != null) {
+                    containerView.removeCallbacks(delayedOpenAnimationRunnable);
+                }
                 delayedOpenAnimationRunnable = null;
             }
             transitionAnimationInProgress = false;
+        }
+
+        if (predictiveBackInProgress) {
+            cancelAndResetAnimations();
         }
 
         BaseFragment fragment = params.fragment;
@@ -2132,9 +2150,6 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
             return false;
         }
 
-        if (predictiveBackInProgress) {
-            return false;
-        }
         final boolean isSupportEdgeToEdge = fragment.isSupportEdgeToEdge();
         final boolean drawNavigationBar = fragment.drawEdgeNavigationBar();
 
@@ -2143,17 +2158,13 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         if (dialog == null && LaunchActivity.instance != null && LaunchActivity.instance.getVisibleDialog() != null) {
             dialog = LaunchActivity.instance.getVisibleDialog();
         }
-        boolean isFullScreenTarget = fragment instanceof ChatActivity;
-        if (lastFragment != null && shouldOpenFragmentOverlay(dialog) && !isFullScreenTarget) {
+        if (lastFragment != null && shouldOpenFragmentOverlay(dialog)) {
             BaseFragment.BottomSheetParams bottomSheetParams = new BaseFragment.BottomSheetParams();
             bottomSheetParams.transitionFromLeft = true;
             bottomSheetParams.allowNestedScroll = false;
             lastFragment.showAsSheet(fragment, bottomSheetParams);
             return true;
-        } else if (dialog != null && isFullScreenTarget) {
-            dialog.dismiss();
         }
-        isPresentingFragment = true;
         if (BuildVars.LOGS_ENABLED) {
             FileLog.d("present fragment " + fragment.getClass().getSimpleName() + " args=" + fragment.getArguments());
         }
@@ -2164,6 +2175,9 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         if (inPreviewMode && transitionAnimationPreviewMode) {
             if (delayedOpenAnimationRunnable != null) {
                 AndroidUtilities.cancelRunOnUIThread(delayedOpenAnimationRunnable);
+                if (NekoConfig.removeChatDelay && containerView != null) {
+                    containerView.removeCallbacks(delayedOpenAnimationRunnable);
+                }
                 delayedOpenAnimationRunnable = null;
             }
             closeLastFragment(false, true);
@@ -2337,7 +2351,6 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                     }
                     fragment.onTransitionAnimationEnd(true, false);
                     fragment.onBecomeFullyVisible();
-                    isPresentingFragment = false;
                 };
                 ArrayList<Animator> animators = new ArrayList<>();
                 animators.add(ObjectAnimator.ofFloat(this, View.ALPHA, 0.0f, 1.0f));
@@ -2386,7 +2399,6 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                     }
                     fragment.onTransitionAnimationEnd(true, false);
                     fragment.onBecomeFullyVisible();
-                    isPresentingFragment = false;
                 };
                 boolean noDelay;
                 if (noDelay = !fragment.needDelayOpenAnimation()) {
@@ -2443,8 +2455,13 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                                     AndroidUtilities.cancelRunOnUIThread(delayedOpenAnimationRunnable);
                                     if (delayedAnimationResumed) {
                                         delayedOpenAnimationRunnable.run();
+                                    } else if (NekoConfig.removeChatDelay) {
+                                        // Use post() so the new fragment view gets at least
+                                        // one layout pass before the animation starts.
+                                        final Runnable r = delayedOpenAnimationRunnable;
+                                        containerView.post(r);
                                     } else {
-                                        AndroidUtilities.runOnUIThread(delayedOpenAnimationRunnable, NekoConfig.removeChatDelay ? 0 : 200);
+                                        AndroidUtilities.runOnUIThread(delayedOpenAnimationRunnable, 200);
                                     }
                                 }
                             }
@@ -2482,8 +2499,9 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                     } else if (fragment.needDelayOpenAnimation() && NekoConfig.removeChatDelay) {
                         // removeChatDelay: keep the runnable so resumeDelayedFragmentAnimation()
                         // can cancel it and start the animation the moment ChatActivity signals
-                        // readiness (firstLoading=false). Posting with 0 delay yields one layout
-                        // pass so the new fragment view is measured before we animate it in.
+                        // readiness (firstLoading=false). Use post() instead of delay=0 to
+                        // guarantee the new fragment view has at least one layout pass before
+                        // the animation starts, avoiding an empty/unmeasured first frame.
                         delayedOpenAnimationRunnable = new Runnable() {
                             @Override
                             public void run() {
@@ -2498,7 +2516,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                                 startLayoutAnimation(true, true, preview);
                             }
                         };
-                        AndroidUtilities.runOnUIThread(delayedOpenAnimationRunnable, 0);
+                        containerView.post(delayedOpenAnimationRunnable);
                     } else {
                         startLayoutAnimation(true, true, preview);
                     }
@@ -2521,7 +2539,6 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
             fragment.onTransitionAnimationStart(true, false);
             fragment.onTransitionAnimationEnd(true, false);
             fragment.onBecomeFullyVisible();
-            isPresentingFragment = false;
         }
         AnalyticsHelper.trackFragmentLifecycle("created", fragment);
         return true;
@@ -2761,6 +2778,9 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         }
         if (delayedOpenAnimationRunnable != null) {
             AndroidUtilities.cancelRunOnUIThread(delayedOpenAnimationRunnable);
+            if (NekoConfig.removeChatDelay && containerView != null) {
+                containerView.removeCallbacks(delayedOpenAnimationRunnable);
+            }
             delayedOpenAnimationRunnable = null;
         }
         closeLastFragment(true);

@@ -1067,7 +1067,6 @@ public class ChatActivity extends BaseFragment implements
     private ActionBarMenuSubItem menuDeleteItem;
     private ImageView popupBlurOverlayView;
     private Bitmap popupBlurOverlayBitmap;
-    private ActionBarPopupWindow popupBlurOverlayOwner;
     private android.view.Choreographer.FrameCallback popupBlurRefreshCallback;
     private int popupBlurRefreshFrameCounter;
     private final Runnable updateDeleteItemRunnable = new Runnable() {
@@ -9247,6 +9246,7 @@ actionBar.inu_nonIsland = NonIslandHelper.chatElements();
 final BlurredBackgroundDrawable topPanelLayoutBackground = glassBackgroundDrawableFactory.create(topPanelLayout, BlurredBackgroundProviderImpl.topPanelChatActivity(themeDelegate));
         topPanelLayoutBackground.setRadius(dp(NonIslandHelper.chatElements() ? 0 : 18));
         topPanelLayoutBackground.setPadding(dp(NonIslandHelper.chatElements() ? 0 : 7));
+        topPanelLayout.setBlurredBackground(topPanelLayoutBackground);
         checkUi_topPanelLayoutWidth();
 
         if (chatMode == MODE_SEARCH) {
@@ -31204,9 +31204,9 @@ final BlurredBackgroundDrawable topPanelLayoutBackground = glassBackgroundDrawab
         int dh = decorView.getHeight();
         if (dw <= 0 || dh <= 0) return;
         removePopupBlur();
-if (scrimPopupWindow != null) {
+        if (scrimPopupWindow != null) {
             View cv = scrimPopupWindow.getContentView();
-            if (cv != null) addPopupDetachListener(cv, scrimPopupWindow);
+            if (cv != null) addPopupDetachListener(cv);
         }
         int pixelation = NekoConfig.blurPixelation;
         int downscale = Math.max(1, 1 + pixelation / 5);
@@ -31239,7 +31239,6 @@ if (scrimPopupWindow != null) {
             if (content != null) {
                 content.addView(imageView);
                 popupBlurOverlayView = imageView;
-                popupBlurOverlayOwner = scrimPopupWindow;
                 if (NekoConfig.blurSmoothly) {
                     ValueAnimator animator = ValueAnimator.ofFloat(0f, targetBlur);
                     animator.setDuration(NekoConfig.blurAnimationDuration);
@@ -31355,16 +31354,14 @@ if (scrimPopupWindow != null) {
         }
     }
 
-    private void addPopupDetachListener(View contentView, ActionBarPopupWindow owner) {
+    private void addPopupDetachListener(View contentView) {
         contentView.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
             @Override
             public void onViewAttachedToWindow(View v) {}
             @Override
             public void onViewDetachedFromWindow(View v) {
                 v.removeOnAttachStateChangeListener(this);
-                if (scrimPopupWindow == owner) {
-                    removePopupBlur(true);
-                }
+                removePopupBlur(true);
             }
         });
     }

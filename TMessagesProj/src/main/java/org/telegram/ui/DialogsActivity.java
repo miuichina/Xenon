@@ -3414,7 +3414,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 searchWas = false;
                 if (viewPages[0] != null) {
                     viewPages[0].listView.setEmptyView(folderId == 0 ? viewPages[0].progressView : null);
-                    showSearch(false, false, !closeSearchFieldOnHide);
+                    showSearch(false, false, true);
                 }
                 updateProxyButton(false, false);
                 NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.needCheckSystemBarColors, true);
@@ -7412,9 +7412,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     public void onBecomeFullyHidden() {
         if (closeSearchFieldOnHide) {
             if (actionBar != null) {
-                actionBar.closeSearchField(false);
+                actionBar.closeSearchField();
             }
-            showSearch(false, false, false);
             if (searchObject != null) {
                 if (searchViewPager != null) {
                     searchViewPager.dialogsSearchAdapter.putRecentSearch(searchDialogId, searchObject);
@@ -7846,8 +7845,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 }
                 viewPages[0].setAlpha(1f - progress);
                 if (!budget) {
-                    viewPages[0].setScaleX(1f - .1f * progress);
-                    viewPages[0].setScaleY(1f - .1f * progress);
+                    viewPages[0].setScaleX(.9f + .1f * progress);
+                    viewPages[0].setScaleY(.9f + .1f * progress);
                 }
             }
             if (rightSlidingDialogContainer != null) {
@@ -7861,42 +7860,12 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             if (searchViewPager != null) {
                 searchViewPager.setAlpha(progress);
                 if (!budget) {
-                    searchViewPager.setScaleX(.95f + .05f * progress);
-                    searchViewPager.setScaleY(.95f + .05f * progress);
+                    searchViewPager.setScaleX(1f + .05f * (1f - progress));
+                    searchViewPager.setScaleY(1f + .05f * (1f - progress));
                 }
             }
         }
         updateContextViewPosition();
-    }
-
-    /**
-     * Whether the search overlay is fully open and idle, so a predictive back gesture can
-     * scrub it closed frame-by-frame instead of just snapping shut on commit.
-     */
-    public boolean canHandlePredictiveBackSearch() {
-        return searchIsShowed && searchViewPager != null && searchViewPager.getVisibility() == View.VISIBLE
-                && (searchAnimator == null || !searchAnimator.isRunning());
-    }
-
-    /** Scrubs the search-close crossfade to match live predictive back gesture progress (0..1). */
-    public void predictiveBackSearchProgress(float progress) {
-        setSearchAnimationProgress(1f - Utilities.clamp(progress, 1f, 0f), true);
-    }
-
-    /** Gesture was released before completing — animate the search overlay back to fully open. */
-    public void predictiveBackSearchCancelled(boolean animated) {
-        if (searchAnimationProgress >= 1f) {
-            return;
-        }
-        if (animated) {
-            ValueAnimator animator = ValueAnimator.ofFloat(searchAnimationProgress, 1f);
-            animator.addUpdateListener(a -> setSearchAnimationProgress((float) a.getAnimatedValue(), true));
-            animator.setDuration(200);
-            animator.setInterpolator(CubicBezierInterpolator.EASE_OUT);
-            animator.start();
-        } else {
-            setSearchAnimationProgress(1f, true);
-        }
     }
 
     private void findAndUpdateCheckBox(long dialogId, boolean checked) {
@@ -10253,7 +10222,6 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
         } else {
             closeSearchFieldOnHide = true;
-            showSearch(false, false, false);
         }
     }
 
@@ -12657,12 +12625,12 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
     @Override
     public Animator getCustomSlideTransition(boolean topFragment, boolean backAnimation, float distanceToMove) {
-        int duration = 150;
         if (backAnimation) {
-            // Cancelled gesture settling back: same short, fixed-feel duration AOSP uses for a
-            // cancelled predictive back, regardless of how far the finger dragged.
-            duration = 200;
-        } else if (getLayoutContainer() != null && getLayoutContainer().getMeasuredWidth() > 0) {
+            slideBackTransitionAnimator = ValueAnimator.ofFloat(slideFragmentProgress, 1f);
+            return slideBackTransitionAnimator;
+        }
+        int duration = 150;
+        if (getLayoutContainer() != null && getLayoutContainer().getMeasuredWidth() > 0) {
             duration = (int) Utilities.clamp(200.0f / getLayoutContainer().getMeasuredWidth() * distanceToMove, 200, 80);
         }
         slideBackTransitionAnimator = ValueAnimator.ofFloat(slideFragmentProgress, 1f);
@@ -12677,16 +12645,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     public void prepareFragmentToSlide(boolean topFragment, boolean beginSlide) {
         if (!topFragment && beginSlide) {
             isSlideBackTransition = true;
-            // Material 3 predictive back (NekoConfig.alternativeTransition) drives the whole
-            // reveal purely through transforms on the ancestor containers (see
-            // zxc.iconic.xenon.helpers.Material3PredictiveBack) — it never reads clipChildren
-            // here and already promotes its own hardware layer higher up the tree. Forcing
-            // requestLayout() on this fragment (below, in setFragmentIsSliding) while M3 is
-            // mid-gesture scaling/translating this exact view tree relayouts it out from under
-            // the transform and is what shows up as a content jump once the gesture ends.
-            if (!NekoConfig.alternativeTransition) {
-                setFragmentIsSliding(true);
-            }
+            setFragmentIsSliding(true);
         } else {
             slideBackTransitionAnimator = null;
             isSlideBackTransition = false;

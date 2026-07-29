@@ -797,10 +797,6 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
 
                     private boolean started = false;
                     private boolean invoked = false;
-                    // No fragment-transition to animate (e.g. we're at the root of the stack) but the
-                    // current fragment has its own overlay (like DialogsActivity's search) that can still
-                    // be scrubbed closed by gesture progress.
-                    private DialogsActivity predictiveBackSearchFragment;
 
                     @Override
                     public void onBackInvoked() {
@@ -809,7 +805,6 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                             locker.unlock();
                             locked = false;
                         }
-                        predictiveBackSearchFragment = null;
 
                         if (AndroidUtilities.isTablet()) {
                             onBackPressed();
@@ -829,7 +824,6 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                         started = true;
                         invoked = false;
                         predictiveBackStarted = false;
-                        predictiveBackSearchFragment = null;
                     }
 
                     private void onBackStartedInternal(BackEvent backEvent) {
@@ -840,8 +834,6 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                             if (started && !locked) {
                                 locker.lock();
                                 locked = true;
-                            } else if (!started) {
-                                predictiveBackSearchFragment = getPredictiveBackSearchFragment();
                             }
                         }
                     }
@@ -866,9 +858,6 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                         if (actionBarLayout != null) {
                             actionBarLayout.onBackProgress(fixedProgress);
                         }
-                        if (predictiveBackSearchFragment != null) {
-                            predictiveBackSearchFragment.predictiveBackSearchProgress(fixedProgress);
-                        }
                     }
 
                     @Override
@@ -878,10 +867,6 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                         if (locked) {
                             locker.unlock();
                             locked = false;
-                        }
-                        if (predictiveBackSearchFragment != null) {
-                            predictiveBackSearchFragment.predictiveBackSearchCancelled(true);
-                            predictiveBackSearchFragment = null;
                         }
 
                         if (AndroidUtilities.isTablet()) return;
@@ -941,27 +926,6 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
 
     private Object onBackAnimationCallback;
     private Object onBackInvokedCallback;
-
-    // Resolves the chat-list fragment (through MainTabsActivity, if present) when it has its
-    // search overlay open, so a predictive back gesture can scrub it closed even though there's
-    // no previous fragment on the stack to animate a transition with.
-    private DialogsActivity getPredictiveBackSearchFragment() {
-        if (actionBarLayout == null) {
-            return null;
-        }
-        List<BaseFragment> stack = actionBarLayout.getFragmentStack();
-        if (stack.isEmpty()) {
-            return null;
-        }
-        BaseFragment fragment = stack.get(stack.size() - 1);
-        if (fragment instanceof MainTabsActivity) {
-            fragment = ((MainTabsActivity) fragment).getDialogsActivity();
-        }
-        if (fragment instanceof DialogsActivity && ((DialogsActivity) fragment).canHandlePredictiveBackSearch()) {
-            return (DialogsActivity) fragment;
-        }
-        return null;
-    }
 
     public static void showAttachMenuBot(LaunchActivity launchActivity, int currentAccount, TLRPC.TL_attachMenuBot attachMenuBot, String startApp, boolean sidemenu) {
         BaseFragment lastFragment = getLastFragment();
@@ -1599,6 +1563,10 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
             return true;
         }
         if (AndroidUtilities.handleProxyIntent(this, intent, true)) {
+            return true;
+        }
+        if (intent != null && "zxc.iconic.xenon.OPEN_PROXY_HUB".equals(intent.getAction())) {
+            presentFragment(new zxc.iconic.xenon.settings.NekoXrayProxyHubActivity());
             return true;
         }
         if (intent == null || !Intent.ACTION_MAIN.equals(intent.getAction())) {

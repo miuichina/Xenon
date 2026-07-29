@@ -31,15 +31,12 @@ import org.telegram.ui.ActionBar.ActionBarLayout;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.DialogsActivity;
-import org.telegram.ui.MainTabsActivity;
 import org.telegram.ui.ProfileActivity;
 import org.telegram.ui.ViewPagerActivity;
 import org.telegram.ui.Components.CubicBezierInterpolator;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Material 3 predictive-back animation, ported from Inugram.
@@ -147,16 +144,10 @@ public final class Material3PredictiveBack {
         private float edgeMarginPx = 0f;
         private float enterOffsetPx = 0f;
         private AnimatorSet runningAnim = null;
-        // No fragment-transition to animate (e.g. we're at the root of the stack) but the current
-        // fragment has its own overlay (like DialogsActivity's search) that can still be scrubbed
-        // closed by gesture progress.
-        private DialogsActivity searchFragment = null;
         private ViewOutlineProvider savedOutlineProvider = null;
         private boolean savedClipToOutline = false;
         private Drawable savedCvbBackground = null;
         private Drawable savedCvbForeground = null;
-        private int savedCvLayerType = View.LAYER_TYPE_NONE;
-        private final Map<View, Integer> originalLayerTypes = new HashMap<>();
         private final ColorDrawable scrim = new ColorDrawable(Color.BLACK);
 
         private final ViewOutlineProvider outlineProvider = new ViewOutlineProvider() {
@@ -207,24 +198,6 @@ public final class Material3PredictiveBack {
             // Run stock's heavy prep (attach previous fragment, relayout, onResume, HW layer) during the
             // pre-LAZY_START invisible phase so the first visible frame is just a transform.
             layout.onBackStarted(backEvent.getTouchX(), backEvent.getTouchY());
-            searchFragment = layout.predictiveInput ? null : resolveSearchFragment();
-        }
-
-        // Resolves the chat-list fragment (through MainTabsActivity, if present) when it has its
-        // search overlay open, so the gesture can scrub it closed instead of doing nothing.
-        private DialogsActivity resolveSearchFragment() {
-            List<BaseFragment> stack = layout.getFragmentStack();
-            if (stack.isEmpty()) {
-                return null;
-            }
-            BaseFragment fragment = stack.get(stack.size() - 1);
-            if (fragment instanceof MainTabsActivity) {
-                fragment = ((MainTabsActivity) fragment).getDialogsActivity();
-            }
-            if (fragment instanceof DialogsActivity && ((DialogsActivity) fragment).canHandlePredictiveBackSearch()) {
-                return (DialogsActivity) fragment;
-            }
-            return null;
         }
 
         @Override
@@ -233,9 +206,6 @@ public final class Material3PredictiveBack {
                 return;
             }
             if (!layout.predictiveInput) {
-                if (searchFragment != null) {
-                    searchFragment.predictiveBackSearchProgress(backEvent.getProgress());
-                }
                 return;
             }
             float rawP = backEvent.getProgress();
@@ -259,10 +229,6 @@ public final class Material3PredictiveBack {
             if (!attached) {
                 undoStockPrep();
                 cleanupViews();
-                if (searchFragment != null) {
-                    searchFragment.predictiveBackSearchCancelled(true);
-                    searchFragment = null;
-                }
                 return;
             }
             runFinishAnim(true);
@@ -274,7 +240,6 @@ public final class Material3PredictiveBack {
             if (!attached) {
                 undoStockPrep();
                 cleanupViews();
-                searchFragment = null;
                 plainBack.run();
                 return;
             }
@@ -304,7 +269,6 @@ public final class Material3PredictiveBack {
             cv.setClipToOutline(true);
 
             // Promote leaving screen to HW layer
-            savedCvLayerType = cv.getLayerType();
             cv.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
             // Translating cvb's children leaves the parent in place; paint it with the entering
@@ -330,11 +294,7 @@ public final class Material3PredictiveBack {
             cvb.setBackground(newBg != null ? newBg : new ColorDrawable(Theme.getColor(Theme.key_actionBarDefault)));
             cvb.setForeground(scrim);
             // Promote entering children to HW layers so per-frame scale/translate is texture-only.
-            originalLayerTypes.clear();
-            eachChild(cvb, v -> {
-                originalLayerTypes.put(v, v.getLayerType());
-                v.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-            });
+            eachChild(cvb, v -> v.setLayerType(View.LAYER_TYPE_HARDWARE, null));
         }
 
         private void applyFrame(float p, float touchY) {
@@ -352,8 +312,8 @@ public final class Material3PredictiveBack {
             float scale = 1f - (1f - MAX_SCALE) * p;
             // AOSP keeps the closing window centered for a right-edge swipe and only pushes it toward
             // the right edge for a left-edge swipe; the off-edge slide happens on commit either way.
-            float maxDx = AndroidUtilities.dpf2(32f);
-            float tx = swipeEdge == BackEvent.EDGE_RIGHT ? -maxDx * p : maxDx * p;
+            float maxDx = Math.max((w - scale * w) / 2f - edgeMarginPx, 0f);
+            float tx = swipeEdge == BackEvent.EDGE_RIGHT ? 0f : maxDx * p;
 
             // Vertical follow tracks touch-Y, capped by the room the shrink frees up.
             float deltaY = touchY - startTouchY;
@@ -484,24 +444,19 @@ public final class Material3PredictiveBack {
                 cv.setAlpha(1f);
                 cv.setClipToOutline(savedClipToOutline);
                 cv.setOutlineProvider(savedOutlineProvider != null ? savedOutlineProvider : ViewOutlineProvider.BACKGROUND);
-                cv.setLayerType(savedCvLayerType, null);
             }
             ViewGroup cvb = layout.containerViewBack;
             if (cvb != null) {
-                cvb.setTranslationX(0f);
-                cvb.setTranslationY(0f);
                 eachChild(cvb, v -> {
                     v.setTranslationX(0f);
                     v.setTranslationY(0f);
                     v.setScaleX(1f);
                     v.setScaleY(1f);
-                    Integer originalType = originalLayerTypes.get(v);
-                    v.setLayerType(originalType != null ? originalType : View.LAYER_TYPE_NONE, null);
+                    v.setLayerType(View.LAYER_TYPE_NONE, null);
                 });
                 cvb.setBackground(savedCvbBackground);
                 cvb.setForeground(savedCvbForeground);
             }
-            originalLayerTypes.clear();
             savedCvbBackground = null;
             savedCvbForeground = null;
             scrim.setAlpha(SCRIM_ALPHA_BYTE);
@@ -517,10 +472,6 @@ public final class Material3PredictiveBack {
                 finalizeStock(true);
             } else if (layout.predictiveInput) {
                 undoStockPrep();
-            }
-            if (searchFragment != null) {
-                searchFragment.predictiveBackSearchCancelled(false);
-                searchFragment = null;
             }
         }
     }

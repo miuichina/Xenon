@@ -50,7 +50,13 @@ public final class BottomSheetPredictiveBack {
             isButton = false;
             lastP = 0f;
             currentEased = 0f;
-            allowDismiss = sheet.canDismiss();
+            try {
+                java.lang.reflect.Method m = BottomSheet.class.getDeclaredMethod("canDismissWithSwipe");
+                m.setAccessible(true);
+                allowDismiss = (boolean) m.invoke(sheet);
+            } catch (Exception e) {
+                allowDismiss = true;
+            }
             if (!allowDismiss) return;
             View cv = sheet.getSheetContainer();
             if (cv == null) return;
