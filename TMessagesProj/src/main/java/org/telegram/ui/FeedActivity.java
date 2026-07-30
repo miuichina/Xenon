@@ -258,8 +258,8 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
                     ImageReceiver imageReceiver = cell.getAvatarImage();
                     if (imageReceiver == null) continue;
 
-                    int top = (int) child.getY() + child.getPaddingTop();
-                    imageReceiver.setImageY(top + AndroidUtilities.dp(4));
+                    int bottom = (int) child.getY() + child.getHeight() - child.getPaddingBottom();
+                    imageReceiver.setImageY(bottom - imageReceiver.getImageHeight());
                     imageReceiver.setVisible(true, false);
                     imageReceiver.draw(canvas);
                 }
