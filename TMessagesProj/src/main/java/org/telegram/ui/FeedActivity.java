@@ -1,6 +1,9 @@
 package org.telegram.ui;
 
 import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.RectF;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -8,46 +11,64 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.TextView;
-import android.widget.ImageView;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.collection.LongSparseArray;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ChatMessageSharedResources;
 import org.telegram.messenger.DialogObject;
+import org.telegram.messenger.ImageReceiver;
+import org.telegram.messenger.LiteMode;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MessageObject;
 import org.telegram.messenger.MessagesController;
-import org.telegram.messenger.MessagesStorage;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
+import org.telegram.messenger.SharedConfig;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.ChatMessageCell;
-import org.telegram.ui.Components.FragmentFloatingButton;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.RecyclerListView;
+import org.telegram.ui.Components.chat.ViewPositionWatcher;
+import org.telegram.ui.Components.chat.buttons.ChatActivityBlurredRoundPageDownButton;
+import org.telegram.ui.Components.chat.layouts.ChatActivityFadeView;
+import org.telegram.ui.Components.blur3.BlurredBackgroundDrawableViewFactory;
+import org.telegram.ui.Components.blur3.DownscaleScrollableNoiseSuppressor;
+import org.telegram.ui.Components.blur3.RenderNodeWithHash;
+import org.telegram.ui.Components.blur3.ViewGroupPartRenderer;
+import org.telegram.ui.Components.blur3.capture.IBlur3Capture;
+import org.telegram.ui.Components.blur3.capture.IBlur3Hash;
+import org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundColorProviderThemed;
+import org.telegram.ui.Components.blur3.source.BlurredBackgroundSourceColor;
+import org.telegram.ui.Components.blur3.source.BlurredBackgroundSourceRenderNode;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 
-public class FeedActivity extends BaseFragment implements NotificationCenter.NotificationCenterDelegate {
+public class FeedActivity extends BaseFragment implements NotificationCenter.NotificationCenterDelegate, MainTabsActivity.TabFragmentDelegate {
 
     private boolean hasMainTabs;
     private int additionNavigationBarHeight;
+    private int navigationBarHeight;
+    private int statusBarHeight;
 
     private RecyclerListView listView;
     private FeedAdapter adapter;
-    private ArrayList<MessageObject> allMessages = new ArrayList<>();
+    private final ArrayList<MessageObject> allMessages = new ArrayList<>();
     private ArrayList<MessageObject> feedItems = new ArrayList<>();
-    private LongSparseArray<MessageObject.GroupedMessages> feedGroups = new LongSparseArray<>();
+    private final LongSparseArray<MessageObject.GroupedMessages> feedGroups = new LongSparseArray<>();
 
     private final HashMap<Integer, Long> classGuidToDialog = new HashMap<>();
 
@@ -55,14 +76,35 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
     private boolean loading;
     private boolean hasMoreToLoad = true;
     private boolean scrollToBottomPending;
+    private boolean newMessagesArrived;
+    private int lastProcessedCount;
 
-    private FragmentFloatingButton scrollToBottomButton;
-    private FrameLayout badgeContainer;
-    private TextView badgeText;
+    private ChatActivityBlurredRoundPageDownButton scrollToBottomButton;
     private int unreadCount;
     private boolean isNearBottom = true;
+    private boolean scrollButtonVisible;
 
-    private static final int CHAT_MESSAGE_CELL_VIEW_TYPE = 0;
+    private ChatActivityFadeView chatActivityFadeView;
+    private TextView emptyView;
+
+    /* Blur3 */
+
+    private final @Nullable DownscaleScrollableNoiseSuppressor scrollableViewNoiseSuppressor;
+    private final @Nullable BlurredBackgroundSourceRenderNode iBlur3SourceGlassFrosted;
+    private final @Nullable BlurredBackgroundSourceRenderNode iBlur3SourceGlass;
+    private final @NonNull BlurredBackgroundSourceColor iBlur3SourceColor;
+    private final @NonNull BlurredBackgroundDrawableViewFactory iBlur3FactoryFrosted;
+    private final @NonNull BlurredBackgroundDrawableViewFactory iBlur3FactoryGlass;
+
+    private IBlur3Capture iBlur3Capture;
+
+    private final ArrayList<RectF> iBlur3Positions = new ArrayList<>();
+    private final RectF iBlur3PositionActionBar = new RectF();
+    private final RectF iBlur3PositionMainTabs = new RectF(); {
+        iBlur3Positions.add(iBlur3PositionActionBar);
+        iBlur3Positions.add(iBlur3PositionMainTabs);
+    }
+
     private static final int MESSAGES_PER_CHANNEL = 10;
 
     public FeedActivity() {
@@ -74,36 +116,97 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
         if (args != null) {
             hasMainTabs = args.getBoolean("hasMainTabs", false);
         }
+
+        iBlur3SourceColor = new BlurredBackgroundSourceColor();
+        iBlur3SourceColor.setColor(getThemedColor(Theme.key_windowBackgroundWhite));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            scrollableViewNoiseSuppressor = new DownscaleScrollableNoiseSuppressor();
+            iBlur3SourceGlassFrosted = new BlurredBackgroundSourceRenderNode(null);
+            iBlur3SourceGlassFrosted.setupRenderer(new RenderNodeWithHash.Renderer() {
+                @Override
+                public void renderNodeCalculateHash(IBlur3Hash hash) {
+                    hash.add(getThemedColor(Theme.key_windowBackgroundWhite));
+                    hash.add(SharedConfig.chatBlurEnabled());
+                }
+
+                @Override
+                public void renderNodeUpdateDisplayList(Canvas canvas) {
+                    canvas.drawColor(getThemedColor(Theme.key_windowBackgroundWhite));
+                    if (SharedConfig.chatBlurEnabled()) {
+                        scrollableViewNoiseSuppressor.draw(canvas, DownscaleScrollableNoiseSuppressor.DRAW_FROSTED_GLASS);
+                    }
+                }
+            });
+            iBlur3SourceGlass = new BlurredBackgroundSourceRenderNode(null);
+            iBlur3SourceGlass.setupRenderer(new RenderNodeWithHash.Renderer() {
+                @Override
+                public void renderNodeCalculateHash(IBlur3Hash hash) {
+                    hash.add(getThemedColor(Theme.key_windowBackgroundWhite));
+                    hash.add(SharedConfig.chatBlurEnabled());
+                }
+
+                @Override
+                public void renderNodeUpdateDisplayList(Canvas canvas) {
+                    canvas.drawColor(getThemedColor(Theme.key_windowBackgroundWhite));
+                    if (SharedConfig.chatBlurEnabled()) {
+                        scrollableViewNoiseSuppressor.draw(canvas, DownscaleScrollableNoiseSuppressor.DRAW_GLASS);
+                    }
+                }
+            });
+            iBlur3FactoryFrosted = new BlurredBackgroundDrawableViewFactory(iBlur3SourceGlassFrosted);
+            iBlur3FactoryGlass = new BlurredBackgroundDrawableViewFactory(iBlur3SourceGlass);
+            iBlur3FactoryGlass.setLiquidGlassEffectAllowed(LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS));
+        } else {
+            scrollableViewNoiseSuppressor = null;
+            iBlur3SourceGlassFrosted = null;
+            iBlur3SourceGlass = null;
+            iBlur3FactoryFrosted = new BlurredBackgroundDrawableViewFactory(iBlur3SourceColor);
+            iBlur3FactoryGlass = new BlurredBackgroundDrawableViewFactory(iBlur3SourceColor);
+        }
     }
 
     @Override
     public boolean onFragmentCreate() {
         additionNavigationBarHeight = hasMainTabs ? AndroidUtilities.dp(DialogsActivity.MAIN_TABS_HEIGHT_WITH_MARGINS) : 0;
         getNotificationCenter().addObserver(this, NotificationCenter.messagesDidLoad);
+        getNotificationCenter().addObserver(this, NotificationCenter.didReceiveNewMessages);
+        getNotificationCenter().addObserver(this, NotificationCenter.updateInterfaces);
         return super.onFragmentCreate();
     }
 
     @Override
     public void onFragmentDestroy() {
         getNotificationCenter().removeObserver(this, NotificationCenter.messagesDidLoad);
+        getNotificationCenter().removeObserver(this, NotificationCenter.didReceiveNewMessages);
+        getNotificationCenter().removeObserver(this, NotificationCenter.updateInterfaces);
         super.onFragmentDestroy();
     }
 
     @Override
+    public boolean isSupportEdgeToEdge() {
+        return true;
+    }
+
+    @Override
+    public boolean drawEdgeNavigationBar() {
+        return false;
+    }
+
+    @Override
     public View createView(Context context) {
-        actionBar.setBackButtonImage(R.drawable.ic_ab_back);
+        statusBarHeight = AndroidUtilities.getStatusBarHeight(context);
         actionBar.setAllowOverlayTitle(true);
         actionBar.setTitle(LocaleController.getString(R.string.MainTabsFeed));
-        actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
-            @Override
-            public void onItemClick(int id) {
-                if (id == -1) {
-                    finishFragment();
-                }
-            }
-        });
 
-        FrameLayout contentView = new FrameLayout(context);
+        FrameLayout contentView = new FrameLayout(context) {
+            @Override
+            protected void dispatchDraw(@NonNull Canvas canvas) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && scrollableViewNoiseSuppressor != null) {
+                    blur3_InvalidateBlur();
+                }
+                super.dispatchDraw(canvas);
+            }
+        };
         contentView.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
 
         adapter = new FeedAdapter(context);
@@ -111,7 +214,7 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
         listView.setLayoutManager(new LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false));
         listView.setAdapter(adapter);
         listView.setClipToPadding(false);
-        listView.setPadding(0, AndroidUtilities.dp(4), 0, AndroidUtilities.dp(4));
+        listView.setPadding(0, statusBarHeight + ActionBar.getCurrentActionBarHeight() + AndroidUtilities.dp(4), 0, navigationBarHeight + additionNavigationBarHeight + AndroidUtilities.dp(4));
 
         listView.setOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
@@ -120,6 +223,7 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
                 int lastVisible = lm.findLastVisibleItemPosition();
                 int total = feedItems.size();
 
+                boolean wasNearBottom = isNearBottom;
                 isNearBottom = lastVisible >= total - 3;
 
                 if (dy < 0 && !loading && hasMoreToLoad) {
@@ -133,38 +237,126 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
                     markFirstMessagesRead();
                 }
 
-                updateScrollToBottomButton();
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && scrollableViewNoiseSuppressor != null) {
+                    scrollableViewNoiseSuppressor.onScrolled(dx, dy);
+                    blur3_InvalidateBlur();
+                }
+
+                if (wasNearBottom != isNearBottom) {
+                    updateScrollToBottomButton();
+                }
+            }
+        });
+
+        listView.addItemDecoration(new RecyclerView.ItemDecoration() {
+            @Override
+            public void onDrawOver(@NonNull Canvas canvas, @NonNull RecyclerView parent, @NonNull RecyclerView.State state) {
+                for (int i = 0; i < parent.getChildCount(); i++) {
+                    View child = parent.getChildAt(i);
+                    if (!(child instanceof ChatMessageCell)) continue;
+                    ChatMessageCell cell = (ChatMessageCell) child;
+                    ImageReceiver imageReceiver = cell.getAvatarImage();
+                    if (imageReceiver == null) continue;
+
+                    int top = (int) child.getY() + child.getPaddingTop();
+                    imageReceiver.setImageY(top + AndroidUtilities.dp(4));
+                    imageReceiver.setVisible(true, false);
+                    imageReceiver.draw(canvas);
+                }
             }
         });
 
         contentView.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
-        scrollToBottomButton = new FragmentFloatingButton(context, resourceProvider);
+        emptyView = new TextView(context);
+        emptyView.setText(LocaleController.getString(R.string.MainTabsFeed));
+        emptyView.setTextColor(Theme.getColor(Theme.key_emptyListPlaceholder));
+        emptyView.setTextSize(16);
+        emptyView.setGravity(Gravity.CENTER);
+        emptyView.setVisibility(View.GONE);
+        contentView.addView(emptyView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER, 24, 0, 24, 0));
+
+        /* Top fade blur */
+        chatActivityFadeView = new ChatActivityFadeView(context);
+        iBlur3FactoryFrosted.setSourceRootView(new ViewPositionWatcher(contentView), contentView);
+        chatActivityFadeView.setup(iBlur3FactoryFrosted, new BlurredBackgroundColorProviderThemed(resourceProvider, Theme.key_chat_topPanelBackground));
+        contentView.addView(chatActivityFadeView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+        updateFadeZoneTop();
+
+        /* Scroll-to-bottom button */
+        scrollToBottomButton = ChatActivityBlurredRoundPageDownButton.create(
+            context, 56, 48, resourceProvider,
+            iBlur3FactoryFrosted,
+            new BlurredBackgroundColorProviderThemed(resourceProvider, Theme.key_windowBackgroundWhite),
+            R.drawable.pagedown
+        );
         scrollToBottomButton.setVisibility(View.INVISIBLE);
-        scrollToBottomButton.setImageResource(R.drawable.pagedown);
         scrollToBottomButton.setOnClickListener(v -> scrollToBottom());
+        contentView.addView(scrollToBottomButton, LayoutHelper.createFrame(57, 64, Gravity.BOTTOM | Gravity.RIGHT, 0, 0, 14, 14 + additionNavigationBarHeight));
 
-        badgeContainer = new FrameLayout(context);
-        badgeContainer.setBackground(Theme.createRoundRectDrawable(AndroidUtilities.dp(11), Theme.getColor(Theme.key_chats_actionBackground)));
-        badgeContainer.setVisibility(View.INVISIBLE);
+        iBlur3Capture = new ViewGroupPartRenderer(listView, contentView, listView::drawChild);
+        listView.addEdgeEffectListener(() -> listView.postOnAnimation(this::blur3_InvalidateBlur));
 
-        badgeText = new TextView(context);
-        badgeText.setTextSize(12);
-        badgeText.setTextColor(Theme.getColor(Theme.key_chats_unreadCounterText));
-        badgeText.setGravity(Gravity.CENTER);
-        badgeText.setPadding(AndroidUtilities.dp(6), 0, AndroidUtilities.dp(6), 0);
-        badgeContainer.addView(badgeText, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, AndroidUtilities.dp(22)));
-
-        FrameLayout buttonWrap = new FrameLayout(context);
-        buttonWrap.addView(scrollToBottomButton, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.NO_GRAVITY));
-        buttonWrap.addView(badgeContainer, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, AndroidUtilities.dp(22), Gravity.TOP | Gravity.RIGHT, 0, -AndroidUtilities.dp(2), 0, 0));
-
-        contentView.addView(buttonWrap, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.BOTTOM | Gravity.RIGHT, 0, 0, 14, 14));
+        ViewCompat.setOnApplyWindowInsetsListener(contentView, (v, insets) -> {
+            final int statusBarHeight = insets.getInsets(WindowInsetsCompat.Type.systemBars()).top;
+            navigationBarHeight = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom;
+            listView.setPadding(0, statusBarHeight + ActionBar.getCurrentActionBarHeight() + AndroidUtilities.dp(4), 0, navigationBarHeight + additionNavigationBarHeight + AndroidUtilities.dp(4));
+            updateFadeZoneTop();
+            if (scrollToBottomButton != null) {
+                FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) scrollToBottomButton.getLayoutParams();
+                lp.bottomMargin = 14 + additionNavigationBarHeight + navigationBarHeight;
+                scrollToBottomButton.setLayoutParams(lp);
+            }
+            return WindowInsetsCompat.CONSUMED;
+        });
 
         fragmentView = contentView;
 
         loadFeed();
         return contentView;
+    }
+
+    private void updateFadeZoneTop() {
+        if (chatActivityFadeView == null) return;
+        int fadeHeight = statusBarHeight + ActionBar.getCurrentActionBarHeight() + AndroidUtilities.dp(7);
+        chatActivityFadeView.setFadeZoneTop(fadeHeight);
+    }
+
+    private void blur3_InvalidateBlur() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || scrollableViewNoiseSuppressor == null || fragmentView == null) {
+            return;
+        }
+
+        final int additionalList = AndroidUtilities.dp(48);
+        final int mainTabBottom = fragmentView.getMeasuredHeight() - navigationBarHeight - AndroidUtilities.dp(DialogsActivity.MAIN_TABS_MARGIN);
+        final int mainTabTop = mainTabBottom - AndroidUtilities.dp(DialogsActivity.MAIN_TABS_HEIGHT);
+
+        iBlur3PositionActionBar.set(0, -additionalList, fragmentView.getMeasuredWidth(), ActionBar.getCurrentActionBarHeight() + statusBarHeight + additionalList);
+        iBlur3PositionMainTabs.set(0, mainTabTop, fragmentView.getMeasuredWidth(), mainTabBottom);
+        iBlur3PositionMainTabs.inset(0, LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0 : -AndroidUtilities.dp(48));
+
+        scrollableViewNoiseSuppressor.setupRenderNodes(iBlur3Positions, hasMainTabs ? 2 : 1);
+        scrollableViewNoiseSuppressor.invalidateResultRenderNodes(iBlur3Capture, fragmentView.getMeasuredWidth(), fragmentView.getMeasuredHeight());
+
+        if (iBlur3SourceGlassFrosted != null) {
+            iBlur3SourceGlassFrosted.setSize(fragmentView.getMeasuredWidth(), fragmentView.getMeasuredHeight());
+            iBlur3SourceGlassFrosted.updateDisplayListIfNeeded();
+        }
+        if (iBlur3SourceGlass != null) {
+            iBlur3SourceGlass.setSize(fragmentView.getMeasuredWidth(), fragmentView.getMeasuredHeight());
+            iBlur3SourceGlass.updateDisplayListIfNeeded();
+        }
+    }
+
+    @Override
+    public BlurredBackgroundSourceRenderNode getGlassSource() {
+        return iBlur3SourceGlass;
+    }
+
+    @Override
+    public void onParentScrollToTop() {
+        if (feedItems.isEmpty()) return;
+        ((LinearLayoutManager) listView.getLayoutManager()).scrollToPositionWithOffset(0, 0);
     }
 
     private void loadFeed() {
@@ -191,7 +383,6 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
                     TLRPC.Chat chat = messagesController.getChat(-d.id);
                     if (chat != null && !chat.megagroup) {
                         channelDialogs.add(d);
-                        break;
                     }
                 }
             }
@@ -262,18 +453,19 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public void didReceivedNotification(int id, int account, Object... args) {
+        if (account != currentAccount) return;
         if (id == NotificationCenter.messagesDidLoad) {
             long dialogId = (Long) args[0];
             int guid = (Integer) args[10];
             Long expectedDialog = classGuidToDialog.get(guid);
-            if (expectedDialog == null || expectedDialog != dialogId || account != currentAccount) return;
+            if (expectedDialog == null || expectedDialog != dialogId) return;
 
             ArrayList<MessageObject> messages = (ArrayList<MessageObject>) args[2];
             if (messages != null && !messages.isEmpty()) {
                 for (MessageObject msg : messages) {
                     if (msg.messageOwner != null && msg.messageOwner.date > 0) {
-                        String key = dialogId + ":" + msg.getId();
                         allMessages.add(msg);
                     }
                 }
@@ -285,11 +477,58 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
             if (pendingLoads <= 0) {
                 processLoadedMessages();
             }
+        } else if (id == NotificationCenter.didReceiveNewMessages) {
+            long dialogId = (Long) args[0];
+            ArrayList<MessageObject> messages = (ArrayList<MessageObject>) args[1];
+            if (messages == null || messages.isEmpty()) return;
+            MessagesController mc = MessagesController.getInstance(currentAccount);
+            if (dialogId < 0) {
+                TLRPC.Chat chat = mc.getChat(-dialogId);
+                if (chat == null || chat.megagroup) return;
+            } else {
+                return;
+            }
+            boolean added = false;
+            int addedCount = 0;
+            for (MessageObject msg : messages) {
+                if (msg.messageOwner != null && msg.messageOwner.date > 0) {
+                    allMessages.add(msg);
+                    added = true;
+                    addedCount++;
+                }
+            }
+            if (added) {
+                newMessagesArrived = true;
+                if (!isNearBottom) {
+                    unreadCount += addedCount;
+                    updateScrollToBottomButton();
+                }
+                if (!loading) {
+                    processLoadedMessages();
+                }
+            }
+        } else if (id == NotificationCenter.updateInterfaces) {
+            if (adapter != null && listView != null) {
+                adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+            }
         }
     }
 
     private void processLoadedMessages() {
         loading = false;
+
+        String anchorKey = null;
+        int anchorOffset = 0;
+        if (!scrollToBottomPending && listView != null && listView.getLayoutManager() != null && !feedItems.isEmpty()) {
+            LinearLayoutManager lm = (LinearLayoutManager) listView.getLayoutManager();
+            int anchorPos = lm.findFirstVisibleItemPosition();
+            if (anchorPos != RecyclerView.NO_POSITION && anchorPos < feedItems.size()) {
+                View anchorView = lm.findViewByPosition(anchorPos);
+                anchorOffset = anchorView != null ? anchorView.getTop() - listView.getPaddingTop() : 0;
+                MessageObject m = feedItems.get(anchorPos);
+                anchorKey = m.getDialogId() + ":" + m.getId();
+            }
+        }
 
         Collections.sort(allMessages, (a, b) -> {
             if (a.messageOwner.date == b.messageOwner.date) {
@@ -299,15 +538,18 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
         });
 
         HashSet<String> seen = new HashSet<>();
-        feedItems.clear();
+        ArrayList<MessageObject> deduped = new ArrayList<>();
         for (MessageObject msg : allMessages) {
             String key = msg.getDialogId() + ":" + msg.getId();
-            if (!seen.contains(key)) {
-                seen.add(key);
-                feedItems.add(msg);
+            if (seen.add(key)) {
+                deduped.add(msg);
             }
         }
+        allMessages.clear();
+        allMessages.addAll(deduped);
 
+        feedItems.clear();
+        feedItems.addAll(deduped);
         feedGroups.clear();
         ArrayList<MessageObject> filtered = new ArrayList<>();
         for (int i = 0; i < feedItems.size(); i++) {
@@ -333,12 +575,22 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
             }
         }
 
-        hasMoreToLoad = true;
+        if (scrollToBottomPending) {
+            hasMoreToLoad = feedItems.size() > 0;
+        } else {
+            hasMoreToLoad = deduped.size() > lastProcessedCount;
+        }
+        lastProcessedCount = deduped.size();
 
         adapter.notifyDataSetChanged();
 
+        if (emptyView != null) {
+            emptyView.setVisibility(feedItems.isEmpty() ? View.VISIBLE : View.GONE);
+        }
+
         if (scrollToBottomPending) {
             scrollToBottomPending = false;
+            newMessagesArrived = false;
             listView.post(() -> {
                 if (adapter.getItemCount() > 0) {
                     ((LinearLayoutManager) listView.getLayoutManager()).scrollToPositionWithOffset(
@@ -346,28 +598,79 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
                     );
                 }
             });
+        } else {
+            boolean wasNew = newMessagesArrived;
+            newMessagesArrived = false;
+            LinearLayoutManager lm = listView.getLayoutManager() != null ? (LinearLayoutManager) listView.getLayoutManager() : null;
+            if (lm != null) {
+                if (wasNew && isNearBottom) {
+                    if (adapter.getItemCount() > 0) {
+                        lm.scrollToPositionWithOffset(adapter.getItemCount() - 1, Integer.MIN_VALUE);
+                    }
+                } else if (anchorKey != null) {
+                    int newPos = -1;
+                    for (int i = 0; i < feedItems.size(); i++) {
+                        MessageObject m = feedItems.get(i);
+                        if (anchorKey.equals(m.getDialogId() + ":" + m.getId())) {
+                            newPos = i;
+                            break;
+                        }
+                    }
+                    if (newPos >= 0) {
+                        lm.scrollToPositionWithOffset(newPos, anchorOffset);
+                    }
+                }
+            }
         }
     }
 
     private void updateScrollToBottomButton() {
         if (feedItems.isEmpty()) {
-            scrollToBottomButton.setVisibility(View.INVISIBLE);
-            badgeContainer.setVisibility(View.INVISIBLE);
+            setScrollButtonVisible(false);
             return;
         }
 
         if (isNearBottom) {
-            scrollToBottomButton.setVisibility(View.INVISIBLE);
-            badgeContainer.setVisibility(View.INVISIBLE);
+            setScrollButtonVisible(false);
             unreadCount = 0;
         } else {
-            scrollToBottomButton.setVisibility(View.VISIBLE);
+            setScrollButtonVisible(true);
             if (unreadCount > 0) {
-                badgeContainer.setVisibility(View.VISIBLE);
-                badgeText.setText(String.valueOf(unreadCount));
-            } else {
-                badgeContainer.setVisibility(View.INVISIBLE);
+                scrollToBottomButton.setCount(unreadCount, true);
             }
+        }
+    }
+
+    private void setScrollButtonVisible(boolean visible) {
+        if (scrollToBottomButton == null) return;
+        if (visible == scrollButtonVisible) return;
+        scrollButtonVisible = visible;
+
+        if (visible) {
+            scrollToBottomButton.setVisibility(View.VISIBLE);
+            scrollToBottomButton.setAlpha(0f);
+            scrollToBottomButton.setScaleX(0.7f);
+            scrollToBottomButton.setScaleY(0.7f);
+            scrollToBottomButton.animate().cancel();
+            scrollToBottomButton.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .setDuration(200)
+                .start();
+        } else {
+            scrollToBottomButton.animate().cancel();
+            scrollToBottomButton.animate()
+                .alpha(0f)
+                .scaleX(0.7f)
+                .scaleY(0.7f)
+                .setDuration(200)
+                .withEndAction(() -> {
+                    if (!scrollButtonVisible) {
+                        scrollToBottomButton.setVisibility(View.INVISIBLE);
+                    }
+                })
+                .start();
         }
     }
 
@@ -474,6 +777,8 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
             if (chat != null && chat.has_link && !chat.megagroup) {
                 cell.hasDiscussion = chat.has_link;
             }
+
+            msg.forceAvatar = true;
 
             MessageObject.GroupedMessages group = null;
             if (msg.hasValidGroupId()) {
