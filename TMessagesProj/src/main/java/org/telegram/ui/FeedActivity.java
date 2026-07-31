@@ -81,6 +81,7 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
     private boolean hasMoreToLoad = true;
     private boolean scrollToBottomPending;
     private boolean newMessagesArrived;
+    private int lastSelectionVersion = -1;
 
     private static final class ChannelState {
         final long dialogId;
@@ -121,6 +122,7 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
     }
 
     private static final int MESSAGES_PER_CHANNEL = 10;
+    private static final int MENU_FEED_CHANNELS = 1;
 
     public FeedActivity() {
         this(null);
@@ -183,10 +185,22 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
     @Override
     public boolean onFragmentCreate() {
         additionNavigationBarHeight = hasMainTabs ? AndroidUtilities.dp(DialogsActivity.MAIN_TABS_HEIGHT_WITH_MARGINS) : 0;
+        lastSelectionVersion = FeedChannelsActivity.getSelectionVersion(currentAccount);
         getNotificationCenter().addObserver(this, NotificationCenter.messagesDidLoad);
         getNotificationCenter().addObserver(this, NotificationCenter.didReceiveNewMessages);
         getNotificationCenter().addObserver(this, NotificationCenter.updateInterfaces);
+        getNotificationCenter().addObserver(this, NotificationCenter.feedChannelsChanged);
         return super.onFragmentCreate();
+    }
+
+    @Override
+    public void onBecomeFullyVisible() {
+        super.onBecomeFullyVisible();
+        int version = FeedChannelsActivity.getSelectionVersion(currentAccount);
+        if (version != lastSelectionVersion) {
+            lastSelectionVersion = version;
+            reloadFeed();
+        }
     }
 
     @Override
@@ -194,6 +208,7 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
         getNotificationCenter().removeObserver(this, NotificationCenter.messagesDidLoad);
         getNotificationCenter().removeObserver(this, NotificationCenter.didReceiveNewMessages);
         getNotificationCenter().removeObserver(this, NotificationCenter.updateInterfaces);
+        getNotificationCenter().removeObserver(this, NotificationCenter.feedChannelsChanged);
         super.onFragmentDestroy();
     }
 
@@ -210,9 +225,18 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
     @Override
     public View createView(Context context) {
 statusBarHeight = AndroidUtilities.getStatusBarHeight(context);
-actionBar.setAllowOverlayTitle(true);
+        actionBar.setAllowOverlayTitle(true);
         actionBar.setTitle(LocaleController.getString(R.string.MainTabsFeed));
         actionBar.setSubtitle("");
+        actionBar.createMenu().addItem(MENU_FEED_CHANNELS, R.drawable.filled_profile_settings);
+        actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
+            @Override
+            public void onItemClick(int id) {
+                if (id == MENU_FEED_CHANNELS) {
+                    presentFragment(new FeedChannelsActivity());
+                }
+            }
+        });
 
         FrameLayout contentView = new FrameLayout(context) {
             @Override
@@ -402,6 +426,7 @@ actionBar.setAllowOverlayTitle(true);
             if (d.id < 0 && DialogObject.isChannel(d)) {
                 TLRPC.Chat chat = messagesController.getChat(-d.id);
                 if (chat != null && !chat.megagroup) {
+                    if (!FeedChannelsActivity.isChannelSelected(currentAccount, d.id)) continue;
                     channelDialogs.add(d);
                 }
             }
@@ -411,6 +436,7 @@ actionBar.setAllowOverlayTitle(true);
             loading = false;
             if (centerProgressBar != null) centerProgressBar.setVisibility(View.GONE);
             hasMoreToLoad = false;
+            processLoadedMessages();
             return;
         }
 
@@ -423,6 +449,20 @@ actionBar.setAllowOverlayTitle(true);
             channelStates.put(dialogId, state);
             requestMessages(state, 0);
         }
+    }
+
+    private void reloadFeed() {
+        allMessages.clear();
+        feedItems.clear();
+        feedGroups.clear();
+        classGuidToDialog.clear();
+        channelStates.clear();
+        pendingLoads = 0;
+        if (adapter != null) {
+            adapter.notifyDataSetChanged();
+        }
+        loading = false;
+        loadFeed();
     }
 
     private void requestMessages(ChannelState state, int maxId) {
@@ -487,7 +527,7 @@ actionBar.setAllowOverlayTitle(true);
             }
 
             classGuidToDialog.remove(guid);
-            pendingLoads--;
+            pendingLoads = Math.max(0, pendingLoads - 1);
 
             if (pendingLoads <= 0) {
                 processLoadedMessages();
@@ -496,6 +536,7 @@ actionBar.setAllowOverlayTitle(true);
             long dialogId = (Long) args[0];
             ArrayList<MessageObject> messages = (ArrayList<MessageObject>) args[1];
             if (messages == null || messages.isEmpty()) return;
+            if (!FeedChannelsActivity.isChannelSelected(currentAccount, dialogId)) return;
             MessagesController mc = MessagesController.getInstance(currentAccount);
             if (dialogId < 0) {
                 TLRPC.Chat chat = mc.getChat(-dialogId);
@@ -528,6 +569,12 @@ actionBar.setAllowOverlayTitle(true);
                     processLoadedMessages();
                 }
             }
+        } else if (id == NotificationCenter.feedChannelsChanged) {
+            lastSelectionVersion = FeedChannelsActivity.getSelectionVersion(currentAccount);
+            if (listView == null || adapter == null) {
+                return;
+            }
+            reloadFeed();
         } else if (id == NotificationCenter.updateInterfaces) {
             if (listView != null) {
                 int count = listView.getChildCount();

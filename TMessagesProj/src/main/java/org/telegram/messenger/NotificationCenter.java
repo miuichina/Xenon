@@ -279,6 +279,7 @@ public class NotificationCenter {
     public static final int joinedGroup = totalEvents++;
     public static final int loadedAiComposeTones = totalEvents++;
     public static final int updatedChatbot = totalEvents++;
+    public static final int feedChannelsChanged = totalEvents++;
 
     //global
     public static final int activeAccountChanged = totalEvents++;
