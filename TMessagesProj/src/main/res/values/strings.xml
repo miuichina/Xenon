@@ -10540,6 +10540,7 @@
     <string name="MainTabsFeed">Feed</string>
     <string name="FeedChannelsCount">Total channels: %d</string>
     <string name="FeedChannelsEmpty">You have no channels yet</string>
+    <string name="NothingToShow">Nothing to show</string>
     <string name="MainTabsSettings">Settings</string>
     <string name="SwitchThemeToDay">Day Mode</string>
     <string name="SwitchThemeToNight">Night Mode</string>

@@ -322,7 +322,7 @@ statusBarHeight = AndroidUtilities.getStatusBarHeight(context);
         contentView.addView(centerProgressBar, LayoutHelper.createFrame(48, 48, Gravity.CENTER));
 
         emptyView = new TextView(context);
-        emptyView.setText(LocaleController.getString(R.string.MainTabsFeed));
+        emptyView.setText(LocaleController.getString(R.string.NothingToShow));
         emptyView.setTextColor(Theme.getColor(Theme.key_emptyListPlaceholder));
         emptyView.setTextSize(16);
         emptyView.setGravity(Gravity.CENTER);
@@ -576,6 +576,10 @@ statusBarHeight = AndroidUtilities.getStatusBarHeight(context);
             }
             reloadFeed();
         } else if (id == NotificationCenter.updateInterfaces) {
+            int updateMask = (Integer) args[0];
+            if ((updateMask & (MessagesController.UPDATE_MASK_AVATAR | MessagesController.UPDATE_MASK_CHAT_AVATAR | MessagesController.UPDATE_MASK_NAME | MessagesController.UPDATE_MASK_CHAT_NAME | MessagesController.UPDATE_MASK_EMOJI_STATUS)) == 0) {
+                return;
+            }
             if (listView != null) {
                 int count = listView.getChildCount();
                 for (int a = 0; a < count; a++) {

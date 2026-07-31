@@ -128,6 +128,8 @@
     <string name="MainTabsShowTitle">Показывать названия табов</string>
     <string name="MainTabsFeed">Лента</string>
     <string name="FeedChannelsCount">Всего каналов: %d</string>
+    <string name="FeedChannelsEmpty">У вас пока нет каналов</string>
+    <string name="NothingToShow">Нечего показать</string>
     <string name="AutoPauseVideo">Авто-пауза видео</string>
     <string name="AutoPauseVideoAbout">Останавливать воспроизведение видео при блокировке экрана или сворачивании приложения.</string>
     <string name="DisableProximityEvents">Отключить датчик приближения</string>
