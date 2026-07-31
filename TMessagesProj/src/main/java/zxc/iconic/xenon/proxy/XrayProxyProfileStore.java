@@ -40,6 +40,7 @@ public final class XrayProxyProfileStore {
         public int localPort;
         public String checkUrl;
         public String configJson;
+        public String subscriptionId;
 
         public Profile copy() {
             Profile copy = new Profile();
@@ -48,6 +49,7 @@ public final class XrayProxyProfileStore {
             copy.localPort = localPort;
             copy.checkUrl = checkUrl;
             copy.configJson = configJson;
+            copy.subscriptionId = subscriptionId;
             return copy;
         }
 
@@ -58,6 +60,9 @@ public final class XrayProxyProfileStore {
             json.put("localPort", sanitizePort(localPort));
             json.put("checkUrl", safeCheckUrl(checkUrl));
             json.put("configJson", safe(configJson));
+            if (!TextUtils.isEmpty(subscriptionId)) {
+                json.put("subscriptionId", safe(subscriptionId));
+            }
             return json;
         }
 
@@ -71,6 +76,7 @@ public final class XrayProxyProfileStore {
             profile.localPort = sanitizePort(json.optInt("localPort", 10808));
             profile.checkUrl = safeCheckUrl(json.optString("checkUrl", DEFAULT_CHECK_URL));
             profile.configJson = safe(json.optString("configJson", ""));
+            profile.subscriptionId = safe(json.optString("subscriptionId", ""));
             if (TextUtils.isEmpty(profile.id)) {
                 profile.id = generateId();
             }
@@ -273,6 +279,7 @@ public final class XrayProxyProfileStore {
         copy.localPort = sanitizePort(copy.localPort);
         copy.checkUrl = safeCheckUrl(copy.checkUrl);
         copy.configJson = safe(copy.configJson);
+        copy.subscriptionId = safe(copy.subscriptionId);
         return copy;
     }
 
@@ -412,6 +419,94 @@ public final class XrayProxyProfileStore {
                 persistLocked();
                 syncLegacyFromActiveLocked();
             }
+            return added;
+        }
+    }
+
+    /**
+     * Returns the number of profiles belonging to a subscription.
+     */
+    public static int countProfilesBySubscription(String subscriptionId) {
+        if (TextUtils.isEmpty(subscriptionId)) {
+            return 0;
+        }
+        synchronized (LOCK) {
+            ensureLoadedLocked();
+            int count = 0;
+            for (int i = 0; i < cachedProfiles.size(); i++) {
+                if (subscriptionId.equals(cachedProfiles.get(i).subscriptionId)) {
+                    count++;
+                }
+            }
+            return count;
+        }
+    }
+
+    /**
+     * Atomically replaces all profiles of a subscription: removes the old ones and
+     * inserts the supplied batch (tagged with the subscription id). If the previously
+     * active profile belonged to this subscription, the first new profile (or the first
+     * remaining one) is activated. Pass a null/empty batch to only remove.
+     */
+    public static int replaceSubscriptionProfiles(String subscriptionId, ArrayList<Profile> newProfiles) {
+        if (TextUtils.isEmpty(subscriptionId)) {
+            return 0;
+        }
+        synchronized (LOCK) {
+            ensureLoadedLocked();
+
+            Profile prevActive = findByIdLocked(cachedActiveProfileId);
+            boolean activeWasInSub = prevActive != null && subscriptionId.equals(prevActive.subscriptionId);
+
+            for (int i = cachedProfiles.size() - 1; i >= 0; i--) {
+                if (subscriptionId.equals(cachedProfiles.get(i).subscriptionId)) {
+                    cachedProfiles.remove(i);
+                }
+            }
+
+            java.util.Set<Integer> usedPorts = new java.util.HashSet<>();
+            for (int i = 0; i < cachedProfiles.size(); i++) {
+                usedPorts.add(cachedProfiles.get(i).localPort);
+            }
+            int nextPort = 10808;
+            int added = 0;
+            if (newProfiles != null) {
+                for (int i = 0; i < newProfiles.size(); i++) {
+                    Profile np = newProfiles.get(i);
+                    if (np == null) {
+                        continue;
+                    }
+                    np.subscriptionId = subscriptionId;
+                    Profile safeProfile = normalizeProfile(np);
+                    while (nextPort <= 65535 && usedPorts.contains(nextPort)) {
+                        nextPort++;
+                    }
+                    if (nextPort > 65535) {
+                        nextPort = 10808;
+                    }
+                    safeProfile.localPort = nextPort;
+                    usedPorts.add(nextPort);
+                    nextPort++;
+
+                    cachedProfiles.add(safeProfile);
+                    added++;
+                }
+            }
+
+            if (cachedProfiles.isEmpty()) {
+                cachedActiveProfileId = "";
+            } else if (activeWasInSub || findByIdLocked(cachedActiveProfileId) == null) {
+                Profile firstNew = null;
+                for (int i = 0; i < cachedProfiles.size(); i++) {
+                    if (subscriptionId.equals(cachedProfiles.get(i).subscriptionId)) {
+                        firstNew = cachedProfiles.get(i);
+                        break;
+                    }
+                }
+                cachedActiveProfileId = firstNew != null ? firstNew.id : cachedProfiles.get(0).id;
+            }
+            persistLocked();
+            syncLegacyFromActiveLocked();
             return added;
         }
     }

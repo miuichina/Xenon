@@ -50,6 +50,7 @@ public class NekoXrayProxyProfilesActivity extends BaseNekoSettingsActivity {
     private final int addUrlRow = rowId++;
     private final int addFileRow = rowId++;
     private final int addEmptyRow = rowId++;
+    private final int subscriptionsRow = rowId++;
 
     /** Row ids for profile rows start from this offset. */
     private final int profileStartRow = 100;
@@ -87,6 +88,9 @@ public class NekoXrayProxyProfilesActivity extends BaseNekoSettingsActivity {
         items.add(UItem.asButton(addEmptyRow, R.drawable.msg_add,
                         LocaleController.getString(R.string.XrayProxyAddEmptyProfile))
                 .slug("xrayProfileAddEmpty").accent());
+        items.add(UItem.asButton(subscriptionsRow, R.drawable.msg_link,
+                        LocaleController.getString(R.string.XrayProxySubscriptions))
+                .slug("xraySubscriptions"));
         items.add(UItem.asShadow(LocaleController.getString(R.string.XrayProxyProfilesHint)));
 
         if (profiles.isEmpty()) {
@@ -135,6 +139,10 @@ public class NekoXrayProxyProfilesActivity extends BaseNekoSettingsActivity {
             XrayProxyProfileStore.Profile empty = XrayProxyProfileStore.createEmptyProfile();
             XrayProxyProfileStore.addProfile(empty, true);
             presentFragment(NekoXrayProxyProfileEditActivity.forProfile(empty.id));
+            return;
+        }
+        if (id == subscriptionsRow) {
+            presentFragment(new NekoXrayProxySubscriptionsActivity());
             return;
         }
         if (id >= profileStartRow) {
