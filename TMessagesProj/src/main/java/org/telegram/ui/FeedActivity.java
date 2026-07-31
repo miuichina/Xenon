@@ -42,6 +42,7 @@ import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.chat.ViewPositionWatcher;
 import org.telegram.ui.Components.chat.buttons.ChatActivityBlurredRoundPageDownButton;
 import org.telegram.ui.Components.chat.layouts.ChatActivityFadeView;
+import org.telegram.ui.Components.RecyclerAnimationScrollHelper;
 import org.telegram.ui.Components.blur3.BlurredBackgroundDrawableViewFactory;
 import org.telegram.ui.Components.blur3.DownscaleScrollableNoiseSuppressor;
 import org.telegram.ui.Components.blur3.RenderNodeWithHash;
@@ -85,6 +86,7 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
     private boolean scrollButtonVisible;
 
     private ChatActivityFadeView chatActivityFadeView;
+    private RecyclerAnimationScrollHelper chatScrollHelper;
     private TextView emptyView;
 
     /* Blur3 */
@@ -215,6 +217,9 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
         listView.setAdapter(adapter);
         listView.setClipToPadding(false);
         listView.setPadding(0, statusBarHeight + ActionBar.getCurrentActionBarHeight() + AndroidUtilities.dp(4), 0, navigationBarHeight + additionNavigationBarHeight + AndroidUtilities.dp(4));
+        LinearLayoutManager layoutManager = (LinearLayoutManager) listView.getLayoutManager();
+        chatScrollHelper = new RecyclerAnimationScrollHelper(listView, layoutManager);
+        chatScrollHelper.setScrollDirection(RecyclerAnimationScrollHelper.SCROLL_DIRECTION_DOWN);
 
         listView.setOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
@@ -232,10 +237,7 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
                     }
                 }
 
-                int firstVisible = lm.findFirstVisibleItemPosition();
-                if (firstVisible <= 2) {
-                    markFirstMessagesRead();
-                }
+                markVisibleMessagesRead(lm);
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && scrollableViewNoiseSuppressor != null) {
                     scrollableViewNoiseSuppressor.onScrolled(dx, dy);
@@ -606,9 +608,7 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
             newMessagesArrived = false;
             listView.post(() -> {
                 if (adapter.getItemCount() > 0) {
-                    ((LinearLayoutManager) listView.getLayoutManager()).scrollToPositionWithOffset(
-                        adapter.getItemCount() - 1, Integer.MIN_VALUE
-                    );
+                    chatScrollHelper.scrollToPosition(adapter.getItemCount() - 1, Integer.MIN_VALUE, false, false);
                 }
             });
         } else {
@@ -618,7 +618,7 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
             if (lm != null) {
                 if (wasNew && isNearBottom) {
                     if (adapter.getItemCount() > 0) {
-                        lm.scrollToPositionWithOffset(adapter.getItemCount() - 1, Integer.MIN_VALUE);
+                        chatScrollHelper.scrollToPosition(adapter.getItemCount() - 1, Integer.MIN_VALUE, false, false);
                     }
                 } else if (anchorKey != null) {
                     int newPos = -1;
@@ -644,8 +644,11 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
         }
 
         if (isNearBottom) {
-            setScrollButtonVisible(false);
             unreadCount = 0;
+            if (scrollToBottomButton != null) {
+                scrollToBottomButton.setCount(0, true);
+            }
+            setScrollButtonVisible(false);
         } else {
             setScrollButtonVisible(true);
             if (unreadCount > 0) {
@@ -692,13 +695,38 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
         unreadCount = 0;
         updateScrollToBottomButton();
         if (adapter.getItemCount() > 0) {
-            ((LinearLayoutManager) listView.getLayoutManager()).scrollToPositionWithOffset(
-                adapter.getItemCount() - 1, Integer.MIN_VALUE
-            );
+            chatScrollHelper.scrollToPosition(adapter.getItemCount() - 1, Integer.MIN_VALUE, false, true);
         }
     }
 
-    private void markFirstMessagesRead() {
+    private void markVisibleMessagesRead(LinearLayoutManager lm) {
+        HashMap<Long, Integer> maxIdsByDialog = new HashMap<>();
+        int firstVisible = lm.findFirstVisibleItemPosition();
+        int lastVisible = lm.findLastVisibleItemPosition();
+        for (int i = firstVisible; i <= lastVisible && i < feedItems.size() && i >= 0; i++) {
+            MessageObject msg = feedItems.get(i);
+            long dialogId = msg.getDialogId();
+            int mid = msg.getId();
+            Integer existing = maxIdsByDialog.get(dialogId);
+            if (existing == null || mid > existing) {
+                maxIdsByDialog.put(dialogId, mid);
+            }
+        }
+        MessagesController mc = MessagesController.getInstance(currentAccount);
+        for (HashMap.Entry<Long, Integer> entry : maxIdsByDialog.entrySet()) {
+            long dialogId = entry.getKey();
+            int maxId = entry.getValue();
+            MessageObject msg = null;
+            for (int i = 0; i < feedItems.size(); i++) {
+                MessageObject m = feedItems.get(i);
+                if (m.getDialogId() == dialogId && m.getId() == maxId) {
+                    msg = m;
+                    break;
+                }
+            }
+            int maxDate = msg != null ? msg.messageOwner.date : 0;
+            mc.markDialogAsRead(dialogId, maxId, maxId, maxDate, false, 0, 0, true, 0);
+        }
     }
 
     @Override
