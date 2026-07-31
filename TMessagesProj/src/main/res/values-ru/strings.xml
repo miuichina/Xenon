@@ -437,5 +437,18 @@
     <string name="XrayProxyImporting">Импорт профилей…</string>
     <string name="XrayProxyImportSuccess">Успешно импортировано профилей: %d</string>
     <string name="XrayProxyImportNoValid">Валидные конфигурации прокси не найдены.</string>
+    <string name="XrayProxySubscriptions">Подписки</string>
+    <string name="XrayProxySubscriptionsHint">Управление удалёнными URL-подписками. Каждая подписка загружается и парсится построчно в профили прокси. Нажмите на подписку, чтобы обновить.</string>
+    <string name="XrayProxySubscriptionsList">Сохранённые подписки</string>
+    <string name="XrayProxySubscriptionsListHint">Долгое нажатие на подписку удаляет её вместе с её профилями.</string>
+    <string name="XrayProxySubscriptionsEmpty">Подписки ещё не добавлены.</string>
+    <string name="XrayProxyAddSubscription">Добавить подписку</string>
+    <string name="XrayProxySubscriptionUrlHint">URL подписки (http/https)</string>
+    <string name="XrayProxySubscriptionNameHint">Имя (необязательно)</string>
+    <string name="XrayProxySubscriptionNotSynced">Ещё не синхронизировано</string>
+    <string name="XrayProxySubscriptionUpdated">Обновлено: %1$s</string>
+    <string name="XrayProxySubscriptionProfiles">Профилей: %d</string>
+    <string name="XrayProxySubscriptionSynced">Синхронизировано: профилей: %d.</string>
+    <string name="XrayProxySubscriptionDeleteConfirm">Удалить эту подписку и все её профили?</string>
     <string name="XrayVpnPermissionDenied">Для включения режима VPN требуется разрешение системы.</string>
 </resources>

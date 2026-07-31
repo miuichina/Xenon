@@ -71,13 +71,21 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
     private final LongSparseArray<MessageObject.GroupedMessages> feedGroups = new LongSparseArray<>();
 
     private final HashMap<Integer, Long> classGuidToDialog = new HashMap<>();
+    private final HashMap<Long, ChannelState> channelStates = new HashMap<>();
 
     private int pendingLoads;
     private boolean loading;
     private boolean hasMoreToLoad = true;
     private boolean scrollToBottomPending;
     private boolean newMessagesArrived;
-    private int lastProcessedCount;
+
+    private static final class ChannelState {
+        final long dialogId;
+        int minId = Integer.MAX_VALUE;
+        boolean hasMore = true;
+        boolean loading;
+        ChannelState(long dialogId) { this.dialogId = dialogId; }
+    }
 
     private ChatActivityBlurredRoundPageDownButton scrollToBottomButton;
     private int unreadCount;
@@ -232,11 +240,6 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
                     }
                 }
 
-                int firstVisible = lm.findFirstVisibleItemPosition();
-                if (firstVisible <= 2) {
-                    markFirstMessagesRead();
-                }
-
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && scrollableViewNoiseSuppressor != null) {
                     scrollableViewNoiseSuppressor.onScrolled(dx, dy);
                     blur3_InvalidateBlur();
@@ -244,6 +247,13 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
 
                 if (wasNearBottom != isNearBottom) {
                     updateScrollToBottomButton();
+                }
+            }
+
+            @Override
+            public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
+                if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                    markVisibleChannelsRead();
                 }
             }
         });
@@ -390,65 +400,46 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
 
         if (channelDialogs.isEmpty()) {
             loading = false;
+            hasMoreToLoad = false;
             return;
         }
 
+        channelStates.clear();
         pendingLoads = 0;
 
         for (TLRPC.Dialog dialog : channelDialogs) {
             long dialogId = dialog.id;
-            int classGuid = ConnectionsManager.generateClassGuid();
-            classGuidToDialog.put(classGuid, dialogId);
-
-            getMessagesStorage().getMessages(
-                dialogId, 0, false, MESSAGES_PER_CHANNEL,
-                0, 0, 0, classGuid, 0, 0, 0, 0, true, false, null
-            );
-            pendingLoads++;
+            ChannelState state = new ChannelState(dialogId);
+            channelStates.put(dialogId, state);
+            requestMessages(state, 0);
         }
+    }
 
-        if (pendingLoads == 0) {
-            loading = false;
-        }
+    private void requestMessages(ChannelState state, int maxId) {
+        int classGuid = ConnectionsManager.generateClassGuid();
+        classGuidToDialog.put(classGuid, state.dialogId);
+        state.loading = true;
+        getMessagesStorage().getMessages(
+            state.dialogId, 0, false, MESSAGES_PER_CHANNEL,
+            maxId, 0, 0, classGuid, 0, 0, 0, 0, true, false, null
+        );
+        pendingLoads++;
     }
 
     private void loadMoreMessages() {
         if (loading || feedItems.isEmpty() || !hasMoreToLoad) return;
-        loading = true;
 
-        HashMap<Long, Integer> oldestPerChannel = new HashMap<>();
-
-        for (MessageObject msg : feedItems) {
-            long dialogId = msg.getDialogId();
-            int mid = msg.getId();
-            Integer existing = oldestPerChannel.get(dialogId);
-            if (existing == null || mid < existing) {
-                oldestPerChannel.put(dialogId, mid);
-            }
+        int requested = 0;
+        for (ChannelState state : channelStates.values()) {
+            if (!state.hasMore || state.loading || state.minId == Integer.MAX_VALUE || state.minId <= 1) continue;
+            requestMessages(state, state.minId - 1);
+            requested++;
         }
 
-        int loaded = 0;
-        for (HashMap.Entry<Long, Integer> entry : oldestPerChannel.entrySet()) {
-            long dialogId = entry.getKey();
-            int oldestMid = entry.getValue();
-
-            if (oldestMid <= 1) continue;
-
-            int max_id = oldestMid - 1;
-            int classGuid = ConnectionsManager.generateClassGuid();
-            classGuidToDialog.put(classGuid, dialogId);
-
-            getMessagesStorage().getMessages(
-                dialogId, 0, false, MESSAGES_PER_CHANNEL,
-                max_id, 0, 0, classGuid, 0, 0, 0, 0, true, false, null
-            );
-            loaded++;
-        }
-
-        pendingLoads = loaded;
-        if (pendingLoads == 0) {
-            loading = false;
+        if (requested == 0) {
             hasMoreToLoad = false;
+        } else {
+            loading = true;
         }
     }
 
@@ -462,11 +453,25 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
             Long expectedDialog = classGuidToDialog.get(guid);
             if (expectedDialog == null || expectedDialog != dialogId) return;
 
+            boolean isEnd = (Boolean) args[9];
             ArrayList<MessageObject> messages = (ArrayList<MessageObject>) args[2];
             if (messages != null && !messages.isEmpty()) {
                 for (MessageObject msg : messages) {
                     if (msg.messageOwner != null && msg.messageOwner.date > 0) {
                         allMessages.add(msg);
+                    }
+                }
+            }
+
+            ChannelState state = channelStates.get(dialogId);
+            if (state != null) {
+                state.loading = false;
+                state.hasMore = !isEnd && messages != null && !messages.isEmpty();
+                if (messages != null) {
+                    for (MessageObject msg : messages) {
+                        if (msg.messageOwner != null && msg.messageOwner.date > 0) {
+                            state.minId = Math.min(state.minId, msg.getId());
+                        }
                     }
                 }
             }
@@ -490,11 +495,17 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
             }
             boolean added = false;
             int addedCount = 0;
+            ChannelState state = channelStates.get(dialogId);
             for (MessageObject msg : messages) {
                 if (msg.messageOwner != null && msg.messageOwner.date > 0) {
                     allMessages.add(msg);
                     added = true;
                     addedCount++;
+                    if (state == null) {
+                        state = new ChannelState(dialogId);
+                        channelStates.put(dialogId, state);
+                    }
+                    state.minId = Math.min(state.minId, msg.getId());
                 }
             }
             if (added) {
@@ -575,12 +586,16 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
             }
         }
 
-        if (scrollToBottomPending) {
-            hasMoreToLoad = feedItems.size() > 0;
-        } else {
-            hasMoreToLoad = deduped.size() > lastProcessedCount;
+        hasMoreToLoad = false;
+        for (ChannelState s : channelStates.values()) {
+            if (s.hasMore) {
+                hasMoreToLoad = true;
+                break;
+            }
         }
-        lastProcessedCount = deduped.size();
+        if (feedItems.isEmpty()) {
+            hasMoreToLoad = false;
+        }
 
         adapter.notifyDataSetChanged();
 
@@ -597,6 +612,7 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
                         adapter.getItemCount() - 1, Integer.MIN_VALUE
                     );
                 }
+                markVisibleChannelsRead();
             });
         } else {
             boolean wasNew = newMessagesArrived;
@@ -685,7 +701,47 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
         }
     }
 
-    private void markFirstMessagesRead() {
+    private void markVisibleChannelsRead() {
+        if (listView == null || listView.getLayoutManager() == null || feedItems.isEmpty()) return;
+        LinearLayoutManager lm = (LinearLayoutManager) listView.getLayoutManager();
+        int first = lm.findFirstVisibleItemPosition();
+        int last = lm.findLastVisibleItemPosition();
+        if (first == RecyclerView.NO_POSITION || last == RecyclerView.NO_POSITION) return;
+
+        HashMap<Long, Integer> maxIdPerChannel = new HashMap<>();
+        HashMap<Long, Integer> maxDatePerChannel = new HashMap<>();
+        for (int p = first; p <= last; p++) {
+            if (p < 0 || p >= feedItems.size()) continue;
+            MessageObject msg = feedItems.get(p);
+            long did = msg.getDialogId();
+            int id = msg.getId();
+            Integer cur = maxIdPerChannel.get(did);
+            if (cur == null || id > cur) {
+                maxIdPerChannel.put(did, id);
+                maxDatePerChannel.put(did, msg.messageOwner != null ? msg.messageOwner.date : 0);
+            }
+        }
+
+        MessagesController mc = MessagesController.getInstance(currentAccount);
+        boolean changed = false;
+        for (HashMap.Entry<Long, Integer> e : maxIdPerChannel.entrySet()) {
+            long did = e.getKey();
+            int maxId = e.getValue();
+            if (maxId <= 0) continue;
+            TLRPC.Dialog d = mc.getDialog(did);
+            int readMax = d != null ? d.read_inbox_max_id : 0;
+            if (maxId <= readMax) continue;
+            for (MessageObject m : allMessages) {
+                if (m.getDialogId() == did && m.getId() <= maxId && m.isUnread()) {
+                    m.setIsRead();
+                    changed = true;
+                }
+            }
+            mc.markDialogAsRead(did, maxId, 0, maxDatePerChannel.get(did), false, 0, 0, false, 0);
+        }
+        if (changed) {
+            adapter.notifyItemRangeChanged(first, last - first + 1);
+        }
     }
 
     @Override
@@ -780,11 +836,24 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
 
             msg.forceAvatar = true;
 
+            long dialogId = msg.getDialogId();
+            boolean samePrev = position > 0 && feedItems.get(position - 1).getDialogId() == dialogId;
+            boolean sameNext = position < feedItems.size() - 1 && feedItems.get(position + 1).getDialogId() == dialogId;
+
+            boolean pinnedTop = samePrev;
+            boolean pinnedBottom = sameNext;
+            boolean firstInChat = !samePrev;
+            boolean lastInChatList = position == feedItems.size() - 1;
+
             MessageObject.GroupedMessages group = null;
             if (msg.hasValidGroupId()) {
                 group = feedGroups.get(msg.getGroupIdForUse());
+                if (group != null) {
+                    pinnedTop = false;
+                    pinnedBottom = false;
+                }
             }
-            cell.setMessageObject(msg, group, false, false, true, false);
+            cell.setMessageObject(msg, group, pinnedBottom, pinnedTop, firstInChat, lastInChatList);
         }
 
         @Override

@@ -11338,5 +11338,18 @@
     <string name="XrayProxyImporting">Importing profiles…</string>
     <string name="XrayProxyImportSuccess">Successfully imported %d profiles.</string>
     <string name="XrayProxyImportNoValid">No valid proxy configurations found.</string>
+    <string name="XrayProxySubscriptions">Subscriptions</string>
+    <string name="XrayProxySubscriptionsHint">Manage remote subscription URLs. Each subscription is fetched and parsed line-by-line into proxy profiles. Tap a subscription to refresh.</string>
+    <string name="XrayProxySubscriptionsList">Saved subscriptions</string>
+    <string name="XrayProxySubscriptionsListHint">Long-press a subscription to delete it and its profiles.</string>
+    <string name="XrayProxySubscriptionsEmpty">No subscriptions added yet.</string>
+    <string name="XrayProxyAddSubscription">Add subscription</string>
+    <string name="XrayProxySubscriptionUrlHint">Subscription URL (http/https)</string>
+    <string name="XrayProxySubscriptionNameHint">Name (optional)</string>
+    <string name="XrayProxySubscriptionNotSynced">Not synced yet</string>
+    <string name="XrayProxySubscriptionUpdated">Updated %1$s</string>
+    <string name="XrayProxySubscriptionProfiles">%d profiles</string>
+    <string name="XrayProxySubscriptionSynced">Synced: %d profiles.</string>
+    <string name="XrayProxySubscriptionDeleteConfirm">Delete this subscription and all its profiles?</string>
     <string name="XrayVpnPermissionDenied">VPN permission is required to enable VPN mode.</string>
 </resources>
