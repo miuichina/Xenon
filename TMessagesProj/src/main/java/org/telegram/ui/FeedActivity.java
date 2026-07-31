@@ -508,8 +508,21 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
                 }
             }
         } else if (id == NotificationCenter.updateInterfaces) {
-            if (adapter != null && listView != null) {
-                adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+            if (listView != null) {
+                int count = listView.getChildCount();
+                for (int a = 0; a < count; a++) {
+                    View child = listView.getChildAt(a);
+                    if (child instanceof ChatMessageCell) {
+                        ChatMessageCell cell = (ChatMessageCell) child;
+                        MessageObject msg = cell.getMessageObject();
+                        if (msg != null) {
+                            cell.setIsUpdating(true);
+                            MessageObject.GroupedMessages group = msg.hasValidGroupId() ? feedGroups.get(msg.getGroupIdForUse()) : null;
+                            cell.setMessageObject(msg, group, cell.isPinnedBottom(), cell.isPinnedTop(), cell.isFirstInChat(), cell.isLastInChatList());
+                            cell.setIsUpdating(false);
+                        }
+                    }
+                }
             }
         }
     }
