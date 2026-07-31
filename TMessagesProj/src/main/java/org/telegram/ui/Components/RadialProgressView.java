@@ -190,7 +190,7 @@ public class RadialProgressView extends View {
             targetScale = 0f;
         } else {
             float absArc = Math.abs(currentCircleLength);
-            targetScale = (absArc > 0.90f * 360) ? 0f : 1f;
+            targetScale = (absArc > 0.85f * 360) ? 0f : 1f;
         }
         wavyAmplitudeSmooth += (targetScale - wavyAmplitudeSmooth) * Math.min(1f, dt / 80f);
 

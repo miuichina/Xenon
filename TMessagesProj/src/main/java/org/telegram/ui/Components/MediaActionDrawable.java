@@ -1016,7 +1016,7 @@ public class MediaActionDrawable extends Drawable {
         wavePhaseAngle += (dt * NekoConfig.wavySpeed) / 1000f;
         wavePhaseAngle %= 360f;
 
-        float targetScale = (downloadProgress < 0.01f || (downloadProgress > 0.03f && downloadProgress < 0.90f)) ? 1f : 0f;
+        float targetScale = (downloadProgress < 0.01f || (downloadProgress > 0.03f && downloadProgress < 0.85f)) ? 1f : 0f;
         if (downloadProgress >= 0.01f && downloadProgress <= 0.03f) {
             wavyAmplitudeSmooth = 0f;
         } else {

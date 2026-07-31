@@ -15,7 +15,6 @@ import androidx.annotation.RequiresApi;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.ui.ActionBar.BottomSheet;
-import org.telegram.ui.Components.CubicBezierInterpolator;
 
 @RequiresApi(api = Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
 public final class BottomSheetPredictiveBack {
@@ -34,7 +33,6 @@ public final class BottomSheetPredictiveBack {
         private float maxTranslateY = 0f;
         private float lastP = 0f;
         private float currentEased = 0f;
-        private boolean allowDismiss = true;
 
         Callback(BottomSheet sheet) {
             this.sheet = sheet;
@@ -50,14 +48,6 @@ public final class BottomSheetPredictiveBack {
             isButton = false;
             lastP = 0f;
             currentEased = 0f;
-            try {
-                java.lang.reflect.Method m = BottomSheet.class.getDeclaredMethod("canDismissWithSwipe");
-                m.setAccessible(true);
-                allowDismiss = (boolean) m.invoke(sheet);
-            } catch (Exception e) {
-                allowDismiss = true;
-            }
-            if (!allowDismiss) return;
             View cv = sheet.getSheetContainer();
             if (cv == null) return;
             maxTranslateY = cv.getHeight()
@@ -68,7 +58,6 @@ public final class BottomSheetPredictiveBack {
 
         @Override
         public void onBackProgressed(BackEvent backEvent) {
-            if (!allowDismiss) return;
             if (!attached) {
                 if (backEvent.getProgress() <= LAZY_START) return;
                 attached = true;
@@ -92,51 +81,45 @@ public final class BottomSheetPredictiveBack {
         @Override
         public void onBackCancelled() {
             isButton = false;
-            if (!allowDismiss || !attached) {
+            if (!attached) {
                 return;
             }
-            runFinishAnim(true);
+            runFinishAnim();
         }
 
         @Override
         public void onBackInvoked() {
-            if (!allowDismiss) {
-                return;
-            }
             if (!attached || isButton) {
-                sheet.dismiss();
+                sheet.onBackPressed();
                 return;
             }
-            runFinishAnim(false);
+            sheet.onBackPressed();
+            if (!sheet.isDismissed()) {
+                runFinishAnim();
+            }
         }
 
-        private void runFinishAnim(boolean cancel) {
+        private void runFinishAnim() {
             View cv = sheet.getSheetContainer();
             if (cv == null) {
-                if (!cancel) sheet.dismiss();
                 return;
             }
             float startTranslation = cv.getTranslationY();
-            float endTranslation = cancel ? 0f : (maxTranslateY > 0 ? maxTranslateY : cv.getHeight() + AndroidUtilities.dp(10));
             float startBlur = currentEased;
-            float endBlur = cancel ? 0f : 1f;
 
             runningAnim = new AnimatorSet();
             runningAnim.playTogether(
-                    ObjectAnimator.ofFloat(cv, View.TRANSLATION_Y, startTranslation, endTranslation)
+                    ObjectAnimator.ofFloat(cv, View.TRANSLATION_Y, startTranslation, 0f)
             );
-            ValueAnimator blurAnim = ValueAnimator.ofFloat(startBlur, endBlur);
+            ValueAnimator blurAnim = ValueAnimator.ofFloat(startBlur, 0f);
             blurAnim.addUpdateListener(a -> sheet.setPredictiveBackProgress((float) a.getAnimatedValue()));
             runningAnim.playTogether(blurAnim);
-            runningAnim.setDuration(cancel ? 200 : 250);
-            runningAnim.setInterpolator(cancel ? new DecelerateInterpolator() : CubicBezierInterpolator.EASE_OUT);
+            runningAnim.setDuration(200);
+            runningAnim.setInterpolator(new DecelerateInterpolator());
             runningAnim.addListener(new AnimatorListenerAdapter() {
                 @Override
                 public void onAnimationEnd(Animator animation) {
                     runningAnim = null;
-                    if (!cancel) {
-                        sheet.predictiveBackFinish();
-                    }
                 }
             });
             runningAnim.start();

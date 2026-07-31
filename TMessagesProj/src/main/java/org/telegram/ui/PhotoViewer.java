@@ -2558,7 +2558,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             wavePhaseAngle += (dt * NekoConfig.wavySpeed) / 1000f;
             wavePhaseAngle %= 360f;
 
-            float targetScale = (animatedProgressValue > 0.05f && animatedProgressValue < 0.90f) ? 1f : 0f;
+            float targetScale = (animatedProgressValue > 0.05f && animatedProgressValue < 0.85f) ? 1f : 0f;
             wavyAmplitudeSmooth += (targetScale - wavyAmplitudeSmooth) * Math.min(1f, dt / 80f);
 
             float progressFade = (animatedProgressValue > 0.90f) ? Math.max(0f, (1f - animatedProgressValue) / 0.05f) : 1f;
