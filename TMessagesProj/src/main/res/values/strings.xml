@@ -10538,6 +10538,7 @@
     <string name="MainTabsResetHint">Restore default layout</string>
     <string name="MainTabsSettingsAlwaysEnabled">This tab is always enabled</string>
     <string name="MainTabsFeed">Feed</string>
+    <string name="FeedChannelsCount">Total channels: %d</string>
     <string name="MainTabsSettings">Settings</string>
     <string name="SwitchThemeToDay">Day Mode</string>
     <string name="SwitchThemeToNight">Night Mode</string>

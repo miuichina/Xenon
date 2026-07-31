@@ -10,6 +10,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -38,6 +39,7 @@ import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.ChatMessageCell;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.CircularProgressDrawable;
 import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.chat.ViewPositionWatcher;
 import org.telegram.ui.Components.chat.buttons.ChatActivityBlurredRoundPageDownButton;
@@ -84,6 +86,9 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
     private int unreadCount;
     private boolean isNearBottom = true;
     private boolean scrollButtonVisible;
+    private int channelsCount;
+    private ImageView centerProgressBar;
+    private View progressOverlay;
 
     private ChatActivityFadeView chatActivityFadeView;
     private RecyclerAnimationScrollHelper chatScrollHelper;
@@ -196,9 +201,10 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
 
     @Override
     public View createView(Context context) {
-        statusBarHeight = AndroidUtilities.getStatusBarHeight(context);
-        actionBar.setAllowOverlayTitle(true);
+statusBarHeight = AndroidUtilities.getStatusBarHeight(context);
+actionBar.setAllowOverlayTitle(true);
         actionBar.setTitle(LocaleController.getString(R.string.MainTabsFeed));
+        actionBar.setSubtitle("");
 
         FrameLayout contentView = new FrameLayout(context) {
             @Override
@@ -269,6 +275,12 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
         });
 
         contentView.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+
+        centerProgressBar = new ImageView(context);
+        CircularProgressDrawable centerCpd = new CircularProgressDrawable(AndroidUtilities.dp(48), AndroidUtilities.dp(4), Theme.getColor(Theme.key_actionBarDefaultTitle));
+        centerProgressBar.setImageDrawable(centerCpd);
+        centerProgressBar.setVisibility(View.GONE);
+        contentView.addView(centerProgressBar, LayoutHelper.createFrame(48, 48, Gravity.CENTER));
 
         emptyView = new TextView(context);
         emptyView.setText(LocaleController.getString(R.string.MainTabsFeed));
@@ -366,11 +378,13 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
         loading = true;
         hasMoreToLoad = true;
         scrollToBottomPending = true;
+        if (centerProgressBar != null) centerProgressBar.setVisibility(View.VISIBLE);
 
         MessagesController messagesController = MessagesController.getInstance(currentAccount);
         ArrayList<TLRPC.Dialog> channelDialogs = new ArrayList<>();
-        for (TLRPC.Dialog d : messagesController.dialogsChannelsOnly) {
-            if (d.id < 0) {
+        ArrayList<TLRPC.Dialog> all = messagesController.getAllDialogs();
+        for (TLRPC.Dialog d : all) {
+            if (d.id < 0 && DialogObject.isChannel(d)) {
                 TLRPC.Chat chat = messagesController.getChat(-d.id);
                 if (chat != null && !chat.megagroup) {
                     channelDialogs.add(d);
@@ -379,19 +393,8 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
         }
 
         if (channelDialogs.isEmpty()) {
-            ArrayList<TLRPC.Dialog> all = messagesController.getAllDialogs();
-            for (TLRPC.Dialog d : all) {
-                if (d.id < 0 && DialogObject.isChannel(d)) {
-                    TLRPC.Chat chat = messagesController.getChat(-d.id);
-                    if (chat != null && !chat.megagroup) {
-                        channelDialogs.add(d);
-                    }
-                }
-            }
-        }
-
-        if (channelDialogs.isEmpty()) {
             loading = false;
+            if (centerProgressBar != null) centerProgressBar.setVisibility(View.GONE);
             return;
         }
 
@@ -429,6 +432,18 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
             }
         }
 
+        ArrayList<TLRPC.Dialog> allDialogs = MessagesController.getInstance(currentAccount).getAllDialogs();
+        for (TLRPC.Dialog d : allDialogs) {
+            if (d.id < 0 && DialogObject.isChannel(d)) {
+                TLRPC.Chat chat = MessagesController.getInstance(currentAccount).getChat(-d.id);
+                if (chat != null && !chat.megagroup) {
+                    if (!oldestPerChannel.containsKey(d.id)) {
+                        oldestPerChannel.put(d.id, Integer.MAX_VALUE);
+                    }
+                }
+            }
+        }
+
         int loaded = 0;
         for (HashMap.Entry<Long, Integer> entry : oldestPerChannel.entrySet()) {
             long dialogId = entry.getKey();
@@ -436,7 +451,7 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
 
             if (oldestMid <= 1) continue;
 
-            int max_id = oldestMid - 1;
+            int max_id = oldestMid == Integer.MAX_VALUE ? 0 : oldestMid - 1;
             int classGuid = ConnectionsManager.generateClassGuid();
             classGuidToDialog.put(classGuid, dialogId);
 
@@ -531,6 +546,7 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
 
     private void processLoadedMessages() {
         loading = false;
+        if (progressBar != null) progressBar.setVisibility(View.GONE);
 
         String anchorKey = null;
         int anchorOffset = 0;
@@ -597,10 +613,28 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
         }
         lastProcessedCount = deduped.size();
 
-        adapter.notifyDataSetChanged();
+        int oldSize = adapter.getItemCount();
+        int newSize = feedItems.size();
+        if (newSize > oldSize) {
+            adapter.notifyItemRangeInserted(oldSize, newSize - oldSize);
+        } else if (newSize < oldSize) {
+            adapter.notifyItemRangeRemoved(newSize, oldSize - newSize);
+        } else {
+            adapter.notifyDataSetChanged();
+        }
+
+        HashSet<Long> uniqueDialogs = new HashSet<>();
+        for (MessageObject msg : feedItems) {
+            uniqueDialogs.add(msg.getDialogId());
+        }
+        channelsCount = uniqueDialogs.size();
+        actionBar.setSubtitle(LocaleController.formatString("FeedChannelsCount", R.string.FeedChannelsCount, channelsCount));
 
         if (emptyView != null) {
             emptyView.setVisibility(feedItems.isEmpty() ? View.VISIBLE : View.GONE);
+        }
+        if (centerProgressBar != null && !feedItems.isEmpty()) {
+            centerProgressBar.setVisibility(View.GONE);
         }
 
         if (scrollToBottomPending) {
