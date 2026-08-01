@@ -3746,8 +3746,6 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                 if (duration == C.TIME_UNSET) {
                     duration = 0;
                 }
-            } else if (isGifControllable()) {
-                duration = getVideoDuration();
             } else if (photoViewerWebView != null && photoViewerWebView.isControllable()) {
                 duration = photoViewerWebView.getVideoDuration();
             } else {
@@ -12387,7 +12385,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
     private boolean wasCountViewShown;
 
     public void switchToEditMode(final int mode) {
-        if (currentEditMode == mode || (isCurrentVideo && photoProgressViews[0].backgroundState != 3) || (!isCurrentVideo && centerImage.getBitmap() == null) || changeModeAnimation != null || imageMoveAnimation != null || isCaptionOpen()) {
+        if (currentEditMode == mode || (isCurrentVideo && photoProgressViews[0].backgroundState != 3) && !isCurrentVideo && (centerImage.getBitmap() == null || photoProgressViews[0].backgroundState != -1) || changeModeAnimation != null || imageMoveAnimation != null || isCaptionOpen()) {
             return;
         }
         if (placeProvider != null && (currentEditMode == EDIT_MODE_NONE || mode == EDIT_MODE_NONE)) {
@@ -14964,9 +14962,6 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                 if (isPlaying && videoPlayer == null && (photoViewerWebView == null || !photoViewerWebView.isControllable())) {
                     isPlaying = false;
                     AndroidUtilities.cancelRunOnUIThread(updateProgressRunnable);
-                }
-                if (videoPlayer == null && (photoViewerWebView == null || !photoViewerWebView.isControllable())) {
-                    setVideoPlayerControlVisible(false, true);
                 }
             } else if (gifSetupRetries < 10) {
                 gifSetupRetries++;
@@ -21866,7 +21861,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             paintItem.setColorFilter(null);
             AndroidUtilities.updateViewVisibilityAnimated(muteButton, false, 1f, true);
         } else {
-            showVideoTimeline(isCurrentVideo, true);
+            showVideoTimeline(true, true);
             videoAvatarTooltip.setVisibility(View.GONE);
             cropItem.setVisibility(View.VISIBLE);
             cropItem.setTag(1);
@@ -21874,7 +21869,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             tuneItem.setTag(1);
             paintItem.setVisibility(View.VISIBLE);
             paintItem.setTag(1);
-            AndroidUtilities.updateViewVisibilityAnimated(muteButton, isCurrentVideo, 1f, true);
+            AndroidUtilities.updateViewVisibilityAnimated(muteButton, true, 1f, true);
         }
     }
 
