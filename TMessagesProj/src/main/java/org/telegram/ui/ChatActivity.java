@@ -47699,6 +47699,10 @@ final BlurredBackgroundDrawable topPanelLayoutBackground = glassBackgroundDrawab
         }
         fadeHeight += dp(36 + 7) * getHashtagTabsShownT();
 
+        if (NekoConfig.material3ChatHeaders) {
+            fadeHeight += dp(4);
+        }
+
         chatActivityFadeView.setFadeZoneTop((int) fadeHeight);
     }
 
