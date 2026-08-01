@@ -37,6 +37,7 @@ public class CircularProgressDrawable extends Drawable {
 
     private long start = -1;
     private long lastUpdateTime;
+    private final float[] segment = new float[2];
 
     private float rotationOffset;
     private float indeterminateArcLength = 10;
@@ -88,9 +89,21 @@ public class CircularProgressDrawable extends Drawable {
 
     private float angleOffset;
     private final RectF bounds = new RectF();
+    private final RectF offBounds = new RectF();
 
     @Override
     public void draw(@NonNull Canvas canvas) {
+        if (!NekoConfig.wavyEnabled) {
+            if (start < 0) {
+                start = SystemClock.elapsedRealtime();
+            }
+            getSegments((SystemClock.elapsedRealtime() - start) % 5400, segment);
+            offBounds.set(bounds);
+            offBounds.inset(AndroidUtilities.dp(1f), AndroidUtilities.dp(1f));
+            canvas.drawArc(offBounds, angleOffset + segment[0], segment[1] - segment[0], false, paint);
+            invalidateSelf();
+            return;
+        }
         long now = SystemClock.elapsedRealtime();
         if (start < 0) {
             start = now;

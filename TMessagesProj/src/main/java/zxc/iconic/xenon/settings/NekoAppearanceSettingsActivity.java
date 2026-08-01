@@ -66,6 +66,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int material3SwitchesRow = rowId++;
     private final int m3SectionsStyleRow = rowId++;
     private final int material3ChatHeadersRow = rowId++;
+    private final int loadingIndicatorsRow = rowId++;
     private final int nonIslandTabBarsRow = rowId++;
     private final int nonIslandGlobalSearchRow = rowId++;
     private final int nonIslandChatElementsRow = rowId++;
@@ -145,6 +146,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         items.add(UItem.asCheck(material3SwitchesRow, "Switches").setChecked(NekoConfig.material3Switches).slug("material3Switches"));
         items.add(UItem.asCheck(m3SectionsStyleRow, "List items").setChecked(NekoConfig.m3SectionsStyle).slug("m3SectionsStyle"));
         items.add(UItem.asCheck(material3ChatHeadersRow, LocaleController.getString(R.string.InuMaterial3ChatHeaders)).setChecked(NekoConfig.material3ChatHeaders).slug("material3ChatHeaders"));
+        items.add(UItem.asCheck(loadingIndicatorsRow, "Loading indicators").setChecked(NekoConfig.wavyEnabled).slug("loadingIndicators"));
         items.add(UItem.asShadow(null));
 
         items.add(UItem.asHeader(LocaleController.getString(R.string.InuNonIslandUI)));
@@ -384,6 +386,11 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             NekoConfig.toggleMaterial3ChatHeaders();
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.material3ChatHeaders);
+            }
+        } else if (id == loadingIndicatorsRow) {
+            NekoConfig.toggleWavyEnabled();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.wavyEnabled);
             }
         } else if (id == hideFadeViewRow) {
             NekoConfig.toggleHideFadeView();

@@ -230,7 +230,7 @@ public class RadialProgress {
         long newTime = System.currentTimeMillis();
         long dt = newTime - lastUpdateTime;
         lastUpdateTime = newTime;
-        if (wavyProgress) {
+        if (wavyProgress && NekoConfig.wavyEnabled) {
             wavePhaseAngle += (dt * NekoConfig.wavySpeed) / 1000f;
             wavePhaseAngle %= 360f;
 
@@ -248,19 +248,23 @@ public class RadialProgress {
 
         if (progress) {
             if (animatedProgressValue != 1) {
-                if (currentProgress < 0.05f) {
-                    long kickElapsed = newTime - kickPhaseStartTime;
-                    if (kickElapsed >= KICK_INTERVAL) {
-                        kickPhaseStartTime = newTime;
-                        kickElapsed = 0;
+                if (NekoConfig.wavyEnabled) {
+                    if (currentProgress < 0.05f) {
+                        long kickElapsed = newTime - kickPhaseStartTime;
+                        if (kickElapsed >= KICK_INTERVAL) {
+                            kickPhaseStartTime = newTime;
+                            kickElapsed = 0;
+                        }
+                        float rotSpeed = 360 * dt / rotationSpeed;
+                        if (kickElapsed < KICK_DURATION) {
+                            rotSpeed *= KICK_SPEED_MULTIPLIER;
+                        }
+                        radOffset += rotSpeed;
+                    } else {
+                        radOffset = -90;
                     }
-                    float rotSpeed = 360 * dt / rotationSpeed;
-                    if (kickElapsed < KICK_DURATION) {
-                        rotSpeed *= KICK_SPEED_MULTIPLIER;
-                    }
-                    radOffset += rotSpeed;
                 } else {
-                    radOffset = -90;
+                    radOffset += 360 * dt / rotationSpeed;
                 }
                 float progressDiff = currentProgress - animationProgressStart;
                 if (progressDiff > 0) {
@@ -648,6 +652,7 @@ public class RadialProgress {
     private final Path roundRectProgressPath = new Path();
 
     private boolean wavyProgress;
+    private final RectF offOval = new RectF();
     private float wavePhaseAngle;
     private float wavyAmplitudeSmooth = 1f;
     private float bgThicknessScale;
@@ -718,7 +723,7 @@ public class RadialProgress {
     }
 
     private void drawArc(Canvas canvas, RectF oval, float startAngle, float sweepAngle, boolean useCenter, Paint paint) {
-        if (wavyProgress) {
+        if (wavyProgress && NekoConfig.wavyEnabled) {
             float inset = AndroidUtilities.dp(1f);
             RectF insetOval = new RectF(oval);
             insetOval.inset(inset, inset);
@@ -768,7 +773,13 @@ public class RadialProgress {
                 drawArc(canvas, oval, startAngle + 90, sweepAngle - 90, useCenter, paint);
             }
         } else {
-            canvas.drawArc(oval, startAngle, sweepAngle, useCenter, paint);
+            if (NekoConfig.wavyEnabled) {
+                canvas.drawArc(oval, startAngle, sweepAngle, useCenter, paint);
+            } else {
+                offOval.set(oval);
+                offOval.inset(AndroidUtilities.dp(1f), AndroidUtilities.dp(1f));
+                canvas.drawArc(offOval, startAngle, sweepAngle, useCenter, paint);
+            }
         }
     }
 

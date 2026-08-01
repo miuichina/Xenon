@@ -164,6 +164,78 @@ public class RadialProgressView extends View {
     }
 
     private void updateAnimation(long dt) {
+        if (!NekoConfig.wavyEnabled) {
+            radOffset += 360 * dt / rotationTime;
+            int count = (int) (radOffset / 360);
+            radOffset -= count * 360;
+
+            if (toCircle && toCircleProgress != 1f) {
+                toCircleProgress += 16 / 220f;
+                if (toCircleProgress > 1f) {
+                    toCircleProgress = 1f;
+                }
+            } else if (!toCircle && toCircleProgress != 0f) {
+                toCircleProgress -= 16 / 400f;
+                if (toCircleProgress < 0) {
+                    toCircleProgress = 0f;
+                }
+            }
+
+            if (noProgress) {
+                if (toCircleProgress == 0) {
+                    currentProgressTime += dt;
+                    if (currentProgressTime >= risingTime) {
+                        currentProgressTime = risingTime;
+                    }
+                    if (risingCircleLength) {
+                        currentCircleLength = 4 + 266 * accelerateInterpolator.getInterpolation(currentProgressTime / risingTime);
+                    } else {
+                        currentCircleLength = 4 - 270 * (1.0f - decelerateInterpolator.getInterpolation(currentProgressTime / risingTime));
+                    }
+
+                    if (currentProgressTime == risingTime) {
+                        if (risingCircleLength) {
+                            radOffset += 270;
+                            currentCircleLength = -266;
+                        }
+                        risingCircleLength = !risingCircleLength;
+                        currentProgressTime = 0;
+                    }
+                } else {
+                    if (risingCircleLength) {
+                        float old = currentCircleLength;
+                        currentCircleLength = 4 + 266 * accelerateInterpolator.getInterpolation(currentProgressTime / risingTime);
+                        currentCircleLength += 360 * toCircleProgress;
+                        float dx = old - currentCircleLength;
+                        if (dx > 0) {
+                            radOffset += old - currentCircleLength;
+                        }
+                    } else {
+                        float old = currentCircleLength;
+                        currentCircleLength = 4 - 270 * (1.0f - decelerateInterpolator.getInterpolation(currentProgressTime / risingTime));
+                        currentCircleLength -= 364 * toCircleProgress;
+                        float dx = old - currentCircleLength;
+                        if (dx > 0) {
+                            radOffset += old - currentCircleLength;
+                        }
+                    }
+                }
+            } else {
+                float progressDiff = currentProgress - progressAnimationStart;
+                if (progressDiff > 0) {
+                    progressTime += dt;
+                    if (progressTime >= 200.0f) {
+                        animatedProgress = progressAnimationStart = currentProgress;
+                        progressTime = 0;
+                    } else {
+                        animatedProgress = progressAnimationStart + progressDiff * AndroidUtilities.decelerateInterpolator.getInterpolation(progressTime / 200.0f);
+                    }
+                }
+                currentCircleLength = Math.max(4, 360 * animatedProgress);
+            }
+            invalidate();
+            return;
+        }
         if (rotationEnabled) {
             if (noProgress) {
                 long kickElapsed = lastAnimationNewTime - kickPhaseStartTime;
@@ -269,6 +341,15 @@ public class RadialProgressView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
+        if (!NekoConfig.wavyEnabled) {
+            int x = (getMeasuredWidth() - size) / 2;
+            int y = (getMeasuredHeight() - size) / 2;
+            cicleRect.set(x, y, x + size, y + size);
+            cicleRect.inset(AndroidUtilities.dp(1f), AndroidUtilities.dp(1f));
+            canvas.drawArc(cicleRect, radOffset, drawingCircleLenght = currentCircleLength, false, progressPaint);
+            updateAnimation();
+            return;
+        }
         int x = (getMeasuredWidth() - size) / 2;
         int y = (getMeasuredHeight() - size) / 2;
         cicleRect.set(x, y, x + size, y + size);
@@ -295,6 +376,13 @@ public class RadialProgressView extends View {
     }
 
     public void draw(Canvas canvas, float cx, float cy) {
+        if (!NekoConfig.wavyEnabled) {
+            cicleRect.set(cx - size / 2f, cy - size / 2f, cx + size / 2f, cy +  size / 2f);
+            cicleRect.inset(AndroidUtilities.dp(1f), AndroidUtilities.dp(1f));
+            canvas.drawArc(cicleRect, radOffset, drawingCircleLenght = currentCircleLength, false, progressPaint);
+            updateAnimation();
+            return;
+        }
         cicleRect.set(cx - size / 2f, cy - size / 2f, cx + size / 2f, cy +  size / 2f);
         float inset = AndroidUtilities.dp(1f);
         RectF insetOval = new RectF(cicleRect);

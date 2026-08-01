@@ -2604,16 +2604,20 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             }
             lastUpdateTime = newTime;
 
-            wavePhaseAngle += (dt * NekoConfig.wavySpeed) / 1000f;
-            wavePhaseAngle %= 360f;
+            if (NekoConfig.wavyEnabled) {
+                wavePhaseAngle += (dt * NekoConfig.wavySpeed) / 1000f;
+                wavePhaseAngle %= 360f;
 
-            float targetScale = (animatedProgressValue > 0.05f && animatedProgressValue < 0.85f) ? 1f : 0f;
-            wavyAmplitudeSmooth += (targetScale - wavyAmplitudeSmooth) * Math.min(1f, dt / 80f);
+                float targetScale = (animatedProgressValue > 0.05f && animatedProgressValue < 0.85f) ? 1f : 0f;
+                wavyAmplitudeSmooth += (targetScale - wavyAmplitudeSmooth) * Math.min(1f, dt / 80f);
 
-            float progressFade = (animatedProgressValue > 0.90f) ? Math.max(0f, (1f - animatedProgressValue) / 0.05f) : 1f;
-            bgThicknessScale += (progressFade - bgThicknessScale) * Math.min(1f, dt / 50f);
+                float progressFade = (animatedProgressValue > 0.90f) ? Math.max(0f, (1f - animatedProgressValue) / 0.05f) : 1f;
+                bgThicknessScale += (progressFade - bgThicknessScale) * Math.min(1f, dt / 50f);
 
-            radOffset = -90;
+                radOffset = -90;
+            } else {
+                radOffset += 360 * dt / 3000.0f;
+            }
 
             boolean postInvalidate = false;
 
@@ -2866,12 +2870,18 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             }
 
             if (backgroundState == PROGRESS_EMPTY || backgroundState == PROGRESS_CANCEL || previousBackgroundState == PROGRESS_EMPTY || previousBackgroundState == PROGRESS_CANCEL) {
-                int diff = (int) (dp(10) * scale);
                 if (previousBackgroundState != -2) {
                     progressPaint.setAlpha((int) (255 * animatedAlphaValue * alpha));
                 } else {
                     progressPaint.setAlpha((int) (255 * alpha));
                 }
+                if (!NekoConfig.wavyEnabled) {
+                    int diff = dp(5);
+                    progressRect.set(x + diff, y + diff, x + sizeScaled - diff, y + sizeScaled - diff);
+                    canvas.drawArc(progressRect, -90 + radOffset, Math.max(4, 360 * animatedProgressValue), false, progressPaint);
+                    updateAnimation(true);
+                } else {
+                int diff = (int) (dp(10) * scale);
                 progressRect.set(x + diff, y + diff, x + sizeScaled - diff, y + sizeScaled - diff);
                 float sweep = Math.max(4, 360 * animatedProgressValue);
                 float absSweep = Math.abs(sweep);
@@ -2897,6 +2907,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                 drawWavyArc(canvas, insetRect, radOffset, sweep, progressPaint);
                 progressPaint.setStrokeWidth(originalStrokeWidth);
                 updateAnimation(true);
+                }
             } else {
                 updateAnimation(false);
             }
