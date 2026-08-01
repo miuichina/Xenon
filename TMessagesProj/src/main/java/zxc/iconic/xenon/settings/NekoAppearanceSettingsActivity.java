@@ -16,6 +16,7 @@ import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.TextCheckCell;
+import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.EditTextBoldCursor;
 import org.telegram.ui.Components.URLSpanNoUnderline;
 import org.telegram.ui.Components.LayoutHelper;
@@ -64,6 +65,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int aospTransitionRow = rowId++;
     private final int material3SwitchesRow = rowId++;
     private final int m3SectionsStyleRow = rowId++;
+    private final int material3ChatHeadersRow = rowId++;
     private final int nonIslandTabBarsRow = rowId++;
     private final int nonIslandGlobalSearchRow = rowId++;
     private final int nonIslandChatElementsRow = rowId++;
@@ -142,6 +144,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         items.add(UItem.asHeader("Material Design 3"));
         items.add(UItem.asCheck(material3SwitchesRow, "Switches").setChecked(NekoConfig.material3Switches).slug("material3Switches"));
         items.add(UItem.asCheck(m3SectionsStyleRow, "List items").setChecked(NekoConfig.m3SectionsStyle).slug("m3SectionsStyle"));
+        items.add(UItem.asCheck(material3ChatHeadersRow, LocaleController.getString(R.string.InuMaterial3ChatHeaders)).setChecked(NekoConfig.material3ChatHeaders).slug("material3ChatHeaders"));
         items.add(UItem.asShadow(null));
 
         items.add(UItem.asHeader(LocaleController.getString(R.string.InuNonIslandUI)));
@@ -357,9 +360,30 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
                 ((TextCheckCell) view).setChecked(NekoConfig.nonIslandGlobalSearch);
             }
         } else if (id == nonIslandChatElementsRow) {
+            if (!NekoConfig.nonIslandChatElements && NekoConfig.material3ChatHeaders) {
+                showHeaderConflictBulletin(LocaleController.getString(R.string.InuMaterial3ChatHeaders), LocaleController.getString(R.string.InuNonIslandChatElements), () -> {
+                    NekoConfig.toggleMaterial3ChatHeaders();
+                    NekoConfig.toggleNonIslandChatElements();
+                    listView.adapter.update(true);
+                });
+                return;
+            }
             NekoConfig.toggleNonIslandChatElements();
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.nonIslandChatElements);
+            }
+        } else if (id == material3ChatHeadersRow) {
+            if (!NekoConfig.material3ChatHeaders && NekoConfig.nonIslandChatElements) {
+                showHeaderConflictBulletin(LocaleController.getString(R.string.InuNonIslandChatElements), LocaleController.getString(R.string.InuMaterial3ChatHeaders), () -> {
+                    NekoConfig.toggleNonIslandChatElements();
+                    NekoConfig.toggleMaterial3ChatHeaders();
+                    listView.adapter.update(true);
+                });
+                return;
+            }
+            NekoConfig.toggleMaterial3ChatHeaders();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.material3ChatHeaders);
             }
         } else if (id == hideFadeViewRow) {
             NekoConfig.toggleHideFadeView();
@@ -388,6 +412,13 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
                 ((TextCheckCell) view).setChecked(NekoConfig.roundedBulletin);
             }
         }
+    }
+
+    private void showHeaderConflictBulletin(String disableWhat, String enableWhat, Runnable onDisable) {
+        BulletinFactory.of(this).createSimpleBulletin(R.raw.chats_infotip,
+                LocaleController.formatString(R.string.InuMaterial3ChatHeadersConflict, disableWhat, enableWhat),
+                LocaleController.getString(R.string.Disable),
+                onDisable).show();
     }
 
     private void showEaseDialog() {

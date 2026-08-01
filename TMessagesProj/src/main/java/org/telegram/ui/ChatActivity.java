@@ -4337,6 +4337,7 @@ public class ChatActivity extends BaseFragment implements
             }
         };
         avatarContainer.setGlassMode();
+        avatarContainer.setM3HeaderMode(NekoConfig.material3ChatHeaders);
         avatarContainer.allowShorterStatus = true;
         avatarContainer.premiumIconHiddable = true;
         avatarContainer.allowDrawStories = dialog_id < 0 && !isTopic;
@@ -4767,6 +4768,7 @@ public class ChatActivity extends BaseFragment implements
         contentView.setOccupyStatusBar(!inBubbleMode && !isInsideContainer && !inPreviewMode);
 
 actionBar.inu_nonIsland = NonIslandHelper.chatElements();
+        actionBar.inu_m3ChatHeader = NekoConfig.material3ChatHeaders && !NonIslandHelper.chatElements();
         actionBar.setupGlass(
             glassBackgroundDrawableFactory,
             BlurredBackgroundProviderImpl.topPanelChatActivity(themeDelegate),

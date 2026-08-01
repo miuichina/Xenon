@@ -519,6 +519,8 @@
     <string name="ClearDatabaseDone">База данных очищена</string>
     <string name="ClearDatabaseFreeUp">Освободится %1$s (%2$d удалённых сообщений, %3$d редакций)</string>
     <string name="PushServiceText">Xenon запущен</string>
+    <string name="InuMaterial3ChatHeaders">Шапки чатов</string>
+    <string name="InuMaterial3ChatHeadersConflict">Отключите «%1$s», чтобы включить «%2$s»</string>
     <string name="InuNonIslandUI">Non-island интерфейс</string>
     <string name="InuNonIslandTabBars">Панели вкладок</string>
     <string name="InuNonIslandGlobalSearch">Глобальный поиск</string>

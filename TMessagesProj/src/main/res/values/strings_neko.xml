@@ -519,6 +519,8 @@
     <string name="InuMaterial3">Material Design 3</string>
     <string name="InuMaterial3Switches">Switches</string>
     <string name="InuMaterial3Sections">List items</string>
+    <string name="InuMaterial3ChatHeaders">Chat headers</string>
+    <string name="InuMaterial3ChatHeadersConflict">Disable \"%1$s\" to enable \"%2$s\"</string>
     <string name="SaveEditsHistory">Edit history</string>
     <string name="SaveEditsHistoryDesc">Save the original text when a message is edited</string>
     <string name="EditsHistoryMenuText">Edit history</string>

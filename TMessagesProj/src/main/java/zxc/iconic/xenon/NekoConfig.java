@@ -194,6 +194,7 @@ public class NekoConfig {
     public static String alternativeTransitionEase = "0.37,0.01,0.1,1";
     public static boolean material3Switches = false;
     public static boolean m3SectionsStyle = false;
+    public static boolean material3ChatHeaders = false;
     public static boolean aospTransition = false;
     public static boolean removeChatDelay = false;
     public static boolean showOnlineDotsInChat = false;
@@ -427,6 +428,7 @@ public class NekoConfig {
             alternativeTransitionEase = preferences.getString("alternativeTransitionEase", "0.37,0.01,0.1,1");
             material3Switches = preferences.getBoolean("material3Switches", false);
             m3SectionsStyle = preferences.getBoolean("m3SectionsStyle", false);
+            material3ChatHeaders = preferences.getBoolean("material3ChatHeaders", false);
             aospTransition = preferences.getBoolean("aospTransition", false);
             removeChatDelay = preferences.getBoolean("removeChatDelay", false);
             showOnlineDotsInChat = preferences.getBoolean("showOnlineDotsInChat", false);
@@ -703,6 +705,14 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("m3SectionsStyle", m3SectionsStyle);
+        editor.apply();
+    }
+
+    public static void toggleMaterial3ChatHeaders() {
+        material3ChatHeaders = !material3ChatHeaders;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("material3ChatHeaders", material3ChatHeaders);
         editor.apply();
     }
 
