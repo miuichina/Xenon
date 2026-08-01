@@ -78,6 +78,9 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int textAnimationSettingsRow = rowId++;
     private final int roundedBulletinRow = rowId++;
 
+    private final int forceBlurLiquidGlassRow = rowId++;
+    private final int liquidGlassRow = rowId++;
+
     @Override
     public boolean onFragmentCreate() {
         NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.emojiLoaded);
@@ -184,6 +187,13 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         items.add(UItem.asCheck(strokeOnViewsRow, LocaleController.getString(R.string.StrokeOnViews)).setChecked(NekoConfig.strokeOnViews).slug("strokeOnViews"));
         items.add(TextSettingsCellFactory.of(blurSettingsRow, LocaleController.getString(R.string.BlurSettings), "›").slug("blurSettings"));
         items.add(UItem.asShadow(null));
+
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            items.add(UItem.asHeader(LocaleController.getString(R.string.LiquidGlassSettings)));
+            items.add(UItem.asCheck(forceBlurLiquidGlassRow, LocaleController.getString(R.string.ForceBlurLiquidGlass)).setChecked(NekoConfig.forceBlurLiquidGlass).slug("forceBlurLiquidGlass"));
+            items.add(TextSettingsCellFactory.of(liquidGlassRow, LocaleController.getString(R.string.LiquidGlassTitle), LocaleController.getString(R.string.LiquidGlassSettingsDesc)).slug("liquidGlass"));
+            items.add(UItem.asShadow(null));
+        }
 
     }
 
@@ -418,6 +428,13 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.roundedBulletin);
             }
+        } else if (id == forceBlurLiquidGlassRow) {
+            NekoConfig.toggleForceBlurLiquidGlass();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.forceBlurLiquidGlass);
+            }
+        } else if (id == liquidGlassRow) {
+            presentFragment(new NekoLiquidGlassSettingsActivity());
         }
     }
 
