@@ -75,6 +75,7 @@ import me.vkryl.android.animator.FactorAnimator;
 import zxc.iconic.xenon.BackButtonMenuRecent;
 import zxc.iconic.xenon.NekoConfig;
 import zxc.iconic.xenon.helpers.PasscodeHelper;
+import zxc.iconic.xenon.settings.MainTabsSettingsActivity;
 
 public class MainTabsActivity extends ViewPagerActivity implements NotificationCenter.NotificationCenterDelegate, FactorAnimator.Target {
 
@@ -437,11 +438,24 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         final ShapeDrawable bg = Theme.createRoundRectDrawable(dp(28), getThemedColor(Theme.key_windowBackgroundWhite));
         bg.getPaint().setShadowLayer(dp(6), 0, dp(1), Theme.multAlpha(0xFF000000, 0.15f));
         o.setScrimViewBackground(bg);
+        o.addGapIf(o.getItemsCount() > 0);
+        o.add(R.drawable.msg_settings, getString(R.string.OpenBottomTabsSettings), () -> presentFragment(new MainTabsSettingsActivity()));
         o.show();
 
         MessagesController.getGlobalMainSettings().edit()
             .putInt("accountswitchhint", 3)
             .apply();
+    }
+
+    public void openTabSettingsPopup(View button) {
+        ItemOptions o = ItemOptions.makeOptions(this, button);
+        o.add(R.drawable.msg_settings, getString(R.string.OpenBottomTabsSettings), () -> presentFragment(new MainTabsSettingsActivity()));
+        o.setBlur(true);
+        o.translate(0, -dp(4));
+        final ShapeDrawable bg = Theme.createRoundRectDrawable(dp(28), getThemedColor(Theme.key_windowBackgroundWhite));
+        bg.getPaint().setShadowLayer(dp(6), 0, dp(1), Theme.multAlpha(0xFF000000, 0.15f));
+        o.setScrimViewBackground(bg);
+        o.show();
     }
 
     public LinearLayout accountView(int account, boolean selected) {
@@ -1050,6 +1064,11 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             } else if (type == MainTabsManager.TabType.CHATS) {
                 view.setOnLongClickListener(v -> {
                     BackButtonMenuRecent.show(currentAccount, this, v, null);
+                    return true;
+                });
+            } else if (type == MainTabsManager.TabType.CONTACTS || type == MainTabsManager.TabType.CALLS || type == MainTabsManager.TabType.FEED) {
+                view.setOnLongClickListener(v -> {
+                    openTabSettingsPopup(v);
                     return true;
                 });
             }
