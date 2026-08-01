@@ -67,12 +67,12 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int m3SectionsStyleRow = rowId++;
     private final int material3ChatHeadersRow = rowId++;
     private final int loadingIndicatorsRow = rowId++;
+    private final int messageBottomSheetRow = rowId++;
     private final int nonIslandTabBarsRow = rowId++;
     private final int nonIslandGlobalSearchRow = rowId++;
     private final int nonIslandChatElementsRow = rowId++;
     private final int hideFadeViewRow = rowId++;
     private final int disableGlassGlareRow = rowId++;
-    private final int disableScrimBlurRow = rowId++;
     private final int nonIslandBottomBarRow = rowId++;
 
     private final int textAnimationSettingsRow = rowId++;
@@ -150,6 +150,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         items.add(UItem.asCheck(m3SectionsStyleRow, "List items").setChecked(NekoConfig.m3SectionsStyle).slug("m3SectionsStyle"));
         items.add(UItem.asCheck(material3ChatHeadersRow, LocaleController.getString(R.string.InuMaterial3ChatHeaders)).setChecked(NekoConfig.material3ChatHeaders).slug("material3ChatHeaders"));
         items.add(UItem.asCheck(loadingIndicatorsRow, "Loading indicators").setChecked(NekoConfig.wavyEnabled).slug("loadingIndicators"));
+        items.add(UItem.asCheck(messageBottomSheetRow, LocaleController.getString(R.string.MessageMenuBottomSheet)).setChecked(NekoConfig.messageBottomSheet).slug("messageBottomSheet"));
         items.add(UItem.asShadow(null));
 
         items.add(UItem.asHeader(LocaleController.getString(R.string.InuNonIslandUI)));
@@ -158,7 +159,6 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         items.add(UItem.asCheck(nonIslandChatElementsRow, LocaleController.getString(R.string.InuNonIslandChatElements)).setChecked(NekoConfig.nonIslandChatElements).slug("nonIslandChatElements"));
         items.add(UItem.asCheck(hideFadeViewRow, LocaleController.getString(R.string.InuHideFadeView)).setChecked(NekoConfig.hideFadeView).slug("hideFadeView"));
         items.add(UItem.asCheck(disableGlassGlareRow, LocaleController.getString(R.string.InuDisableGlassGlare)).setChecked(NekoConfig.disableGlassGlare).slug("disableGlassGlare"));
-        items.add(UItem.asCheck(disableScrimBlurRow, LocaleController.getString(R.string.InuDisableScrimBlur)).setChecked(NekoConfig.disableScrimBlur).slug("disableScrimBlur"));
         items.add(UItem.asCheck(nonIslandBottomBarRow, LocaleController.getString(R.string.InuNonIslandBottomBar)).setChecked(NekoConfig.nonIslandBottomBar).slug("nonIslandBottomBar"));
         items.add(UItem.asShadow(LocaleController.getString(R.string.InuNonIslandHint)));
 
@@ -412,10 +412,10 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.disableGlassGlare);
             }
-        } else if (id == disableScrimBlurRow) {
-            NekoConfig.toggleDisableScrimBlur();
+        } else if (id == messageBottomSheetRow) {
+            NekoConfig.toggleMessageBottomSheet();
             if (view instanceof TextCheckCell) {
-                ((TextCheckCell) view).setChecked(NekoConfig.disableScrimBlur);
+                ((TextCheckCell) view).setChecked(NekoConfig.messageBottomSheet);
             }
         } else if (id == nonIslandBottomBarRow) {
             NekoConfig.toggleNonIslandBottomBar();

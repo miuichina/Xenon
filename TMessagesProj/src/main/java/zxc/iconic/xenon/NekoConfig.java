@@ -253,6 +253,7 @@ public class NekoConfig {
     public static boolean hideFadeView = false;
     public static boolean disableGlassGlare = true;
     public static boolean disableScrimBlur = false;
+    public static boolean messageBottomSheet = false;
     public static boolean nonIslandBottomBar = false;
     public static boolean wavyEnabled = true;
 
@@ -440,6 +441,7 @@ public class NekoConfig {
             hideFadeView = preferences.getBoolean("hideFadeView", false);
             disableGlassGlare = preferences.getBoolean("disableGlassGlare", true);
             disableScrimBlur = preferences.getBoolean("disableScrimBlur", false);
+            messageBottomSheet = preferences.getBoolean("messageBottomSheet", false);
             nonIslandBottomBar = preferences.getBoolean("nonIslandBottomBar", false);
             wavyEnabled = preferences.getBoolean("wavyEnabled", true);
 
@@ -1723,6 +1725,14 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("disableScrimBlur", disableScrimBlur);
+        editor.apply();
+    }
+
+    public static void toggleMessageBottomSheet() {
+        messageBottomSheet = !messageBottomSheet;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("messageBottomSheet", messageBottomSheet);
         editor.apply();
     }
 

@@ -1065,6 +1065,8 @@ public class ChatActivity extends BaseFragment implements
     private int scrimPopupX, scrimPopupY;
     private ActionBarMenuSubItem[] scrimPopupWindowItems;
     private ActionBarMenuSubItem menuDeleteItem;
+    private org.telegram.ui.ActionBar.BottomSheet messageMenuBottomSheet;
+    private float messageMenuSavedTranslationY;
     private ImageView popupBlurOverlayView;
     private Bitmap popupBlurOverlayBitmap;
     private android.view.Choreographer.FrameCallback popupBlurRefreshCallback;
@@ -31739,6 +31741,11 @@ final BlurredBackgroundDrawable topPanelLayoutBackground = glassBackgroundDrawab
                 return false;
             }
 
+            if (zxc.iconic.xenon.NekoConfig.messageBottomSheet && !suggestEdit && selectedObject != null && v != null) {
+                showMessageMenuBottomSheet(v, primaryMessage, message, groupedMessages, items, icons, options);
+                return true;
+            }
+
             final AtomicBoolean waitForLangDetection = new AtomicBoolean(false);
             final AtomicBoolean waitForQr = new AtomicBoolean(false);
             final AtomicReference<Runnable> onLangDetectionDone = new AtomicReference(null);
@@ -33380,6 +33387,9 @@ final BlurredBackgroundDrawable topPanelLayoutBackground = glassBackgroundDrawab
         if (scrimPopupWindow != null) {
             scrimPopupWindow.dismiss();
         }
+        if (messageMenuBottomSheet != null) {
+            messageMenuBottomSheet.dismiss();
+        }
 
         if (!hideDim) {
             if (scrimViewAlphaAnimator != null) {
@@ -33397,6 +33407,159 @@ final BlurredBackgroundDrawable topPanelLayoutBackground = glassBackgroundDrawab
             scrimViewAlphaAnimator.setDuration(150);
             scrimViewAlphaAnimator.start();
         }
+    }
+
+    private void showMessageMenuBottomSheet(View v, MessageObject primaryMessage, MessageObject message, MessageObject.GroupedMessages groupedMessages, ArrayList<CharSequence> items, ArrayList<Integer> icons, ArrayList<Integer> options) {
+        if (getParentActivity() == null || options.isEmpty()) {
+            return;
+        }
+        dimBehindView(v, true);
+        hideHints(false);
+        chatLayoutManager.setCanScrollVertically(false);
+        if (topUndoView != null) {
+            topUndoView.hide(true, 1);
+        }
+        if (undoView != null) {
+            undoView.hide(true, 1);
+        }
+        LinearLayout content = new LinearLayout(getParentActivity());
+        content.setOrientation(LinearLayout.VERTICAL);
+        List<TLRPC.TL_availableReaction> availableReacts = getMediaDataController().getEnabledReactionsList();
+        final boolean isEphemeral = message != null && message.isEphemeral();
+        final boolean isReactionsAvailable;
+        if (isEphemeral) {
+            isReactionsAvailable = false;
+        } else if (message.isForwardedChannelPost()) {
+            TLRPC.ChatFull fwdChatInfo = getMessagesController().getChatFull(-message.getFromChatId());
+            isReactionsAvailable = fwdChatInfo == null || (!isSecretChat() && chatMode != MODE_QUICK_REPLIES && !isInScheduleMode() && primaryMessage.isReactionsAvailable() && !availableReacts.isEmpty() && (!(fwdChatInfo.available_reactions instanceof TLRPC.TL_chatReactionsNone) || fwdChatInfo.paid_reactions_available));
+        } else {
+            isReactionsAvailable = !isSecretChat() && chatMode != MODE_QUICK_REPLIES && !isInScheduleMode() && primaryMessage.isReactionsAvailable() && !availableReacts.isEmpty() && !message.isSecretMedia() && (chatInfo != null && (!(chatInfo.available_reactions instanceof TLRPC.TL_chatReactionsNone) || chatInfo.paid_reactions_available) || (chatInfo == null && !ChatObject.isChannel(currentChat)) || currentUser != null || ChatObject.isMonoForum(currentChat)) && (currentChat == null || ChatObject.isChannelAndNotMegaGroup(currentChat) || ChatObject.canUserDoAction(currentChat, ChatObject.ACTION_SEND_REACTIONS));
+        }
+        final boolean tags = getUserConfig().getClientUserId() == getDialogId();
+        final ReactionsContainerLayout reactionsLayout;
+        if (isReactionsAvailable && (!tags || !getMessagesController().premiumFeaturesBlocked())) {
+            int pad = 22, sPad = 24;
+            reactionsLayout = new ReactionsContainerLayout(tags ? ReactionsContainerLayout.TYPE_TAGS : ReactionsContainerLayout.TYPE_DEFAULT, ChatActivity.this, contentView.getContext(), currentAccount, getResourceProvider());
+            reactionsLayout.setPadding(dp(4) + (LocaleController.isRTL ? 0 : sPad), dp(4), dp(4) + (LocaleController.isRTL ? sPad : 0), dp(pad));
+            final ReactionsContainerLayout finalReactionsLayout = reactionsLayout;
+            reactionsLayout.setDelegate(new ReactionsContainerLayout.ReactionsContainerDelegate() {
+                @Override
+                public void onReactionClicked(View view, ReactionsLayoutInBubble.VisibleReaction visibleReaction, boolean longpress, boolean addToRecent) {
+                    float x = 0, y = 0;
+                    BaseCell cell = findMessageCell(primaryMessage.getId(), true);
+                    if (cell instanceof ChatMessageCell) {
+                        final ChatMessageCell messageCell = (ChatMessageCell) cell;
+                        final ReactionsLayoutInBubble.ReactionButton btn = messageCell.reactionsLayoutInBubble.getReactionButton(visibleReaction);
+                        if (btn != null) {
+                            x = messageCell.reactionsLayoutInBubble.x + btn.x + btn.width / 2f;
+                            y = messageCell.reactionsLayoutInBubble.y + btn.y + btn.height / 2f;
+                        }
+                    } else if (cell instanceof ChatActionCell) {
+                        final ChatActionCell actionCell = (ChatActionCell) cell;
+                        final ReactionsLayoutInBubble.ReactionButton btn = actionCell.reactionsLayoutInBubble.getReactionButton(visibleReaction);
+                        if (btn != null) {
+                            x = actionCell.reactionsLayoutInBubble.x + btn.x + btn.width / 2f;
+                            y = actionCell.reactionsLayoutInBubble.y + btn.y + btn.height / 2f;
+                        }
+                    }
+                    if (visibleReaction != null && visibleReaction.isStar) {
+                        longpress = true;
+                    }
+                    selectReaction(cell, primaryMessage, finalReactionsLayout, view, x, y, visibleReaction, false, longpress, addToRecent, false);
+                    closeMenu();
+                }
+                @Override
+                public void hideMenu() {
+                    closeMenu();
+                }
+            });
+            MessageObject messageWithReactions = message;
+            MessageObject.GroupedMessages group = getValidGroupedMessage(message);
+            if (group != null) {
+                messageWithReactions = group.findPrimaryMessageObject();
+            }
+            content.addView(reactionsLayout, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, (int) (52 + reactionsLayout.getTopOffset() / AndroidUtilities.density + pad)));
+            reactionsLayout.setMessage(messageWithReactions, chatInfo, true);
+            reactionsLayout.setTransitionProgress(0);
+        } else {
+            reactionsLayout = null;
+        }
+        scrimPopupWindowItems = new ActionBarMenuSubItem[items.size()];
+        for (int a = 0; a < items.size(); a++) {
+            ActionBarMenuSubItem cell = new ActionBarMenuSubItem(getParentActivity(), a == 0, a == items.size() - 1, themeDelegate);
+            cell.setMinimumWidth(AndroidUtilities.dp(200));
+            cell.setTextAndIcon(items.get(a), icons.get(a));
+            Integer option = options.get(a);
+            if (option == OPTION_DELETE && selectedObject != null) {
+                if (selectedObject.messageOwner.ttl_period != 0) {
+                    menuDeleteItem = cell;
+                    updateDeleteItemRunnable.run();
+                    cell.setSubtextColor(getThemedColor(Theme.key_windowBackgroundWhiteGrayText6));
+                }
+            }
+            scrimPopupWindowItems[a] = cell;
+            final int i = a;
+            cell.setOnClickListener(v1 -> {
+                if (selectedObject == null || i >= options.size()) {
+                    return;
+                }
+                processSelectedOption(options.get(i));
+            });
+            cell.setOnLongClickListener(view -> {
+                if (selectedObject == null || i >= options.size()) {
+                    return false;
+                }
+                if (processSelectedOptionLongClick(options.get(i))) {
+                    closeMenu();
+                    return true;
+                }
+                return false;
+            });
+            content.addView(cell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        }
+        messageMenuSavedTranslationY = v.getTranslationY();
+        messageMenuBottomSheet = new BottomSheet(getParentActivity(), false, themeDelegate) {
+            @Override
+            public void dismiss() {
+                super.dismiss();
+            }
+        };
+        messageMenuBottomSheet.setDimBehind(false);
+        messageMenuBottomSheet.setApplyTopPadding(false);
+        messageMenuBottomSheet.setCustomView(content);
+        messageMenuBottomSheet.setOnDismissListener(dialog -> {
+            messageMenuBottomSheet = null;
+            menuDeleteItem = null;
+            scrimPopupWindowItems = null;
+            chatLayoutManager.setCanScrollVertically(true);
+            if (scrimView != null) {
+                scrimView.setTranslationY(messageMenuSavedTranslationY);
+            }
+            dimBehindView(false);
+        });
+        messageMenuBottomSheet.show();
+        if (reactionsLayout != null) {
+            reactionsLayout.startEnterAnimation(true);
+        }
+        AndroidUtilities.runOnUIThread(() -> {
+            if (messageMenuBottomSheet == null || scrimView == null) {
+                return;
+            }
+            int[] msgLocation = new int[2];
+            scrimView.getLocationOnScreen(msgLocation);
+            float msgBottom = msgLocation[1] + scrimView.getHeight();
+            ViewGroup sheetContainer = messageMenuBottomSheet.getContainerView();
+            if (sheetContainer == null) {
+                return;
+            }
+            int[] sheetLocation = new int[2];
+            sheetContainer.getLocationOnScreen(sheetLocation);
+            float sheetTop = sheetLocation[1];
+            if (msgBottom > sheetTop) {
+                float lift = msgBottom - sheetTop + dp(16);
+                scrimView.animate().translationY(messageMenuSavedTranslationY - lift).setDuration(200).start();
+            }
+        }, 200);
     }
 
     private void updateGreetInfo() {
