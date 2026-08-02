@@ -2,12 +2,17 @@ package zxc.iconic.xenon.settings;
 
 import android.content.Context;
 import android.content.DialogInterface;
+import android.graphics.Canvas;
+import android.graphics.Paint;
 import android.text.InputType;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.View;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
@@ -149,7 +154,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         items.add(UItem.asCheck(material3SwitchesRow, "Switches").setChecked(NekoConfig.material3Switches).slug("material3Switches"));
         items.add(UItem.asCheck(m3SectionsStyleRow, "List items").setChecked(NekoConfig.m3SectionsStyle).slug("m3SectionsStyle"));
         items.add(UItem.asCheck(material3ChatHeadersRow, LocaleController.getString(R.string.InuMaterial3ChatHeaders)).setChecked(NekoConfig.material3ChatHeaders).slug("material3ChatHeaders"));
-        items.add(UItem.asCheck(loadingIndicatorsRow, "Loading indicators").setChecked(NekoConfig.wavyEnabled).slug("loadingIndicators"));
+        items.add(InfoCheckCellFactory.of(loadingIndicatorsRow, "Loading indicators", NekoConfig.wavyEnabled, () -> showLoadingIndicatorsInfo()).slug("loadingIndicators"));
         items.add(UItem.asShadow(null));
 
         items.add(UItem.asHeader(LocaleController.getString(R.string.InuNonIslandUI)));
@@ -399,8 +404,8 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             }
         } else if (id == loadingIndicatorsRow) {
             NekoConfig.toggleWavyEnabled();
-            if (view instanceof TextCheckCell) {
-                ((TextCheckCell) view).setChecked(NekoConfig.wavyEnabled);
+            if (view instanceof InfoCheckCell) {
+                ((InfoCheckCell) view).setChecked(NekoConfig.wavyEnabled);
             }
         } else if (id == hideFadeViewRow) {
             NekoConfig.toggleHideFadeView();
@@ -436,6 +441,80 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         } else if (id == liquidGlassRow) {
             presentFragment(new NekoLiquidGlassSettingsActivity());
         }
+    }
+
+    private void showLoadingIndicatorsInfo() {
+        if (getParentActivity() == null) return;
+        org.telegram.ui.ActionBar.BottomSheet sheet = new org.telegram.ui.ActionBar.BottomSheet(getParentActivity(), false, resourcesProvider);
+        sheet.setTitle("Loading indicators");
+
+        LinearLayout container = new LinearLayout(getParentActivity());
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(16), AndroidUtilities.dp(24), AndroidUtilities.dp(24));
+
+        View previewView = new View(getParentActivity()) {
+            private final org.telegram.ui.Components.CircularProgressDrawable defaultDrawable;
+            private final org.telegram.ui.Components.CircularProgressDrawable md3Drawable;
+            {
+                int color = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText, resourcesProvider);
+                defaultDrawable = new org.telegram.ui.Components.CircularProgressDrawable(color);
+                defaultDrawable.size = AndroidUtilities.dp(36);
+                defaultDrawable.thickness = AndroidUtilities.dp(3);
+                md3Drawable = new org.telegram.ui.Components.CircularProgressDrawable(color);
+                md3Drawable.size = AndroidUtilities.dp(36);
+                md3Drawable.thickness = AndroidUtilities.dp(3);
+                setWillNotDraw(false);
+            }
+            @Override
+            protected void onDraw(Canvas canvas) {
+                super.onDraw(canvas);
+                int w = getWidth();
+                int halfW = w / 2;
+                int size = AndroidUtilities.dp(70);
+                int cy = getHeight() / 2;
+                int leftCenterX = halfW / 2;
+                int rightCenterX = halfW + halfW / 2;
+                boolean savedWavy = zxc.iconic.xenon.NekoConfig.wavyEnabled;
+
+                zxc.iconic.xenon.NekoConfig.wavyEnabled = false;
+                defaultDrawable.setBounds(leftCenterX - size / 2, cy - size / 2, leftCenterX + size / 2, cy + size / 2);
+                defaultDrawable.draw(canvas);
+
+                zxc.iconic.xenon.NekoConfig.wavyEnabled = true;
+                md3Drawable.setBounds(rightCenterX - size / 2, cy - size / 2, rightCenterX + size / 2, cy + size / 2);
+                md3Drawable.draw(canvas);
+
+                zxc.iconic.xenon.NekoConfig.wavyEnabled = savedWavy;
+                invalidate();
+            }
+        };
+        previewView.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, AndroidUtilities.dp(90)));
+        container.addView(previewView);
+
+        LinearLayout labelsLayout = new LinearLayout(getParentActivity());
+        labelsLayout.setOrientation(LinearLayout.HORIZONTAL);
+        labelsLayout.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        TextView leftLabel = new TextView(getParentActivity());
+        leftLabel.setText("Telegram");
+        leftLabel.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+        leftLabel.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2, resourcesProvider));
+        leftLabel.setGravity(Gravity.CENTER);
+        leftLabel.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        labelsLayout.addView(leftLabel);
+
+        TextView rightLabel = new TextView(getParentActivity());
+        rightLabel.setText(LocaleController.getString(R.string.MaterialDesign3));
+        rightLabel.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+        rightLabel.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2, resourcesProvider));
+        rightLabel.setGravity(Gravity.CENTER);
+        rightLabel.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        labelsLayout.addView(rightLabel);
+
+        container.addView(labelsLayout);
+
+        sheet.setCustomView(container);
+        sheet.show();
     }
 
     private void showHeaderConflictBulletin(String disableWhat, String enableWhat, Runnable onDisable) {

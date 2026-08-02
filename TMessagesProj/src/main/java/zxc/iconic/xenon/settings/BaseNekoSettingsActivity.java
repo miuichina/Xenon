@@ -14,6 +14,7 @@ import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.TextView;
@@ -33,6 +34,7 @@ import org.telegram.ui.ActionBar.ActionBarMenuItem;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.INavigationLayout;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.Cells.TextCheckCell;
 import org.telegram.ui.Cells.TextCheckbox2Cell;
 import org.telegram.ui.Cells.TextDetailSettingsCell;
 import org.telegram.ui.Cells.TextSettingsCell;
@@ -691,6 +693,141 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
             seekbar.setStep(config.step);
             addView(seekbar, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
             seekbar.setValue(currentValue);
+        }
+    }
+
+    public interface InfoCheckCallback {
+        void onInfoClick();
+    }
+
+    protected static class InfoCheckCell extends FrameLayout {
+        private final TextCheckCell checkCell;
+        private final View infoButton;
+        private InfoCheckCallback callback;
+        private final Theme.ResourcesProvider resourcesProvider;
+
+        public InfoCheckCell(Context context, Theme.ResourcesProvider resourcesProvider) {
+            super(context);
+            this.resourcesProvider = resourcesProvider;
+            checkCell = new TextCheckCell(context, resourcesProvider);
+            checkCell.setLayoutParams(new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+            addView(checkCell);
+
+            infoButton = new View(context) {
+                @Override
+                protected void onDraw(Canvas canvas) {
+                    super.onDraw(canvas);
+                    int cx = getWidth() / 2;
+                    int cy = getHeight() / 2;
+                    int r = AndroidUtilities.dp(11);
+                    Paint circlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                    circlePaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2, resourcesProvider));
+                    circlePaint.setAlpha(60);
+                    canvas.drawCircle(cx, cy, r, circlePaint);
+                    Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                    textPaint.setColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2, resourcesProvider));
+                    textPaint.setTextSize(AndroidUtilities.dp(13));
+                    textPaint.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+                    textPaint.setTextAlign(Paint.Align.CENTER);
+                    float ty = cy - (textPaint.descent() + textPaint.ascent()) / 2;
+                    canvas.drawText("?", cx, ty, textPaint);
+                }
+            };
+            infoButton.setWillNotDraw(false);
+            FrameLayout.LayoutParams infoLp = new FrameLayout.LayoutParams(AndroidUtilities.dp(28), AndroidUtilities.dp(28));
+            infoLp.gravity = Gravity.CENTER_VERTICAL | Gravity.LEFT;
+            addView(infoButton, infoLp);
+        }
+
+        @Override
+        public boolean onInterceptTouchEvent(MotionEvent ev) {
+            if (infoButton.getVisibility() == VISIBLE && callback != null) {
+                float x = ev.getX();
+                float y = ev.getY();
+                if (x >= infoButton.getLeft() && x <= infoButton.getRight() &&
+                    y >= infoButton.getTop() && y <= infoButton.getBottom()) {
+                    return true;
+                }
+            }
+            return super.onInterceptTouchEvent(ev);
+        }
+
+        @Override
+        public boolean onTouchEvent(MotionEvent ev) {
+            if (infoButton.getVisibility() == VISIBLE && callback != null) {
+                float x = ev.getX();
+                float y = ev.getY();
+                if (x >= infoButton.getLeft() && x <= infoButton.getRight() &&
+                    y >= infoButton.getTop() && y <= infoButton.getBottom()) {
+                    if (ev.getAction() == MotionEvent.ACTION_UP) {
+                        callback.onInfoClick();
+                    }
+                    return true;
+                }
+            }
+            return super.onTouchEvent(ev);
+        }
+
+        public void setTextAndCheck(CharSequence text, boolean checked, boolean divider, InfoCheckCallback cb) {
+            callback = cb;
+            checkCell.setTextAndCheck(text, checked, divider);
+            infoButton.setVisibility(cb != null ? VISIBLE : GONE);
+            if (cb != null) {
+                Paint paint = new Paint();
+                paint.setTextSize(AndroidUtilities.dp(16));
+                float textWidth = paint.measureText(text.toString());
+                FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) infoButton.getLayoutParams();
+                int padding = AndroidUtilities.dp(21);
+                int offset = padding + (int) textWidth + AndroidUtilities.dp(6);
+                if (LocaleController.isRTL) {
+                    lp.gravity = Gravity.CENTER_VERTICAL | Gravity.RIGHT;
+                    lp.rightMargin = offset;
+                    lp.leftMargin = 0;
+                } else {
+                    lp.gravity = Gravity.CENTER_VERTICAL | Gravity.LEFT;
+                    lp.leftMargin = offset;
+                    lp.rightMargin = 0;
+                }
+                infoButton.setLayoutParams(lp);
+            }
+        }
+
+        public void setChecked(boolean checked) {
+            checkCell.setChecked(checked);
+        }
+
+        public boolean isCheckEnabled() {
+            return checkCell.isEnabled();
+        }
+    }
+
+    protected static class InfoCheckCellFactory extends UItem.UItemFactory<InfoCheckCell> {
+        static {
+            setup(new InfoCheckCellFactory());
+        }
+
+        private Theme.ResourcesProvider resourcesProvider;
+
+        @Override
+        public InfoCheckCell createView(Context context, RecyclerListView listView, int currentAccount, int classGuid, Theme.ResourcesProvider resourcesProvider) {
+            this.resourcesProvider = resourcesProvider;
+            return new InfoCheckCell(context, resourcesProvider);
+        }
+
+        @Override
+        public void bindView(View view, UItem item, boolean divider, UniversalAdapter adapter, UniversalRecyclerView listView) {
+            InfoCheckCell cell = (InfoCheckCell) view;
+            InfoCheckCallback cb = (InfoCheckCallback) item.object;
+            cell.setTextAndCheck(item.text, item.checked, divider, cb);
+        }
+
+        public static UItem of(int id, CharSequence text, boolean checked, InfoCheckCallback callback) {
+            var item = UItem.ofFactory(InfoCheckCellFactory.class);
+            item.id = id;
+            item.text = text;
+            item.checked = checked;
+            item.object = callback;
+            return item;
         }
     }
 }

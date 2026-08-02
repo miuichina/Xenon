@@ -535,5 +535,6 @@
     <string name="ErrorCopied">Ошибка скопирована</string>
     <string name="HoldToOpenPopup">Открытие попапа удержанием (пока не работает, но будет исправлено когда-нибудь)</string>
     <string name="PopupHoldTime">Время удержания</string>
+    <string name="MaterialDesign3">Material Design 3</string>
 </resources>
 
