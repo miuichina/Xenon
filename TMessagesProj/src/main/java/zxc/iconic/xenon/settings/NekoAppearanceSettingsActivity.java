@@ -18,10 +18,14 @@ import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
+import org.telegram.messenger.UserConfig;
+import org.telegram.messenger.UserObject;
+import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.TextCheckCell;
 import org.telegram.ui.Components.BulletinFactory;
+import org.telegram.ui.Components.ChatAvatarContainer;
 import org.telegram.ui.Components.EditTextBoldCursor;
 import org.telegram.ui.Components.URLSpanNoUnderline;
 import org.telegram.ui.Components.LayoutHelper;
@@ -72,6 +76,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int m3SectionsStyleRow = rowId++;
     private final int material3ChatHeadersRow = rowId++;
     private final int loadingIndicatorsRow = rowId++;
+    private final int chatHeaderSettingsRow = rowId++;
     private final int nonIslandTabBarsRow = rowId++;
     private final int nonIslandGlobalSearchRow = rowId++;
     private final int nonIslandChatElementsRow = rowId++;
@@ -153,8 +158,11 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         items.add(UItem.asHeader("Material Design 3"));
         items.add(UItem.asCheck(material3SwitchesRow, LocaleController.getString(R.string.Switches)).setChecked(NekoConfig.material3Switches).slug("material3Switches"));
         items.add(UItem.asCheck(m3SectionsStyleRow, LocaleController.getString(R.string.ListItems)).setChecked(NekoConfig.m3SectionsStyle).slug("m3SectionsStyle"));
-        items.add(UItem.asCheck(material3ChatHeadersRow, LocaleController.getString(R.string.InuMaterial3ChatHeaders)).setChecked(NekoConfig.material3ChatHeaders).slug("material3ChatHeaders"));
         items.add(InfoCheckCellFactory.of(loadingIndicatorsRow, LocaleController.getString(R.string.LoadingIndicators), NekoConfig.wavyEnabled, () -> showLoadingIndicatorsInfo()).slug("loadingIndicators"));
+        items.add(UItem.asShadow(null));
+
+        items.add(UItem.asHeader("Chat Header"));
+        items.add(TextSettingsCellFactory.of(chatHeaderSettingsRow, LocaleController.getString(R.string.ChatHeaderSettings), "›").slug("chatHeaderSettings"));
         items.add(UItem.asShadow(null));
 
         items.add(UItem.asHeader(LocaleController.getString(R.string.InuNonIslandUI)));
@@ -399,8 +407,8 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
                 return;
             }
             NekoConfig.toggleMaterial3ChatHeaders();
-            if (view instanceof TextCheckCell) {
-                ((TextCheckCell) view).setChecked(NekoConfig.material3ChatHeaders);
+            if (view instanceof InfoCheckCell) {
+                ((InfoCheckCell) view).setChecked(NekoConfig.material3ChatHeaders);
             }
         } else if (id == loadingIndicatorsRow) {
             NekoConfig.toggleWavyEnabled();
@@ -440,6 +448,8 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             }
         } else if (id == liquidGlassRow) {
             presentFragment(new NekoLiquidGlassSettingsActivity());
+        } else if (id == chatHeaderSettingsRow) {
+            presentFragment(new NekoChatHeaderSettingsActivity());
         }
     }
 
@@ -512,6 +522,82 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         labelsLayout.addView(rightLabel);
 
         container.addView(labelsLayout);
+
+        sheet.setCustomView(container);
+        sheet.show();
+    }
+
+    private void showChatHeadersInfo() {
+        if (getParentActivity() == null) return;
+        org.telegram.ui.ActionBar.BottomSheet sheet = new org.telegram.ui.ActionBar.BottomSheet(getParentActivity(), false, resourcesProvider);
+        sheet.setTitle(LocaleController.getString(R.string.InuMaterial3ChatHeaders));
+
+        LinearLayout container = new LinearLayout(getParentActivity());
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setPadding(0, 0, 0, 0);
+
+        int currentAccount = UserConfig.selectedAccount;
+        TLRPC.User user = org.telegram.messenger.MessagesController.getInstance(currentAccount).getUser(UserConfig.getInstance(currentAccount).clientUserId);
+        if (user == null) user = UserConfig.getInstance(currentAccount).getCurrentUser();
+        String userName = user != null ? UserObject.getUserName(user) : "User";
+        String onlineText = LocaleController.getString(R.string.Online);
+
+        org.telegram.ui.Components.blur3.source.BlurredBackgroundSourceBitmap wallpaperSource = new org.telegram.ui.Components.blur3.source.BlurredBackgroundSourceBitmap();
+
+        org.telegram.ui.Components.blur3.BlurredBackgroundDrawableViewFactory factory = new org.telegram.ui.Components.blur3.BlurredBackgroundDrawableViewFactory(wallpaperSource);
+        org.telegram.ui.Components.blur3.drawable.color.BlurredBackgroundProvider colorProvider = org.telegram.ui.Components.blur3.drawable.color.impl.BlurredBackgroundProviderImpl.topPanelChatActivity(resourcesProvider);
+
+        org.telegram.ui.ActionBar.ActionBar normalActionBar = new org.telegram.ui.ActionBar.ActionBar(getParentActivity(), resourcesProvider);
+        normalActionBar.setOccupyStatusBar(false);
+        normalActionBar.setTitle("");
+        normalActionBar.setupGlass(factory, colorProvider, false);
+        ChatAvatarContainer normalAvatar = new ChatAvatarContainer(getParentActivity(), null, false, resourcesProvider);
+        normalAvatar.setOccupyStatusBar(false);
+        normalAvatar.setUserAvatar(user, true);
+        normalAvatar.setTitle(userName, false, false, false, false, null, false);
+        normalAvatar.setSubtitle(onlineText);
+        normalAvatar.setGlassMode();
+        normalAvatar.setM3HeaderMode(false);
+        normalActionBar.setChatAvatarContainer(normalAvatar);
+        normalActionBar.setBackButtonDrawable(new org.telegram.ui.ActionBar.BackDrawable(false));
+        normalActionBar.addView(normalAvatar, 0, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.MATCH_PARENT, Gravity.TOP | Gravity.LEFT, 52, 0, 52, 0));
+        normalActionBar.createMenu().addItem(999, R.drawable.ic_ab_other);
+        normalActionBar.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, AndroidUtilities.dp(56)));
+        container.addView(normalActionBar);
+
+        TextView normalLabel = new TextView(getParentActivity());
+        normalLabel.setText("Telegram");
+        normalLabel.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+        normalLabel.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2, resourcesProvider));
+        normalLabel.setGravity(Gravity.CENTER);
+        normalLabel.setPadding(0, AndroidUtilities.dp(8), 0, AndroidUtilities.dp(16));
+        container.addView(normalLabel);
+
+        org.telegram.ui.ActionBar.ActionBar m3ActionBar = new org.telegram.ui.ActionBar.ActionBar(getParentActivity(), resourcesProvider);
+        m3ActionBar.setOccupyStatusBar(false);
+        m3ActionBar.setTitle("");
+        m3ActionBar.inu_m3ChatHeader = true;
+        m3ActionBar.setupGlass(factory, colorProvider, false);
+        ChatAvatarContainer m3Avatar = new ChatAvatarContainer(getParentActivity(), null, false, resourcesProvider);
+        m3Avatar.setOccupyStatusBar(false);
+        m3Avatar.setUserAvatar(user, true);
+        m3Avatar.setTitle(userName, false, false, false, false, null, false);
+        m3Avatar.setSubtitle(onlineText);
+        m3Avatar.setM3HeaderMode(true);
+        m3ActionBar.setChatAvatarContainer(m3Avatar);
+        m3ActionBar.setBackButtonDrawable(new org.telegram.ui.ActionBar.BackDrawable(false));
+        m3ActionBar.addView(m3Avatar, 0, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.MATCH_PARENT, Gravity.TOP | Gravity.LEFT, 52, 0, 52, 0));
+        m3ActionBar.createMenu().addItem(999, R.drawable.ic_ab_other);
+        m3ActionBar.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, AndroidUtilities.dp(56)));
+        container.addView(m3ActionBar);
+
+        TextView m3Label = new TextView(getParentActivity());
+        m3Label.setText(LocaleController.getString(R.string.MaterialDesign3));
+        m3Label.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+        m3Label.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2, resourcesProvider));
+        m3Label.setGravity(Gravity.CENTER);
+        m3Label.setPadding(0, AndroidUtilities.dp(8), 0, AndroidUtilities.dp(24));
+        container.addView(m3Label);
 
         sheet.setCustomView(container);
         sheet.show();

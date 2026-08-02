@@ -195,6 +195,11 @@ public class NekoConfig {
     public static boolean material3Switches = false;
     public static boolean m3SectionsStyle = false;
     public static boolean material3ChatHeaders = false;
+    public static boolean centerChatHeader = false;
+    public static final int AVATAR_PLACEMENT_LEFT = 0;
+    public static final int AVATAR_PLACEMENT_CENTER = 1;
+    public static final int AVATAR_PLACEMENT_RIGHT = 2;
+    public static int avatarPlacement = AVATAR_PLACEMENT_LEFT;
     public static boolean aospTransition = false;
     public static boolean removeChatDelay = false;
     public static boolean showOnlineDotsInChat = false;
@@ -431,6 +436,8 @@ public class NekoConfig {
             material3Switches = preferences.getBoolean("material3Switches", false);
             m3SectionsStyle = preferences.getBoolean("m3SectionsStyle", false);
             material3ChatHeaders = preferences.getBoolean("material3ChatHeaders", false);
+            centerChatHeader = preferences.getBoolean("centerChatHeader", false);
+            avatarPlacement = preferences.getInt("avatarPlacement", AVATAR_PLACEMENT_LEFT);
             aospTransition = preferences.getBoolean("aospTransition", false);
             removeChatDelay = preferences.getBoolean("removeChatDelay", false);
             showOnlineDotsInChat = preferences.getBoolean("showOnlineDotsInChat", false);
@@ -717,6 +724,22 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("material3ChatHeaders", material3ChatHeaders);
+        editor.apply();
+    }
+
+    public static void toggleCenterChatHeader() {
+        centerChatHeader = !centerChatHeader;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("centerChatHeader", centerChatHeader);
+        editor.apply();
+    }
+
+    public static void setAvatarPlacement(int placement) {
+        avatarPlacement = placement;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("avatarPlacement", avatarPlacement);
         editor.apply();
     }
 

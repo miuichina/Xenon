@@ -520,6 +520,11 @@
     <string name="ClearDatabaseFreeUp">Освободится %1$s (%2$d удалённых сообщений, %3$d редакций)</string>
     <string name="PushServiceText">Xenon запущен</string>
     <string name="InuMaterial3ChatHeaders">Шапки чатов</string>
+    <string name="CenterChatHeader">Заголовок по центру</string>
+    <string name="AvatarPlacement">Положение аватара</string>
+    <string name="AvatarPlacementLeft">Слева</string>
+    <string name="AvatarPlacementCenter">По центру</string>
+    <string name="AvatarPlacementRight">Справа</string>
     <string name="InuMaterial3ChatHeadersConflict">Отключите «%1$s», чтобы включить «%2$s»</string>
     <string name="InuNonIslandUI">Non-island интерфейс</string>
     <string name="InuNonIslandTabBars">Панели вкладок</string>
@@ -539,6 +544,7 @@
     <string name="LoadingIndicators">Индикаторы загрузки</string>
     <string name="ListItems">Элементы списка</string>
     <string name="Switches">Переключатели</string>
+    <string name="ChatHeaderSettings">Настройки заголовка чата</string>
     <string name="OpenBottomTabsSettings">Открыть настройки нижних вкладок</string>
     <string name="GooeyAvatarAnimation">Анимация аватара \"Gooey\"</string>
     <string name="JsonCopyKey">Копировать ключ</string>

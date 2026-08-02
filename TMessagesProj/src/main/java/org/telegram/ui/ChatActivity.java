@@ -512,6 +512,7 @@ public class ChatActivity extends BaseFragment implements
     private ChatBigEmptyView bigEmptyView;
     private ArrayList<View> actionModeViews = new ArrayList<>();
     public ChatAvatarContainer avatarContainer;
+    private boolean inuAvatarRight;
     private AnimatedTextView selectedMessagesCountTextView;
     private RecyclerListView.OnItemClickListener mentionsOnItemClickListener;
     private SuggestEmojiView suggestEmojiPanel;
@@ -4320,6 +4321,10 @@ public class ChatActivity extends BaseFragment implements
         avatarContainer = new ChatAvatarContainer(context, this, currentEncryptedChat != null, themeDelegate) {
             @Override
             protected boolean onAvatarClick() {
+                if (NekoConfig.avatarPlacement == NekoConfig.AVATAR_PLACEMENT_RIGHT && !NonIslandHelper.chatElements() && headerItem != null) {
+                    headerItem.toggleSubMenu();
+                    return true;
+                }
                 if (currentUser != null && currentUser.linked_community_id != 0) {
                     showDialog(new CommunitySheet(ChatActivity.this, currentUser.linked_community_id));
                     return true;
@@ -4441,7 +4446,7 @@ public class ChatActivity extends BaseFragment implements
             searchItemVisible = false;
         }
 
-        if (chatMode == 0 && (threadMessageId == 0 || isTopic) && !UserObject.isReplyUser(currentUser) && !isReport()) {
+        if (chatMode == 0 && (threadMessageId == 0 || isTopic) && !UserObject.isReplyUser(currentUser) && !isReport() && !(NekoConfig.avatarPlacement == NekoConfig.AVATAR_PLACEMENT_RIGHT && !NonIslandHelper.chatElements())) {
             TLRPC.UserFull userFull = null;
             if (currentUser != null) {
                 audioCallIconItem = menu.lazilyAddItem(call, R.drawable.call, themeDelegate);
@@ -4778,12 +4783,47 @@ public class ChatActivity extends BaseFragment implements
 
 actionBar.inu_nonIsland = NonIslandHelper.chatElements();
         actionBar.inu_m3ChatHeader = NekoConfig.material3ChatHeaders && !NonIslandHelper.chatElements();
+        final int avatarPlacement;
+        if (NonIslandHelper.chatElements()) {
+            avatarPlacement = NekoConfig.AVATAR_PLACEMENT_LEFT;
+        } else if (NekoConfig.centerChatHeader) {
+            avatarPlacement = NekoConfig.avatarPlacement;
+        } else {
+            avatarPlacement = NekoConfig.avatarPlacement == NekoConfig.AVATAR_PLACEMENT_CENTER ? NekoConfig.AVATAR_PLACEMENT_LEFT : NekoConfig.avatarPlacement;
+        }
+        final boolean centeredPill = NekoConfig.centerChatHeader && !NonIslandHelper.chatElements();
+        final boolean textOnlyPill = centeredPill && avatarPlacement != NekoConfig.AVATAR_PLACEMENT_CENTER;
+        final boolean avatarRight = avatarPlacement == NekoConfig.AVATAR_PLACEMENT_RIGHT && !NonIslandHelper.chatElements() && avatarContainer.hasVisibleAvatar();
+        inuAvatarRight = avatarRight;
+        actionBar.inu_centerChatHeader = centeredPill && avatarPlacement == NekoConfig.AVATAR_PLACEMENT_CENTER;
+        actionBar.inu_textOnlyPill = textOnlyPill;
+        avatarContainer.setAvatarPlacement(avatarPlacement);
+        avatarContainer.setTextOnlyPill(textOnlyPill);
         actionBar.setupGlass(
             glassBackgroundDrawableFactory,
             BlurredBackgroundProviderImpl.topPanelChatActivity(themeDelegate),
             ChatObject.isForum(currentChat));
         //actionBar.setChatAvatarContainer(avatarContainer);
         //avatarContainer.setActionBar(actionBar);
+        if (centeredPill) {
+            actionBar.setChatAvatarContainer(avatarContainer);
+            avatarContainer.setActionBar(actionBar);
+        }
+        if (avatarRight) {
+            avatarContainer.setRightTextInset(AndroidUtilities.dp(140));
+            if (avatarContainer.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+                ((ViewGroup.MarginLayoutParams) avatarContainer.getLayoutParams()).rightMargin = AndroidUtilities.dp(6);
+            }
+            if (headerItem != null) {
+                avatarContainer.setRightAnchorView(headerItem);
+                View iconView = headerItem.getIconView();
+                if (iconView != null) {
+                    iconView.setVisibility(View.INVISIBLE);
+                }
+            }
+        } else if (textOnlyPill) {
+            avatarContainer.setRightTextInset(AndroidUtilities.dp(92));
+        }
 
         chatInputViewsContainer = new ChatInputViewsContainer(context);
         chatInputViewsContainer.setClipChildren(false);
@@ -18711,11 +18751,11 @@ final BlurredBackgroundDrawable topPanelLayoutBackground = glassBackgroundDrawab
                 }
                 if (showSearchAsIcon || showAudioCallAsIcon || UserObject.isBotForumWithEditableTopics(currentUser)) {
                     if (avatarContainer != null && avatarContainer.getLayoutParams() != null) {
-                        ((ViewGroup.MarginLayoutParams) avatarContainer.getLayoutParams()).rightMargin = AndroidUtilities.dp(chatMode == MODE_SAVED ? 52 : 92);
+                        ((ViewGroup.MarginLayoutParams) avatarContainer.getLayoutParams()).rightMargin = inuAvatarRight ? AndroidUtilities.dp(6) : AndroidUtilities.dp(chatMode == MODE_SAVED ? 52 : 92);
                     }
                 } else {
                     if (avatarContainer != null && avatarContainer.getLayoutParams() != null) {
-                        ((ViewGroup.MarginLayoutParams) avatarContainer.getLayoutParams()).rightMargin = AndroidUtilities.dp(52);
+                        ((ViewGroup.MarginLayoutParams) avatarContainer.getLayoutParams()).rightMargin = inuAvatarRight ? AndroidUtilities.dp(6) : AndroidUtilities.dp(52);
                     }
                 }
                 if (showSearchAsIcon) {

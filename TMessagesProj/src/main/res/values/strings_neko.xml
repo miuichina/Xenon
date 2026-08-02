@@ -136,6 +136,7 @@
     <string name="LoadingIndicators">Loading indicators</string>
     <string name="ListItems">List items</string>
     <string name="Switches">Switches</string>
+    <string name="ChatHeaderSettings">Chat header settings</string>
     <string name="AutoPauseVideo">Auto pause video</string>
     <string name="AutoPauseVideoAbout">When lock screen/switch to background.</string>
     <string name="DisableProximityEvents">Disable proximity events</string>
@@ -527,6 +528,11 @@
     <string name="InuMaterial3Switches">Switches</string>
     <string name="InuMaterial3Sections">List items</string>
     <string name="InuMaterial3ChatHeaders">Chat headers</string>
+    <string name="CenterChatHeader">Centered header</string>
+    <string name="AvatarPlacement">Avatar placement</string>
+    <string name="AvatarPlacementLeft">Left</string>
+    <string name="AvatarPlacementCenter">Center</string>
+    <string name="AvatarPlacementRight">Right</string>
     <string name="InuMaterial3ChatHeadersConflict">Disable \"%1$s\" to enable \"%2$s\"</string>
     <string name="SaveEditsHistory">Edit history</string>
     <string name="SaveEditsHistoryDesc">Save the original text when a message is edited</string>
