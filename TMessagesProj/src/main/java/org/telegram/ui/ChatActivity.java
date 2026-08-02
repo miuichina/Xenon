@@ -7230,7 +7230,11 @@ actionBar.inu_nonIsland = NonIslandHelper.chatElements();
 
         chatActivityFadeView = new ChatActivityFadeView(context);
         chatActivityFadeView.setup(navbarContentDrawableFactory);
-        chatActivityFadeView.setFadeHeightTop(dp(48));
+        if (NekoConfig.material3ChatHeaders) {
+            chatActivityFadeView.setFadeHeightTop(dp(48), false);
+        } else {
+            chatActivityFadeView.setFadeHeightTop(dp(48));
+        }
         chatActivityFadeView.setFadeHeightBottom(dp(48));
         contentView.addView(chatActivityFadeView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
@@ -47681,7 +47685,10 @@ final BlurredBackgroundDrawable topPanelLayoutBackground = glassBackgroundDrawab
         fadeHeight += dp(36 + 7) * getHashtagTabsShownT();
 
         if (NekoConfig.material3ChatHeaders) {
-            fadeHeight += dp(4);
+            fadeHeight += dp(16);
+            chatActivityFadeView.setFadeTopAlpha(230);
+        } else {
+            chatActivityFadeView.setFadeTopAlpha(255);
         }
 
         chatActivityFadeView.setFadeZoneTop((int) fadeHeight);
