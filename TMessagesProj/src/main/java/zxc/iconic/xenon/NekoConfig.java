@@ -255,6 +255,8 @@ public class NekoConfig {
     public static boolean disableScrimBlur = false;
     public static boolean nonIslandBottomBar = false;
     public static boolean wavyEnabled = true;
+    public static boolean holdToOpenPopup = false;
+    public static float popupHoldTime = 0.5f;
 
     public static float wavyAmplitudeFactor = 0.05f;
     public static int wavyWaves = 11;
@@ -442,6 +444,8 @@ public class NekoConfig {
             disableScrimBlur = preferences.getBoolean("disableScrimBlur", false);
             nonIslandBottomBar = preferences.getBoolean("nonIslandBottomBar", false);
             wavyEnabled = preferences.getBoolean("wavyEnabled", true);
+            holdToOpenPopup = preferences.getBoolean("holdToOpenPopup", false);
+            popupHoldTime = preferences.getFloat("popupHoldTime", 0.5f);
 
             wavyAmplitudeFactor = preferences.getFloat("wavyAmplitudeFactor", 0.05f);
             wavyWaves = preferences.getInt("wavyWaves", 11);
@@ -1787,6 +1791,22 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("wavyEnabled", wavyEnabled);
+        editor.apply();
+    }
+
+    public static void toggleHoldToOpenPopup() {
+        holdToOpenPopup = !holdToOpenPopup;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("holdToOpenPopup", holdToOpenPopup);
+        editor.apply();
+    }
+
+    public static void setPopupHoldTime(float value) {
+        popupHoldTime = value;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putFloat("popupHoldTime", popupHoldTime);
         editor.apply();
     }
 

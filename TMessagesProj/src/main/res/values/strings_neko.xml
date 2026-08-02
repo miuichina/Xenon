@@ -130,6 +130,8 @@
     <string name="MainTabsPreviewHint">Tap a tab to enable or disable it. Long-press and drag to reorder.</string>
     <string name="MainTabsShowTitle">Show tab titles</string>
     <string name="OpenBottomTabsSettings">Open bottom tabs settings</string>
+    <string name="HoldToOpenPopup">Hold to open popup (does not work yet, but will be fixed someday)</string>
+    <string name="PopupHoldTime">Time to hold</string>
     <string name="AutoPauseVideo">Auto pause video</string>
     <string name="AutoPauseVideoAbout">When lock screen/switch to background.</string>
     <string name="DisableProximityEvents">Disable proximity events</string>

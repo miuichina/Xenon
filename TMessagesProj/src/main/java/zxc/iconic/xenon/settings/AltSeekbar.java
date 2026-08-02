@@ -46,6 +46,7 @@ public class AltSeekbar extends FrameLayout {
     private final SeekBarView seekBarView;
     private final Theme.ResourcesProvider resourcesProvider;
     private final OnDrag onDrag;
+    private java.util.function.Function<Integer, String> valueFormatter;
 
     private final int min, max;
     private int step = 1;
@@ -206,6 +207,10 @@ public class AltSeekbar extends FrameLayout {
         }
     }
 
+    public void setValueFormatter(java.util.function.Function<Integer, String> formatter) {
+        this.valueFormatter = formatter;
+    }
+
     private void updateText() {
         headerValue.cancelAnimation();
         headerValue.setText(getTextForHeader(), true);
@@ -226,6 +231,8 @@ public class AltSeekbar extends FrameLayout {
             text = leftTextView.getText();
         } else if (roundedValue == max) {
             text = rightTextView.getText();
+        } else if (valueFormatter != null) {
+            text = valueFormatter.apply(roundedValue);
         } else {
             text = String.valueOf(roundedValue);
         }

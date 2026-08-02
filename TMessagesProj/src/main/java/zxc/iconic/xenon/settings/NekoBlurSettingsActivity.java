@@ -30,8 +30,6 @@ public class NekoBlurSettingsActivity extends BaseNekoSettingsActivity {
     private final int blurSmoothlyRow = rowId++;
     private final int blurAnimationDurationRow = rowId++;
     private final int disableBlurBsRow = rowId++;
-    private final int blurOverlayRefreshRow = rowId++;
-    private final int blurOverlayRefreshIntervalRow = rowId++;
 
     @Override
     protected void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
@@ -63,14 +61,6 @@ public class NekoBlurSettingsActivity extends BaseNekoSettingsActivity {
                 items.add(SeekbarCellFactory.of(blurAnimationDurationRow, animDurationConfig, NekoConfig.blurAnimationDuration).slug("blurAnimationDuration"));
             }
             items.add(UItem.asCheck(disableBlurBsRow, LocaleController.getString(R.string.DisableBlurBs)).setChecked(NekoConfig.disableBlurBs).slug("disableBlurBs"));
-            items.add(UItem.asCheck(blurOverlayRefreshRow, LocaleController.getString(R.string.BlurOverlayRefresh)).setChecked(NekoConfig.blurOverlayRefresh).slug("blurOverlayRefresh"));
-            if (NekoConfig.blurOverlayRefresh) {
-                SeekbarConfig intervalConfig = new SeekbarConfig(
-                        LocaleController.getString(R.string.BlurOverlayRefreshInterval),
-                        "1", "10", 1, 10, 1,
-                        progress -> NekoConfig.setBlurOverlayRefreshInterval(Math.round(progress)));
-                items.add(SeekbarCellFactory.of(blurOverlayRefreshIntervalRow, intervalConfig, NekoConfig.blurOverlayRefreshInterval).slug("blurOverlayRefreshInterval"));
-            }
         }
     }
 
@@ -130,13 +120,6 @@ public class NekoBlurSettingsActivity extends BaseNekoSettingsActivity {
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.disableBlurBs);
             }
-        } else if (id == blurOverlayRefreshRow) {
-            NekoConfig.toggleBlurOverlayRefresh();
-            item.checked = NekoConfig.blurOverlayRefresh;
-            if (view instanceof TextCheckCell) {
-                ((TextCheckCell) view).setChecked(NekoConfig.blurOverlayRefresh);
-            }
-            listView.adapter.update(true);
         }
     }
 
