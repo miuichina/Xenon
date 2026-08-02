@@ -133,6 +133,9 @@
     <string name="HoldToOpenPopup">Hold to open popup (does not work yet, but will be fixed someday)</string>
     <string name="PopupHoldTime">Time to hold</string>
     <string name="MaterialDesign3">Material Design 3</string>
+    <string name="LoadingIndicators">Loading indicators</string>
+    <string name="ListItems">List items</string>
+    <string name="Switches">Switches</string>
     <string name="AutoPauseVideo">Auto pause video</string>
     <string name="AutoPauseVideoAbout">When lock screen/switch to background.</string>
     <string name="DisableProximityEvents">Disable proximity events</string>

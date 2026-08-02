@@ -151,10 +151,10 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             items.add(UItem.asShadow(alternativeTransitionEaseDescriptionRow, description));
         }
         items.add(UItem.asHeader("Material Design 3"));
-        items.add(UItem.asCheck(material3SwitchesRow, "Switches").setChecked(NekoConfig.material3Switches).slug("material3Switches"));
-        items.add(UItem.asCheck(m3SectionsStyleRow, "List items").setChecked(NekoConfig.m3SectionsStyle).slug("m3SectionsStyle"));
+        items.add(UItem.asCheck(material3SwitchesRow, LocaleController.getString(R.string.Switches)).setChecked(NekoConfig.material3Switches).slug("material3Switches"));
+        items.add(UItem.asCheck(m3SectionsStyleRow, LocaleController.getString(R.string.ListItems)).setChecked(NekoConfig.m3SectionsStyle).slug("m3SectionsStyle"));
         items.add(UItem.asCheck(material3ChatHeadersRow, LocaleController.getString(R.string.InuMaterial3ChatHeaders)).setChecked(NekoConfig.material3ChatHeaders).slug("material3ChatHeaders"));
-        items.add(InfoCheckCellFactory.of(loadingIndicatorsRow, "Loading indicators", NekoConfig.wavyEnabled, () -> showLoadingIndicatorsInfo()).slug("loadingIndicators"));
+        items.add(InfoCheckCellFactory.of(loadingIndicatorsRow, LocaleController.getString(R.string.LoadingIndicators), NekoConfig.wavyEnabled, () -> showLoadingIndicatorsInfo()).slug("loadingIndicators"));
         items.add(UItem.asShadow(null));
 
         items.add(UItem.asHeader(LocaleController.getString(R.string.InuNonIslandUI)));
@@ -446,7 +446,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private void showLoadingIndicatorsInfo() {
         if (getParentActivity() == null) return;
         org.telegram.ui.ActionBar.BottomSheet sheet = new org.telegram.ui.ActionBar.BottomSheet(getParentActivity(), false, resourcesProvider);
-        sheet.setTitle("Loading indicators");
+        sheet.setTitle(LocaleController.getString(R.string.LoadingIndicators));
 
         LinearLayout container = new LinearLayout(getParentActivity());
         container.setOrientation(LinearLayout.VERTICAL);

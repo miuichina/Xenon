@@ -536,5 +536,16 @@
     <string name="HoldToOpenPopup">Открытие попапа удержанием (пока не работает, но будет исправлено когда-нибудь)</string>
     <string name="PopupHoldTime">Время удержания</string>
     <string name="MaterialDesign3">Material Design 3</string>
+    <string name="LoadingIndicators">Индикаторы загрузки</string>
+    <string name="ListItems">Элементы списка</string>
+    <string name="Switches">Переключатели</string>
+    <string name="OpenBottomTabsSettings">Открыть настройки нижних вкладок</string>
+    <string name="GooeyAvatarAnimation">Анимация аватара \"Gooey\"</string>
+    <string name="JsonCopyKey">Копировать ключ</string>
+    <string name="JsonCopyValue">Копировать значение</string>
+    <string name="SaveEditsHistory">История правок</string>
+    <string name="SaveEditsHistoryDesc">Сохранять исходный текст при редактировании сообщения</string>
+    <string name="EditsHistoryMenuText">История правок</string>
+    <string name="EditsHistoryEmpty">Нет сохранённых версий</string>
 </resources>
 
