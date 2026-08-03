@@ -1067,6 +1067,10 @@ public class ChatActivity extends BaseFragment implements
     private ActionBarMenuSubItem[] scrimPopupWindowItems;
     private ActionBarMenuSubItem menuDeleteItem;
     private boolean popupBlurApplied;
+    private ValueAnimator popupBlurAnimator;
+    private ViewTreeObserver.OnDrawListener popupBlurDrawListener;
+    private View popupBlurWaitingView;
+    private boolean popupBlurPending;
     private Runnable holdPopupRunnable;
     private Runnable holdOpenRunnable;
     private View holdPopupView;
@@ -31291,20 +31295,54 @@ final BlurredBackgroundDrawable topPanelLayoutBackground = glassBackgroundDrawab
         if (Build.VERSION.SDK_INT < 31 || contentView == null) return;
         popupBlurApplied = true;
         float targetBlur = NekoConfig.disableBlurBs ? 0f : NekoConfig.blurOverlayRadius * 8f;
-        if (NekoConfig.blurSmoothly && !NekoConfig.disableBlurBs) {
-            contentView.setRenderEffect(RenderEffect.createBlurEffect(0f, 0f, Shader.TileMode.CLAMP));
-            ValueAnimator animator = ValueAnimator.ofFloat(0f, targetBlur);
-            animator.setDuration(NekoConfig.blurAnimationDuration);
-            animator.setInterpolator(new CubicBezierInterpolator(0.3f, 0.8f, 0f, 1f));
-            animator.addUpdateListener(a -> {
-                if (contentView != null) {
-                    float val = (float) a.getAnimatedValue();
-                    contentView.setRenderEffect(RenderEffect.createBlurEffect(val, val, Shader.TileMode.CLAMP));
-                }
-            });
-            animator.start();
-        } else {
-            contentView.setRenderEffect(RenderEffect.createBlurEffect(targetBlur, targetBlur, Shader.TileMode.CLAMP));
+        View popupContent = scrimPopupWindow != null ? scrimPopupWindow.getContentView() : null;
+        if (popupContent == null) {
+            startPopupBlur(targetBlur);
+            return;
+        }
+        cancelPopupBlur();
+        popupBlurWaitingView = popupContent;
+        popupBlurPending = true;
+        popupBlurDrawListener = new ViewTreeObserver.OnDrawListener() {
+            @Override
+            public void onDraw() {
+                if (!popupBlurPending || contentView == null) return;
+                popupBlurPending = false;
+                startPopupBlur(targetBlur);
+            }
+        };
+        popupContent.getViewTreeObserver().addOnDrawListener(popupBlurDrawListener);
+    }
+
+    private void startPopupBlur(float targetBlur) {
+        if (contentView == null || !popupBlurApplied) return;
+        if (targetBlur <= 0f) {
+            contentView.setRenderEffect(null);
+            return;
+        }
+        contentView.setRenderEffect(RenderEffect.createBlurEffect(0f, 0f, Shader.TileMode.CLAMP));
+        popupBlurAnimator = ValueAnimator.ofFloat(0f, targetBlur);
+        popupBlurAnimator.setDuration(NekoConfig.blurAnimationDuration);
+        popupBlurAnimator.setInterpolator(new CubicBezierInterpolator(0.3f, 0.8f, 0f, 1f));
+        popupBlurAnimator.addUpdateListener(a -> {
+            if (contentView != null) {
+                float val = (float) a.getAnimatedValue();
+                contentView.setRenderEffect(RenderEffect.createBlurEffect(val, val, Shader.TileMode.CLAMP));
+            }
+        });
+        popupBlurAnimator.start();
+    }
+
+    private void cancelPopupBlur() {
+        if (popupBlurDrawListener != null && popupBlurWaitingView != null) {
+            popupBlurWaitingView.getViewTreeObserver().removeOnDrawListener(popupBlurDrawListener);
+        }
+        popupBlurDrawListener = null;
+        popupBlurWaitingView = null;
+        popupBlurPending = false;
+        if (popupBlurAnimator != null) {
+            popupBlurAnimator.cancel();
+            popupBlurAnimator = null;
         }
     }
 
@@ -31332,10 +31370,15 @@ final BlurredBackgroundDrawable topPanelLayoutBackground = glassBackgroundDrawab
     private void removePopupBlur(boolean animated) {
         if (Build.VERSION.SDK_INT < 31 || !popupBlurApplied) return;
         popupBlurApplied = false;
+        float currentBlur = NekoConfig.blurOverlayRadius * 8f;
+        if (popupBlurAnimator != null && popupBlurAnimator.isRunning()) {
+            currentBlur = (float) popupBlurAnimator.getAnimatedValue();
+        }
+        boolean wasBlurring = popupBlurAnimator != null;
+        cancelPopupBlur();
         if (contentView == null) return;
-        if (animated && NekoConfig.blurSmoothly && !NekoConfig.disableBlurBs) {
-            float startBlur = NekoConfig.blurOverlayRadius * 8f;
-            ValueAnimator blurAnim = ValueAnimator.ofFloat(startBlur, 0f);
+        if (animated && wasBlurring && NekoConfig.blurSmoothly && !NekoConfig.disableBlurBs && currentBlur > 0f) {
+            ValueAnimator blurAnim = ValueAnimator.ofFloat(currentBlur, 0f);
             blurAnim.setDuration(250);
             blurAnim.setInterpolator(CubicBezierInterpolator.EASE_OUT);
             blurAnim.addUpdateListener(a -> {
