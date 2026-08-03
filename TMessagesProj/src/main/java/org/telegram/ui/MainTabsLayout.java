@@ -473,6 +473,11 @@ public class MainTabsLayout extends AnimatedLinearLayout {
         }
 
         @Override
+        public boolean needLongPressOnSlopMove() {
+            return true;
+        }
+
+        @Override
         public boolean needCancelTouchBySlopMove() {
             return false;
         }
