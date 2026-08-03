@@ -2260,6 +2260,11 @@ public class ChatActivity extends BaseFragment implements
                 suggestEmojiPanel.onTextSelectionChanged(start, end);
             }
             if (end - start > 0) {
+                if (inuAvatarRight) {
+                    editTextStart = start;
+                    editTextEnd = end;
+                    return;
+                }
                 if (editTextItem.getTag() == null) {
                     editTextItem.setTag(1);
 

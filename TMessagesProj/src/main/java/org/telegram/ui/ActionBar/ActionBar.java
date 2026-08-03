@@ -2152,7 +2152,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
         animatorAvatarContainerHasAvatar.setValue(hasAvatar, animated);
     }
 
-    private int getCenteredPillMaxWidth() {
+    public int getCenteredPillMaxWidth() {
         int maxWidth = getMeasuredWidth() - dp(6 + 46 + 6 + 6 + 46 + 6);
         if (inu_textOnlyPill && chatAvatarContainer != null) {
             int avatarRight = chatAvatarContainer.getAvatarRightEdge();

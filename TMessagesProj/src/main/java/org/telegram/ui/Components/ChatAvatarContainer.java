@@ -844,7 +844,7 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
     }
 
     private int getAvatarCornerRadius() {
-        return dp(effectiveM3() ? 24 : 21);
+        return dp((avatarSizeInDp - 2) / 2);
     }
 
     @Override
@@ -865,13 +865,13 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
         final boolean textOnly = textOnlyPill && avatarVisible;
         final int avatarLeft;
         final int badgeBase;
-        int avatarTop = 1 + viewTop;
+        int avatarTop = 1 + viewTop + dp(0.3f);
         if (rightAvatar) {
             int[] anchor = anchorCenterInParent();
             android.view.ViewGroup.MarginLayoutParams lp = (android.view.ViewGroup.MarginLayoutParams) getLayoutParams();
             if (anchor != null) {
                 avatarLeft = anchor[0] - avatarImageView.getMeasuredWidth() / 2 - lp.leftMargin;
-                avatarTop = anchor[1] - avatarImageView.getMeasuredHeight() / 2;
+                avatarTop = anchor[1] - avatarImageView.getMeasuredHeight() / 2 + dp(0.3f);
             } else {
                 avatarLeft = getWidth() - dp(47);
             }
