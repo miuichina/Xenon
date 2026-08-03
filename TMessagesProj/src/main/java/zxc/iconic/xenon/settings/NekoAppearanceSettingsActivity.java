@@ -60,7 +60,6 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int tabsTitleTypeRow = rowId++;
     private final int tabsPositionRow = rowId++;
 
-    private final int strokeOnViewsRow = rowId++;
     private final int blurSettingsRow = rowId++;
     private final int hideRecordButtonRow = rowId++;
     private final int disableGooeyAvatarAnimationRow = rowId++;
@@ -80,15 +79,11 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int nonIslandTabBarsRow = rowId++;
     private final int nonIslandGlobalSearchRow = rowId++;
     private final int nonIslandChatElementsRow = rowId++;
-    private final int hideFadeViewRow = rowId++;
-    private final int disableGlassGlareRow = rowId++;
-    private final int disableScrimBlurRow = rowId++;
     private final int nonIslandBottomBarRow = rowId++;
 
     private final int textAnimationSettingsRow = rowId++;
     private final int roundedBulletinRow = rowId++;
 
-    private final int forceBlurLiquidGlassRow = rowId++;
     private final int liquidGlassRow = rowId++;
 
     @Override
@@ -112,6 +107,11 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
 
     @Override
     protected void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
+        items.add(UItem.asHeader(LocaleController.getString(R.string.BlurAndLiquidGlass)));
+        items.add(TextSettingsCellFactory.of(blurSettingsRow, LocaleController.getString(R.string.BlurSettings), "›").slug("blurSettings"));
+        items.add(TextSettingsCellFactory.of(liquidGlassRow, LocaleController.getString(R.string.BlurAndLiquidGlass), "›").slug("liquidGlass"));
+        items.add(UItem.asShadow(null));
+
         items.add(UItem.asHeader(LocaleController.getString(R.string.ChangeChannelNameColor2)));
         items.add(EmojiSetCellFactory.of(emojiSetsRow, LocaleController.getString(R.string.EmojiSets)).slug("emojiSets"));
         items.add(UItem.asCheck(predictiveBackAnimationRow, LocaleController.getString(R.string.PredictiveBackAnimation)).slug("predictiveBackAnimation").setChecked(NekoConfig.predictiveBackAnimation));
@@ -169,9 +169,6 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         items.add(UItem.asCheck(nonIslandTabBarsRow, LocaleController.getString(R.string.InuNonIslandTabBars)).setChecked(NekoConfig.nonIslandTabBars).slug("nonIslandTabBars"));
         items.add(UItem.asCheck(nonIslandGlobalSearchRow, LocaleController.getString(R.string.InuNonIslandGlobalSearch)).setChecked(NekoConfig.nonIslandGlobalSearch).slug("nonIslandGlobalSearch"));
         items.add(UItem.asCheck(nonIslandChatElementsRow, LocaleController.getString(R.string.InuNonIslandChatElements)).setChecked(NekoConfig.nonIslandChatElements).slug("nonIslandChatElements"));
-        items.add(UItem.asCheck(hideFadeViewRow, LocaleController.getString(R.string.InuHideFadeView)).setChecked(NekoConfig.hideFadeView).slug("hideFadeView"));
-        items.add(UItem.asCheck(disableGlassGlareRow, LocaleController.getString(R.string.InuDisableGlassGlare)).setChecked(NekoConfig.disableGlassGlare).slug("disableGlassGlare"));
-        items.add(UItem.asCheck(disableScrimBlurRow, LocaleController.getString(R.string.InuDisableScrimBlur)).setChecked(NekoConfig.disableScrimBlur).slug("disableScrimBlur"));
         items.add(UItem.asCheck(nonIslandBottomBarRow, LocaleController.getString(R.string.InuNonIslandBottomBar)).setChecked(NekoConfig.nonIslandBottomBar).slug("nonIslandBottomBar"));
         items.add(UItem.asShadow(LocaleController.getString(R.string.InuNonIslandHint)));
 
@@ -195,18 +192,6 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         }).slug("tabsTitleType"));
         items.add(TextSettingsCellFactory.of(tabsPositionRow, LocaleController.getString(R.string.TabsPosition), LocaleController.getString(NekoConfig.bottomFilterTabs ? R.string.TabsPositionBottom : R.string.TabsPositionTop)).slug("tabsPosition"));
         items.add(UItem.asShadow(null));
-
-        items.add(UItem.asHeader(LocaleController.getString(R.string.LiteOptionsBlur2)));
-        items.add(UItem.asCheck(strokeOnViewsRow, LocaleController.getString(R.string.StrokeOnViews)).setChecked(NekoConfig.strokeOnViews).slug("strokeOnViews"));
-        items.add(TextSettingsCellFactory.of(blurSettingsRow, LocaleController.getString(R.string.BlurSettings), "›").slug("blurSettings"));
-        items.add(UItem.asShadow(null));
-
-        if (android.os.Build.VERSION.SDK_INT >= 33) {
-            items.add(UItem.asHeader(LocaleController.getString(R.string.LiquidGlassSettings)));
-            items.add(UItem.asCheck(forceBlurLiquidGlassRow, LocaleController.getString(R.string.ForceBlurLiquidGlass)).setChecked(NekoConfig.forceBlurLiquidGlass).slug("forceBlurLiquidGlass"));
-            items.add(TextSettingsCellFactory.of(liquidGlassRow, LocaleController.getString(R.string.LiquidGlassTitle), LocaleController.getString(R.string.LiquidGlassSettingsDesc)).slug("liquidGlass"));
-            items.add(UItem.asShadow(null));
-        }
 
     }
 
@@ -316,11 +301,6 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
                 listView.adapter.notifyItemChanged(position, PARTIAL);
                 parentLayout.rebuildAllFragmentViews(false, false);
             }, resourcesProvider);
-        } else if (id == strokeOnViewsRow) {
-            NekoConfig.toggleStrokeOnViews();
-            if (view instanceof TextCheckCell) {
-                ((TextCheckCell) view).setChecked(NekoConfig.strokeOnViews);
-            }
         } else if (id == blurSettingsRow) {
             presentFragment(new NekoBlurSettingsActivity());
         } else if (id == disableGooeyAvatarAnimationRow) {
@@ -415,21 +395,6 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             if (view instanceof InfoCheckCell) {
                 ((InfoCheckCell) view).setChecked(NekoConfig.wavyEnabled);
             }
-        } else if (id == hideFadeViewRow) {
-            NekoConfig.toggleHideFadeView();
-            if (view instanceof TextCheckCell) {
-                ((TextCheckCell) view).setChecked(NekoConfig.hideFadeView);
-            }
-        } else if (id == disableGlassGlareRow) {
-            NekoConfig.toggleDisableGlassGlare();
-            if (view instanceof TextCheckCell) {
-                ((TextCheckCell) view).setChecked(NekoConfig.disableGlassGlare);
-            }
-        } else if (id == disableScrimBlurRow) {
-            NekoConfig.toggleDisableScrimBlur();
-            if (view instanceof TextCheckCell) {
-                ((TextCheckCell) view).setChecked(NekoConfig.disableScrimBlur);
-            }
         } else if (id == nonIslandBottomBarRow) {
             NekoConfig.toggleNonIslandBottomBar();
             if (view instanceof TextCheckCell) {
@@ -440,11 +405,6 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             NekoConfig.toggleRoundedBulletin();
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.roundedBulletin);
-            }
-        } else if (id == forceBlurLiquidGlassRow) {
-            NekoConfig.toggleForceBlurLiquidGlass();
-            if (view instanceof TextCheckCell) {
-                ((TextCheckCell) view).setChecked(NekoConfig.forceBlurLiquidGlass);
             }
         } else if (id == liquidGlassRow) {
             presentFragment(new NekoLiquidGlassSettingsActivity());

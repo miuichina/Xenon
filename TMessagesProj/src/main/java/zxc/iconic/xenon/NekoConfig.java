@@ -214,6 +214,9 @@ public class NekoConfig {
 
     public static final int DEFAULT_ADVANCED_GLASS_ALPHA = 100;
     public static final int DEFAULT_ADVANCED_GLASS_BLUR = 3;
+
+    public static final int DEFAULT_BLUR_STRENGTH = 30;
+    public static int blurStrength = DEFAULT_BLUR_STRENGTH;
     public static final boolean DEFAULT_ADVANCED_GLASS_WALLPAPER_BLUR = true;
     public static final float DEFAULT_ADVANCED_GLASS_DISPERSION = 1.0f;
     public static final float DEFAULT_ADVANCED_GLASS_FRESNEL = 1.0f;
@@ -221,6 +224,10 @@ public class NekoConfig {
     public static final int DEFAULT_ADVANCED_GLASS_TINT_PERCENT = 20;
     public static final boolean DEFAULT_ADVANCED_GLASS_TINT_BLACK_WHITE = false;
     public static final boolean DEFAULT_GLASS_BOTTOM_SHEET = false;
+
+    public static final int GLASS_GLARE_FULL = 0;
+    public static final int GLASS_GLARE_SOLID = 1;
+    public static final int GLASS_GLARE_DISABLE = 2;
 
     public static float liquidGlassIntensity = 0.75f;
     public static int liquidGlassThickness = 11;
@@ -236,6 +243,7 @@ public class NekoConfig {
     public static int advancedGlassTintPercent = DEFAULT_ADVANCED_GLASS_TINT_PERCENT;
     public static boolean advancedGlassTintBlackWhite = DEFAULT_ADVANCED_GLASS_TINT_BLACK_WHITE;
     public static boolean glassBottomSheet = DEFAULT_GLASS_BOTTOM_SHEET;
+    public static int glassGlareMode = GLASS_GLARE_FULL;
 
     public static boolean forceBlurLiquidGlass = false;
     public static boolean blurOverlay = false;
@@ -413,6 +421,7 @@ public class NekoConfig {
             useAdvancedLiquidGlass = preferences.getBoolean("useAdvancedLiquidGlass", false);
             advancedGlassAlpha = preferences.getInt("advancedGlassAlpha", DEFAULT_ADVANCED_GLASS_ALPHA);
             advancedGlassBlur = preferences.getInt("advancedGlassBlur", DEFAULT_ADVANCED_GLASS_BLUR);
+            blurStrength = preferences.getInt("blurStrength", DEFAULT_BLUR_STRENGTH);
             advancedGlassWallpaperBlur = preferences.getBoolean("advancedGlassWallpaperBlur", DEFAULT_ADVANCED_GLASS_WALLPAPER_BLUR);
             advancedGlassDispersion = preferences.getFloat("advancedGlassDispersion", DEFAULT_ADVANCED_GLASS_DISPERSION);
             advancedGlassFresnel = preferences.getFloat("advancedGlassFresnel", DEFAULT_ADVANCED_GLASS_FRESNEL);
@@ -448,6 +457,14 @@ public class NekoConfig {
             nonIslandChatElements = preferences.getBoolean("nonIslandChatElements", false);
             hideFadeView = preferences.getBoolean("hideFadeView", false);
             disableGlassGlare = preferences.getBoolean("disableGlassGlare", true);
+            // The Telegram stroke glare is always disabled in favor of the shader glare.
+            disableGlassGlare = true;
+            if (preferences.contains("glassGlareMode")) {
+                glassGlareMode = preferences.getInt("glassGlareMode", GLASS_GLARE_FULL);
+            } else {
+                // The shader glare is the only glare and is on by default.
+                glassGlareMode = GLASS_GLARE_FULL;
+            }
             disableScrimBlur = preferences.getBoolean("disableScrimBlur", false);
             nonIslandBottomBar = preferences.getBoolean("nonIslandBottomBar", false);
             wavyEnabled = preferences.getBoolean("wavyEnabled", true);
@@ -644,14 +661,6 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("bottomFilterTabs", bottomFilterTabs);
-        editor.apply();
-    }
-
-    public static void toggleStrokeOnViews() {
-        strokeOnViews = !strokeOnViews;
-        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
-        SharedPreferences.Editor editor = preferences.edit();
-        editor.putBoolean("strokeOnViews", strokeOnViews);
         editor.apply();
     }
 
@@ -1572,11 +1581,11 @@ public class NekoConfig {
         editor.apply();
     }
 
-    public static void setAdvancedGlassBlur(int value) {
-        advancedGlassBlur = Math.max(0, Math.min(200, value));
+    public static void setBlurStrength(int value) {
+        blurStrength = Math.max(0, Math.min(100, value));
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
-        editor.putInt("advancedGlassBlur", advancedGlassBlur);
+        editor.putInt("blurStrength", blurStrength);
         editor.apply();
     }
 
@@ -1637,9 +1646,27 @@ public class NekoConfig {
         editor.apply();
     }
 
+    public static void setGlassGlareMode(int mode) {
+        glassGlareMode = mode;
+        // The Telegram stroke glare is always disabled; the shader glare
+        // (advancedGlassGlare) is the only glare and is controlled here.
+        if (mode == GLASS_GLARE_SOLID) {
+            advancedGlassGlare = 0.1f;
+        } else if (mode == GLASS_GLARE_DISABLE) {
+            advancedGlassGlare = 0f;
+        }
+        // Full: advancedGlassGlare is left unchanged (the slider controls it).
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("glassGlareMode", glassGlareMode);
+        editor.putFloat("advancedGlassGlare", advancedGlassGlare);
+        editor.apply();
+    }
+
     public static void resetAdvancedGlassToDefaults() {
         advancedGlassAlpha = DEFAULT_ADVANCED_GLASS_ALPHA;
         advancedGlassBlur = DEFAULT_ADVANCED_GLASS_BLUR;
+        blurStrength = DEFAULT_BLUR_STRENGTH;
         advancedGlassWallpaperBlur = DEFAULT_ADVANCED_GLASS_WALLPAPER_BLUR;
         advancedGlassDispersion = DEFAULT_ADVANCED_GLASS_DISPERSION;
         advancedGlassFresnel = DEFAULT_ADVANCED_GLASS_FRESNEL;
@@ -1647,10 +1674,14 @@ public class NekoConfig {
         advancedGlassTintPercent = DEFAULT_ADVANCED_GLASS_TINT_PERCENT;
         advancedGlassTintBlackWhite = DEFAULT_ADVANCED_GLASS_TINT_BLACK_WHITE;
         glassBottomSheet = DEFAULT_GLASS_BOTTOM_SHEET;
+        glassGlareMode = GLASS_GLARE_FULL;
+        disableGlassGlare = true;
+        strokeOnViews = true;
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putInt("advancedGlassAlpha", advancedGlassAlpha);
         editor.putInt("advancedGlassBlur", advancedGlassBlur);
+        editor.putInt("blurStrength", blurStrength);
         editor.putBoolean("advancedGlassWallpaperBlur", advancedGlassWallpaperBlur);
         editor.putFloat("advancedGlassDispersion", advancedGlassDispersion);
         editor.putFloat("advancedGlassFresnel", advancedGlassFresnel);
@@ -1658,6 +1689,9 @@ public class NekoConfig {
         editor.putInt("advancedGlassTintPercent", advancedGlassTintPercent);
         editor.putBoolean("advancedGlassTintBlackWhite", advancedGlassTintBlackWhite);
         editor.putBoolean("glassBottomSheet", glassBottomSheet);
+        editor.putInt("glassGlareMode", glassGlareMode);
+        editor.putBoolean("disableGlassGlare", disableGlassGlare);
+        editor.putBoolean("strokeOnViews", strokeOnViews);
         editor.apply();
     }
 
@@ -1734,14 +1768,6 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("hideFadeView", hideFadeView);
-        editor.apply();
-    }
-
-    public static void toggleDisableGlassGlare() {
-        disableGlassGlare = !disableGlassGlare;
-        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
-        SharedPreferences.Editor editor = preferences.edit();
-        editor.putBoolean("disableGlassGlare", disableGlassGlare);
         editor.apply();
     }
 

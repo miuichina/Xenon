@@ -97,7 +97,7 @@
     <string name="UseAdvancedLiquidGlassDesc">Хроматическая дисперсия, свечение краёв Френеля, направленные блики. Требует перезапуск.</string>
     <string name="LiquidGlassIntensity">Интенсивность преломления</string>
     <string name="LiquidGlassThickness">Толщина стекла</string>
-    <string name="AdvancedGlassTintPercent">Сила затемнения стекла</string>
+    <string name="AdvancedGlassTintPercent">Сила оттенка</string>
     <string name="AdvancedGlassTintBlackWhite">Чёрно-белый tint</string>
     <string name="AdvancedGlassTintBlackWhiteDesc">Использовать чёрный tint в тёмной теме и белый в светлой вместо цвета темы.</string>
     <string name="LiquidGlassTitle">Жидкое стекло</string>
@@ -113,6 +113,11 @@
     <string name="AdvancedGlassRefraction">Сила рефракции</string>
     <string name="AdvancedGlassDispersion">Хроматическая дисперсия</string>
     <string name="AdvancedGlassGlare">Сила блика</string>
+    <string name="BlurAndLiquidGlass">Размытие и Liquid glass</string>
+    <string name="GlassGlare">Блики стекла</string>
+    <string name="GlassGlareFull">Полный</string>
+    <string name="GlassGlareSolid">Сплошной</string>
+    <string name="GlassGlareDisable">Отключить</string>
     <string name="AdvancedGlassReset">Сбросить настройки стекла</string>
     <string name="AdvancedGlassResetConfirm">Сбросить параметры жидкого стекла на значения по умолчанию?</string>
     <string name="AdvancedGlassResetDone">Настройки стекла сброшены</string>

@@ -100,7 +100,7 @@
     <string name="UseAdvancedLiquidGlassDesc">Chromatic dispersion, Fresnel edge glow, directional glare. Requires app restart.</string>
     <string name="LiquidGlassIntensity">Refraction intensity</string>
     <string name="LiquidGlassThickness">Glass thickness</string>
-    <string name="AdvancedGlassTintPercent">Glass tint strength</string>
+    <string name="AdvancedGlassTintPercent">Tint strength</string>
     <string name="AdvancedGlassTintBlackWhite">Black &amp; white tint</string>
     <string name="AdvancedGlassTintBlackWhiteDesc">Use black tint in dark theme and white tint in light theme instead of the theme color.</string>
     <string name="LiquidGlassTitle">Liquid Glass</string>
@@ -116,6 +116,11 @@
     <string name="AdvancedGlassRefraction">Refraction strength</string>
     <string name="AdvancedGlassDispersion">Chromatic dispersion</string>
     <string name="AdvancedGlassGlare">Glare strength</string>
+    <string name="BlurAndLiquidGlass">Blur and Liquid glass</string>
+    <string name="GlassGlare">Glass glare</string>
+    <string name="GlassGlareFull">Full</string>
+    <string name="GlassGlareSolid">Solid</string>
+    <string name="GlassGlareDisable">Disable</string>
     <string name="AdvancedGlassReset">Reset glass settings</string>
     <string name="AdvancedGlassResetConfirm">Reset liquid glass parameters to defaults?</string>
     <string name="AdvancedGlassResetDone">Glass settings reset</string>

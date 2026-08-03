@@ -172,7 +172,7 @@ public class FeedActivity extends BaseFragment implements NotificationCenter.Not
             });
             iBlur3FactoryFrosted = new BlurredBackgroundDrawableViewFactory(iBlur3SourceGlassFrosted);
             iBlur3FactoryGlass = new BlurredBackgroundDrawableViewFactory(iBlur3SourceGlass);
-            iBlur3FactoryGlass.setLiquidGlassEffectAllowed(LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS));
+            iBlur3FactoryGlass.setLiquidGlassEffectAllowed(true);
         } else {
             scrollableViewNoiseSuppressor = null;
             iBlur3SourceGlassFrosted = null;
