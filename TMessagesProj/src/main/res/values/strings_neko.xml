@@ -96,7 +96,7 @@
     <string name="IdTypeBOTAPI">Bot API</string>
     <string name="HidePhoneNumber">Hide phone number</string>
     <string name="LiquidGlassSettings">Liquid Glass (API 33+)</string>
-    <string name="UseAdvancedLiquidGlass">Use enhanced liquid glass (WIP)</string>
+    <string name="UseAdvancedLiquidGlass">Use enhanced liquid glass</string>
     <string name="UseAdvancedLiquidGlassDesc">Chromatic dispersion, Fresnel edge glow, directional glare. Requires app restart.</string>
     <string name="LiquidGlassIntensity">Refraction intensity</string>
     <string name="LiquidGlassThickness">Glass thickness</string>
@@ -109,6 +109,7 @@
     <string name="AdvancedGlassSection">Glass parameters</string>
     <string name="AdvancedGlassAlpha">Glass transparency</string>
     <string name="AdvancedGlassBlur">Blur strength</string>
+    <string name="AdvancedGlassBlurDesc">Affects both background blur and Liquid Glass blur</string>
     <string name="AdvancedGlassWallpaperBlur">Unified wallpaper blur</string>
     <string name="GlassBottomSheet">Glass in bottom sheets (WIP)</string>
     <string name="GlassBottomSheetDesc">Apply liquid glass background to popups and bottom menus. Requires blur to be enabled.</string>

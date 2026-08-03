@@ -93,7 +93,7 @@
     <string name="IdTypeBOTAPI">Bot API</string>
     <string name="HidePhoneNumber">Скрыть номер телефона</string>
     <string name="LiquidGlassSettings">Жидкое стекло (API 33+)</string>
-    <string name="UseAdvancedLiquidGlass">Улучшенное жидкое стекло (WIP)</string>
+    <string name="UseAdvancedLiquidGlass">Улучшенное жидкое стекло</string>
     <string name="UseAdvancedLiquidGlassDesc">Хроматическая дисперсия, свечение краёв Френеля, направленные блики. Требует перезапуск.</string>
     <string name="LiquidGlassIntensity">Интенсивность преломления</string>
     <string name="LiquidGlassThickness">Толщина стекла</string>
@@ -106,6 +106,7 @@
     <string name="AdvancedGlassSection">Параметры стекла</string>
     <string name="AdvancedGlassAlpha">Прозрачность стекла</string>
     <string name="AdvancedGlassBlur">Сила блюра</string>
+    <string name="AdvancedGlassBlurDesc">Влияет на размытие фона и Liquid glass</string>
     <string name="AdvancedGlassWallpaperBlur">Единый блюр обоев</string>
     <string name="AdvancedGlassWallpaperBlurDesc">Если включено, стекло берёт чистые обои чата и размывает их тем же блюром, что и остальные стеклянные элементы. Если выключено, используется стоковый frosted-блюр Telegram.</string>
     <string name="GlassBottomSheet">Стекло в нижних панелях (WIP)</string>

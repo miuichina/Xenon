@@ -49,7 +49,6 @@ public class NekoLiquidGlassSettingsActivity extends BaseNekoSettingsActivity {
 
     // --- Existing toggles ---
     private final int useAdvancedLiquidGlassRow  = rowId++;
-    private final int glassBottomSheetRow        = rowId++;
     private final int advancedGlassAlphaRow      = rowId++;
     private final int advancedGlassWallpaperBlurRow = rowId++;
 
@@ -150,7 +149,7 @@ public class NekoLiquidGlassSettingsActivity extends BaseNekoSettingsActivity {
                                 NekoConfig.setBlurStrength(v);
                                 invalidatePreview();
                             }
-                        }),
+                        }).setDescription(LocaleController.getString(R.string.AdvancedGlassBlurDesc)),
                 NekoConfig.blurStrength).slug("blurStrength"));
         items.add(SeekbarCellFactory.of(tintStrengthRow,
                 new SeekbarConfig(LocaleController.getString(R.string.AdvancedGlassTintPercent),
@@ -170,10 +169,6 @@ public class NekoLiquidGlassSettingsActivity extends BaseNekoSettingsActivity {
                 LocaleController.getString(R.string.UseAdvancedLiquidGlass),
                 LocaleController.getString(R.string.UseAdvancedLiquidGlassDesc))
                 .slug("useAdvancedLiquidGlass").setChecked(NekoConfig.useAdvancedLiquidGlass));
-        items.add(UItem.asCheck(glassBottomSheetRow,
-                LocaleController.getString(R.string.GlassBottomSheet),
-                LocaleController.getString(R.string.GlassBottomSheetDesc))
-                .slug("glassBottomSheet").setChecked(NekoConfig.glassBottomSheet));
         if (NekoConfig.useAdvancedLiquidGlass) {
             items.add(UItem.asCheck(advancedGlassWallpaperBlurRow,
                     LocaleController.getString(R.string.AdvancedGlassWallpaperBlur),
@@ -299,12 +294,6 @@ public class NekoLiquidGlassSettingsActivity extends BaseNekoSettingsActivity {
             listView.adapter.update(true);
             listView.post(this::invalidatePreview);
             showRestartBulletin();
-        } else if (id == glassBottomSheetRow) {
-            NekoConfig.toggleGlassBottomSheet();
-            if (view instanceof TextCheckCell) {
-                ((TextCheckCell) view).setChecked(NekoConfig.glassBottomSheet);
-            }
-            showRestartBulletin();
         } else if (id == advancedGlassWallpaperBlurRow) {
             NekoConfig.toggleAdvancedGlassWallpaperBlur();
             if (view instanceof TextCheckCell) {
@@ -357,7 +346,7 @@ public class NekoLiquidGlassSettingsActivity extends BaseNekoSettingsActivity {
 
     @Override
     protected String getActionBarTitle() {
-        return LocaleController.getString(R.string.LiquidGlassTitle);
+        return LocaleController.getString(R.string.BlurAndLiquidGlass);
     }
 
     @Override

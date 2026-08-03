@@ -620,6 +620,7 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
         public final int max;
         public final int step;
         public final AltSeekbar.OnDrag onDrag;
+        public String description;
         public java.util.function.Function<Integer, String> valueFormatter;
 
         public SeekbarConfig(String title, String left, String right, int min, int max, AltSeekbar.OnDrag onDrag) {
@@ -634,6 +635,11 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
             this.max = max;
             this.step = step;
             this.onDrag = onDrag;
+        }
+
+        public SeekbarConfig setDescription(String desc) {
+            this.description = desc;
+            return this;
         }
     }
 
@@ -687,7 +693,7 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
                 removeView(seekbar);
             }
             seekbar = new AltSeekbar(getContext(), config.onDrag, config.min, config.max,
-                    config.title, config.left, config.right, resourcesProvider);
+                    config.title, config.left, config.right, resourcesProvider, config.description);
             seekbar.setValueFormatter(config.valueFormatter);
             seekbar.setDefaultValue(currentValue);
             seekbar.setStep(config.step);

@@ -53,8 +53,13 @@ public class AltSeekbar extends FrameLayout {
     private float currentValue;
     private int roundedValue;
     private int defaultValue;
+    private int subtitleOffset = 0;
 
     public AltSeekbar(Context context, OnDrag onDrag, int min, int max, String title, String left, String right, Theme.ResourcesProvider resourcesProvider) {
+        this(context, onDrag, min, max, title, left, right, resourcesProvider, null);
+    }
+
+    public AltSeekbar(Context context, OnDrag onDrag, int min, int max, String title, String left, String right, Theme.ResourcesProvider resourcesProvider, String subtitle) {
         super(context);
         this.resourcesProvider = resourcesProvider;
         this.onDrag = onDrag;
@@ -62,6 +67,9 @@ public class AltSeekbar extends FrameLayout {
         this.max = max;
         this.min = min;
         defaultValue = min;
+
+        int offset = subtitle != null ? 20 : 0;
+        this.subtitleOffset = offset;
 
         LinearLayout headerLayout = new LinearLayout(context);
         headerLayout.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
@@ -96,6 +104,15 @@ public class AltSeekbar extends FrameLayout {
 
         addView(headerLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP | Gravity.FILL_HORIZONTAL, 21, 17, 21, 0));
 
+        if (subtitle != null) {
+            TextView subtitleView = new TextView(context);
+            subtitleView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
+            subtitleView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText, resourcesProvider));
+            subtitleView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+            subtitleView.setText(subtitle);
+            addView(subtitleView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP | Gravity.FILL_HORIZONTAL, 21, 40, 21, 0));
+        }
+
         seekBarView = new SeekBarView(context, true, resourcesProvider);
         seekBarView.setReportChanges(true);
         seekBarView.setDelegate((stop, progress) -> {
@@ -107,7 +124,7 @@ public class AltSeekbar extends FrameLayout {
                 updateText();
             }
         });
-        addView(seekBarView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 38 + 6, Gravity.TOP, 6, 68, 6, 0));
+        addView(seekBarView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 38 + 6, Gravity.TOP, 6, 68 + subtitleOffset, 6, 0));
 
         FrameLayout valuesView = new FrameLayout(context);
 
@@ -125,7 +142,7 @@ public class AltSeekbar extends FrameLayout {
         rightTextView.setText(right);
         valuesView.addView(rightTextView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.RIGHT | Gravity.CENTER_VERTICAL));
 
-        addView(valuesView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP | Gravity.FILL_HORIZONTAL, 21, 52, 21, 0));
+        addView(valuesView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP | Gravity.FILL_HORIZONTAL, 21, 52 + subtitleOffset, 21, 0));
 
         roundedValue = min;
         updateText();
@@ -221,7 +238,7 @@ public class AltSeekbar extends FrameLayout {
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(
                 MeasureSpec.makeMeasureSpec(MeasureSpec.getSize(widthMeasureSpec), MeasureSpec.EXACTLY),
-                MeasureSpec.makeMeasureSpec(AndroidUtilities.dp(112), MeasureSpec.EXACTLY)
+                MeasureSpec.makeMeasureSpec(AndroidUtilities.dp(112 + subtitleOffset), MeasureSpec.EXACTLY)
         );
     }
 
