@@ -669,7 +669,13 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
             ? Math.max(0, width - rightTextInset - dp(16))
             : width - dp((avatarVisible ? 54 : 0) + 16);
         avatarImageView.measure(MeasureSpec.makeMeasureSpec(dp(avatarSizeInDp) - 2, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(dp(avatarSizeInDp) - 2, MeasureSpec.EXACTLY));
-        final int maxTextWidth = textOnlyPill ? getPillLimitedAvailableWidth(width, availableWidth) : availableWidth;
+        final int maxTextWidth;
+        if (textOnlyPill) {
+            int pillMaxWidth = actionBar != null ? actionBar.getCenteredPillMaxWidth() : Integer.MAX_VALUE;
+            maxTextWidth = Math.min(availableWidth, pillMaxWidth - dp(34));
+        } else {
+            maxTextWidth = availableWidth;
+        }
         titleTextView.measure(MeasureSpec.makeMeasureSpec(maxTextWidth, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(dp(24 + 8), MeasureSpec.AT_MOST));
         if (subtitleTextView != null) {
             subtitleTextView.measure(MeasureSpec.makeMeasureSpec(maxTextWidth, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(dp(20), MeasureSpec.AT_MOST));
@@ -698,16 +704,6 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
             titleTextLargerCopyView.measure(MeasureSpec.makeMeasureSpec(largerAvailableWidth, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(dp(24), MeasureSpec.AT_MOST));
         }
         lastWidth = width;
-    }
-
-    private int getPillLimitedAvailableWidth(int containerWidth, int currentAvailableWidth) {
-        int avatarRight = getAvatarRightEdge();
-        if (avatarRight <= 0) {
-            return currentAvailableWidth;
-        }
-        MarginLayoutParams lp = (MarginLayoutParams) getLayoutParams();
-        int actionBarWidth = containerWidth + (lp != null ? lp.leftMargin + lp.rightMargin : 0);
-        return Math.min(currentAvailableWidth, actionBarWidth - 2 * (avatarRight + dp(8)) - dp(34));
     }
 
     private void fadeOutToLessWidth(int largerWidth) {
@@ -893,16 +889,19 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
         avatarImageView.layout(avatarLeft, avatarTop, avatarLeft + avatarImageView.getMeasuredWidth(), avatarTop + avatarImageView.getMeasuredHeight());
         final int titleL;
         final int subtitleL;
+        final int pillRight;
         if (textOnlyPill) {
             final int pillLeft = leftPadding - dp(6) - dp(3);
             final int targetPillWidth = getVisualWidth() + dp(12);
             final int realPillWidth = actionBar != null ? actionBar.getCurrentChatPillWidth() : 0;
             final boolean pillAnimating = actionBar != null && actionBar.isChatAvatarContainerWidthAnimating();
             final int pillWidth = realPillWidth > 0 && !pillAnimating ? realPillWidth : targetPillWidth;
+            pillRight = pillLeft + pillWidth;
             if (actionBar != null) {
                 actionBar.setContainerLayoutPillWidth(pillWidth);
             }
             final int titleWidth = titleTextView.getDrawnWidth();
+            final int titleFadeShift = titleTextView.getDrawnWidth() < (int) titleTextView.getExactWidth() ? dp(8) : 0;
             final View subTextView = getSubtitleTextView();
             final int subWidth;
             if (subTextView != null && subTextView.getVisibility() != GONE) {
@@ -916,20 +915,22 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
             } else {
                 subWidth = 0;
             }
-            titleL = Math.max(leftPadding, pillLeft + (pillWidth - titleWidth) / 2);
-            subtitleL = subTextView != null && subTextView.getVisibility() != GONE ? Math.max(leftPadding, pillLeft + (pillWidth - subWidth) / 2) : titleL;
+            final int subFadeShift = subtitleTextView != null && subtitleTextView.getDrawnWidth() < (int) subtitleTextView.getExactWidth() ? dp(8) : 0;
+            titleL = Math.max(leftPadding, pillLeft + (pillWidth - titleWidth) / 2 + titleFadeShift);
+            subtitleL = subTextView != null && subTextView.getVisibility() != GONE ? Math.max(leftPadding, pillLeft + (pillWidth - subWidth) / 2 + subFadeShift) : titleL;
         } else {
             titleL = l;
             subtitleL = l;
+            pillRight = Integer.MAX_VALUE;
         }
         SimpleTextView titleTextLargerCopyView = this.titleTextLargerCopyView.get();
         if (getSubtitleTextView().getVisibility() != GONE) {
-            titleTextView.layout(titleL, viewTop + dp(m3 ? 2.5f : 1.66f) - titleTextView.getPaddingTop(), titleL + titleTextView.getMeasuredWidth(), viewTop + titleTextView.getTextHeight() + dp(m3 ? 2.5f : 1.66f) - titleTextView.getPaddingTop() + titleTextView.getPaddingBottom());
+            titleTextView.layout(titleL, viewTop + dp(m3 ? 2.5f : 1.66f) - titleTextView.getPaddingTop(), Math.min(titleL + titleTextView.getMeasuredWidth(), pillRight), viewTop + titleTextView.getTextHeight() + dp(m3 ? 2.5f : 1.66f) - titleTextView.getPaddingTop() + titleTextView.getPaddingBottom());
             if (titleTextLargerCopyView != null) {
                 titleTextLargerCopyView.layout(titleL, viewTop + dp(m3 ? 2.5f : 1.66f), titleL + titleTextLargerCopyView.getMeasuredWidth(), viewTop + titleTextLargerCopyView.getTextHeight() + dp(m3 ? 2.5f : 1.66f));
             }
         } else {
-            titleTextView.layout(titleL, viewTop + dp(10) - titleTextView.getPaddingTop(), titleL + titleTextView.getMeasuredWidth(), viewTop + titleTextView.getTextHeight() + dp(10) - titleTextView.getPaddingTop() + titleTextView.getPaddingBottom());
+            titleTextView.layout(titleL, viewTop + dp(10) - titleTextView.getPaddingTop(), Math.min(titleL + titleTextView.getMeasuredWidth(), pillRight), viewTop + titleTextView.getTextHeight() + dp(10) - titleTextView.getPaddingTop() + titleTextView.getPaddingBottom());
             if (titleTextLargerCopyView != null) {
                 titleTextLargerCopyView.layout(titleL, viewTop + dp(10), titleL + titleTextLargerCopyView.getMeasuredWidth(), viewTop + titleTextLargerCopyView.getTextHeight() + dp(10));
             }
@@ -956,13 +957,13 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
             starFgItem.layout(badgeBase + dp(m3 ? 33 : 28), avatarTop - 1 + dp(m3 ? 29 : 24), badgeBase + dp(m3 ? 33 : 28) + starFgItem.getMeasuredWidth(), avatarTop - 1 + dp(m3 ? 29 : 24) + starFgItem.getMeasuredHeight());
         }
         if (subtitleTextView != null) {
-            subtitleTextView.layout(subtitleL, subtitleTop, subtitleL + subtitleTextView.getMeasuredWidth(), subtitleTop + subtitleTextView.getTextHeight());
+            subtitleTextView.layout(subtitleL, subtitleTop, Math.min(subtitleL + subtitleTextView.getMeasuredWidth(), pillRight), subtitleTop + subtitleTextView.getTextHeight());
         } else if (animatedSubtitleTextView != null) {
-            animatedSubtitleTextView.layout(subtitleL, subtitleTop, subtitleL + animatedSubtitleTextView.getMeasuredWidth(), subtitleTop + animatedSubtitleTextView.getTextHeight());
+            animatedSubtitleTextView.layout(subtitleL, subtitleTop, Math.min(subtitleL + animatedSubtitleTextView.getMeasuredWidth(), pillRight), subtitleTop + animatedSubtitleTextView.getTextHeight());
         }
         SimpleTextView subtitleTextLargerCopyView = this.subtitleTextLargerCopyView.get();
         if (subtitleTextLargerCopyView != null) {
-            subtitleTextLargerCopyView.layout(subtitleL, subtitleTop, subtitleL + subtitleTextLargerCopyView.getMeasuredWidth(), subtitleTop + subtitleTextLargerCopyView.getTextHeight());
+            subtitleTextLargerCopyView.layout(subtitleL, subtitleTop, Math.min(subtitleL + subtitleTextLargerCopyView.getMeasuredWidth(), pillRight), subtitleTop + subtitleTextLargerCopyView.getTextHeight());
         }
     }
 
