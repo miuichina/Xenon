@@ -14,6 +14,8 @@ import android.widget.TextView;
 
 import androidx.core.graphics.ColorUtils;
 
+import com.google.android.material.slider.Slider;
+
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
@@ -24,6 +26,8 @@ import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.EditTextBoldCursor;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.SeekBarView;
+
+import zxc.iconic.xenon.NekoConfig;
 
 /**
  * Reusable integer slider cell styled like the system PowerSaverSlider:
@@ -44,7 +48,8 @@ public class AltSeekbar extends FrameLayout {
     private final AnimatedTextView headerValue;
     private final TextView leftTextView;
     private final TextView rightTextView;
-    private final SeekBarView seekBarView;
+    private SeekBarView seekBarView;
+    private Slider slider;
     private final Theme.ResourcesProvider resourcesProvider;
     private final OnDrag onDrag;
     private java.util.function.Function<Integer, String> valueFormatter;
@@ -105,7 +110,7 @@ public class AltSeekbar extends FrameLayout {
 
         addView(headerLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP | Gravity.FILL_HORIZONTAL, 21, 17, 21, 0));
 
-        if (subtitle != null) {
+if (subtitle != null) {
             TextView subtitleView = new TextView(context);
             subtitleView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
             subtitleView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText, resourcesProvider));
@@ -113,20 +118,6 @@ public class AltSeekbar extends FrameLayout {
             subtitleView.setText(subtitle);
             addView(subtitleView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP | Gravity.FILL_HORIZONTAL, 21, 40, 21, 0));
         }
-
-        seekBarView = new SeekBarView(context, true, resourcesProvider);
-        seekBarView.setReportChanges(true);
-        seekBarView.setDelegate((stop, progress) -> {
-            currentValue = min + (max - min) * progress;
-            onDrag.run(currentValue);
-            int newRounded = step > 1 ? Math.round(currentValue / step) * step : Math.round(currentValue);
-            if (newRounded != roundedValue) {
-                roundedValue = newRounded;
-                updateText();
-                performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);
-            }
-        });
-        addView(seekBarView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 38 + 6, Gravity.TOP, 6, 68 + subtitleOffset, 6, 0));
 
         FrameLayout valuesView = new FrameLayout(context);
 
@@ -146,8 +137,52 @@ public class AltSeekbar extends FrameLayout {
 
         addView(valuesView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP | Gravity.FILL_HORIZONTAL, 21, 52 + subtitleOffset, 21, 0));
 
+        initSlider();
+
         roundedValue = min;
         updateText();
+    }
+
+    private void initSlider() {
+        if (NekoConfig.materialSliders) {
+            Slider materialSlider = MaterialSliderUiHelper.create(getContext());
+            this.slider = materialSlider;
+            MaterialSliderUiHelper.applyContinuousStyle(materialSlider);
+            MaterialSliderUiHelper.applyThemeColors(materialSlider);
+            materialSlider.setValueFrom(min);
+            materialSlider.setValueTo(max);
+            if (step > 1) {
+                materialSlider.setStepSize(step);
+            }
+            materialSlider.addOnChangeListener((slider, value, fromUser) -> {
+                currentValue = value;
+                if (fromUser) {
+                    onDrag.run(value);
+                }
+                int newRounded = step > 1 ? Math.round(value / step) * step : Math.round(value);
+                if (newRounded != roundedValue) {
+                    roundedValue = newRounded;
+                    updateText();
+                    performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);
+                }
+            });
+            addView(materialSlider, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 44, Gravity.TOP, 6, 68 + subtitleOffset, 6, 0));
+        } else {
+            SeekBarView bar = new SeekBarView(getContext(), true, resourcesProvider);
+            this.seekBarView = bar;
+            bar.setReportChanges(true);
+            bar.setDelegate((stop, progress) -> {
+                currentValue = min + (max - min) * progress;
+                onDrag.run(currentValue);
+                int newRounded = step > 1 ? Math.round(currentValue / step) * step : Math.round(currentValue);
+                if (newRounded != roundedValue) {
+                    roundedValue = newRounded;
+                    updateText();
+                    performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);
+                }
+            });
+            addView(bar, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 38 + 6, Gravity.TOP, 6, 68 + subtitleOffset, 6, 0));
+        }
     }
 
     public void setDefaultValue(int value) {
@@ -218,7 +253,11 @@ public class AltSeekbar extends FrameLayout {
 
     public void setValue(float value) {
         currentValue = value;
-        seekBarView.setProgress((value - min) / (float) (max - min));
+        if (slider != null) {
+            slider.setValue(value);
+        } else if (seekBarView != null) {
+            seekBarView.setProgress((value - min) / (float) (max - min));
+        }
         int newRounded = step > 1 ? Math.round(currentValue / step) * step : Math.round(currentValue);
         if (newRounded != roundedValue) {
             roundedValue = newRounded;
@@ -256,5 +295,18 @@ public class AltSeekbar extends FrameLayout {
             text = String.valueOf(roundedValue);
         }
         return text.toString().toUpperCase();
+    }
+
+    public void updateStyle() {
+        if (slider != null) {
+            removeView(slider);
+            slider = null;
+        }
+        if (seekBarView != null) {
+            removeView(seekBarView);
+            seekBarView = null;
+        }
+        initSlider();
+        setValue(currentValue);
     }
 }

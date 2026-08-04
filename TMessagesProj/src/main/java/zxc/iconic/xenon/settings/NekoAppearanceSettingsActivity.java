@@ -58,6 +58,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int keepUnreadArchivedOnTopRow = rowId++;
     private final int material3SwitchesRow = rowId++;
     private final int m3SectionsStyleRow = rowId++;
+    private final int materialSlidersRow = rowId++;
     private final int material3ChatHeadersRow = rowId++;
     private final int loadingIndicatorsRow = rowId++;
     private final int chatHeaderSettingsRow = rowId++;
@@ -124,6 +125,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         items.add(UItem.asHeader("Material Design 3"));
         items.add(UItem.asCheck(material3SwitchesRow, LocaleController.getString(R.string.Switches)).setChecked(NekoConfig.material3Switches).slug("material3Switches"));
         items.add(UItem.asCheck(m3SectionsStyleRow, LocaleController.getString(R.string.ListItems)).setChecked(NekoConfig.m3SectionsStyle).slug("m3SectionsStyle"));
+        items.add(UItem.asCheck(materialSlidersRow, LocaleController.getString(R.string.MaterialSliders)).setChecked(NekoConfig.materialSliders).slug("materialSliders"));
         items.add(InfoCheckCellFactory.of(loadingIndicatorsRow, LocaleController.getString(R.string.LoadingIndicators), NekoConfig.wavyEnabled, () -> showLoadingIndicatorsInfo()).slug("loadingIndicators"));
         items.add(UItem.asShadow(null));
 
@@ -274,6 +276,12 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
                 ((TextCheckCell) view).setChecked(NekoConfig.m3SectionsStyle);
             }
             showRestartBulletin();
+        } else if (id == materialSlidersRow) {
+            NekoConfig.toggleMaterialSliders();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.materialSliders);
+            }
+            listView.adapter.update(true);
         } else if (id == nonIslandTabBarsRow) {
             NekoConfig.toggleNonIslandTabBars();
             if (view instanceof TextCheckCell) {

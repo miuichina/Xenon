@@ -569,5 +569,6 @@
     <string name="AnimationStyleAosp">AOSP</string>
     <string name="Ease">Плавность</string>
     <string name="Off">Выкл</string>
+    <string name="MaterialSliders">Слайдеры</string>
 </resources>
 

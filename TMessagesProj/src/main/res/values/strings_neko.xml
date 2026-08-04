@@ -142,6 +142,7 @@
     <string name="LoadingIndicators">Loading indicators</string>
     <string name="ListItems">List items</string>
     <string name="Switches">Switches</string>
+    <string name="MaterialSliders">Sliders</string>
     <string name="ChatHeaderSettings">Chat header settings</string>
     <string name="AutoPauseVideo">Auto pause video</string>
     <string name="AutoPauseVideoAbout">When lock screen/switch to background.</string>
