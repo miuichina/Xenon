@@ -132,6 +132,10 @@ public class NekoNavigationSettingsActivity extends BaseNekoSettingsActivity {
         types.add(NekoConfig.ANIMATION_STYLE_IOS);
         arrayList.add(LocaleController.getString(R.string.AnimationStyleAosp));
         types.add(NekoConfig.ANIMATION_STYLE_AOSP);
+        if (titleRes == R.string.PredictiveBackAnimationStyle) {
+            arrayList.add(LocaleController.getString(R.string.AnimationStyleAospAlt));
+            types.add(NekoConfig.ANIMATION_STYLE_AOSP_ALT);
+        }
         PopupHelper.show(arrayList, LocaleController.getString(titleRes), types.indexOf(currentStyle), getParentActivity(), view, i -> {
             setter.accept(types.get(i));
             item.textValue = arrayList.get(i);
@@ -146,6 +150,7 @@ public class NekoNavigationSettingsActivity extends BaseNekoSettingsActivity {
         return switch (style) {
             case NekoConfig.ANIMATION_STYLE_IOS -> LocaleController.getString(R.string.AnimationStyleIos);
             case NekoConfig.ANIMATION_STYLE_AOSP -> LocaleController.getString(R.string.AnimationStyleAosp);
+            case NekoConfig.ANIMATION_STYLE_AOSP_ALT -> LocaleController.getString(R.string.AnimationStyleAospAlt);
             default -> LocaleController.getString(R.string.Default);
         };
     }

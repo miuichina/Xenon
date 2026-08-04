@@ -1808,6 +1808,8 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         containerViewBack.setAlpha(1.0f);
         containerViewBack.setScaleX(1.0f);
         containerViewBack.setScaleY(1.0f);
+        containerViewBack.setOutlineProvider(null);
+        containerViewBack.setClipToOutline(false);
     }
 
     public BaseFragment getLastFragment() {
@@ -1942,6 +1944,32 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         containerViewBack.setVisibility(View.INVISIBLE);
     }
 
+    private void setupRoundedCorners(View view) {
+        final WindowInsets insets = getRootWindowInsets();
+        final float cornerRadius;
+        if (insets != null) {
+            final RoundedCorner topLeft = insets.getRoundedCorner(RoundedCorner.POSITION_TOP_LEFT);
+            final RoundedCorner topRight = insets.getRoundedCorner(RoundedCorner.POSITION_TOP_RIGHT);
+            final RoundedCorner bottomRight = insets.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_RIGHT);
+            final RoundedCorner bottomLeft = insets.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_LEFT);
+            cornerRadius = Math.max(
+                Math.max(topLeft == null ? 0 : topLeft.getRadius(), topRight == null ? 0 : topRight.getRadius()),
+                Math.max(bottomRight == null ? 0 : bottomRight.getRadius(), bottomLeft == null ? 0 : bottomLeft.getRadius())
+            );
+        } else {
+            cornerRadius = dp(28);
+        }
+        if (cornerRadius > 0) {
+            view.setOutlineProvider(new ViewOutlineProvider() {
+                @Override
+                public void getOutline(View v, Outline outline) {
+                    outline.setRoundRect(0, 0, v.getWidth(), v.getHeight(), cornerRadius);
+                }
+            });
+            view.setClipToOutline(true);
+        }
+    }
+
     private void startLayoutAnimation(final boolean open, final boolean first, final boolean preview) {
         boolean altOpen = NekoConfig.openAnimationStyle == NekoConfig.ANIMATION_STYLE_IOS;
         boolean altClose = NekoConfig.closeAnimationStyle == NekoConfig.ANIMATION_STYLE_IOS;
@@ -1959,6 +1987,9 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                     containerView.setTranslationX(-dp(96));
                 }
                 containerViewBack.setTranslationX(0);
+                if (altClose) {
+                    setupRoundedCorners(containerViewBack);
+                }
             }
         }
         AndroidUtilities.runOnUIThread(animationRunnable = new Runnable() {
@@ -2444,6 +2475,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                     } else {
                         if (NekoConfig.openAnimationStyle == NekoConfig.ANIMATION_STYLE_IOS) {
                             containerView.setTranslationX(getWidth());
+                            setupRoundedCorners(containerView);
                         } else if (NekoConfig.openAnimationStyle == NekoConfig.ANIMATION_STYLE_AOSP) {
                             containerView.setTranslationX(getWidth() * 0.2f);
                         } else {

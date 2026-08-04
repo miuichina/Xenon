@@ -5,8 +5,12 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.os.Build;
+import android.graphics.Outline;
+import android.view.RoundedCorner;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewOutlineProvider;
+import android.view.WindowInsets;
 import android.window.BackEvent;
 import android.window.OnBackAnimationCallback;
 
@@ -16,15 +20,6 @@ import org.telegram.messenger.AndroidUtilities;
 import org.telegram.ui.ActionBar.ActionBarLayout;
 import org.telegram.ui.Components.CubicBezierInterpolator;
 
-/**
- * iOS-style predictive-back animation: the leaving screen slides off to the right
- * while the previous screen slides in from a -dp(96) parallax offset, driven by
- * the back gesture. On commit the leaving screen exits fully; on cancel it returns.
- * <p>
- * Drives {@link ActionBarLayout} through the same stock hooks as
- * {@link Material3PredictiveBack} ({@code onBackStarted}, {@code predictiveInput},
- * {@code onSlideAnimationEnd}), so it must run on API 34+.
- */
 @RequiresApi(api = Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
 public final class IosPredictiveBack {
 
@@ -36,8 +31,8 @@ public final class IosPredictiveBack {
     private IosPredictiveBack() {
     }
 
-    public static OnBackAnimationCallback createCallback(ActionBarLayout layout, Runnable plainBack) {
-        Callback callback = new Callback(layout, plainBack);
+    public static OnBackAnimationCallback createCallback(ActionBarLayout layout, Runnable plainBack, boolean aospStyle) {
+        Callback callback = new Callback(layout, plainBack, aospStyle);
         layout.m3PredictiveCallbackCancelRunnable = () -> callback.cancelAndCleanup();
         return callback;
     }
@@ -50,13 +45,19 @@ public final class IosPredictiveBack {
 
         private final ActionBarLayout layout;
         private final Runnable plainBack;
+        private final boolean aospStyle;
         private boolean attached = false;
         private boolean invoked = false;
+        private boolean finishCancel = false;
         private AnimatorSet runningAnim = null;
+        private ViewOutlineProvider savedOutlineProvider = null;
+        private boolean savedClipToOutline = false;
+        private float cornerRadius = 0f;
 
-        Callback(ActionBarLayout layout, Runnable plainBack) {
+        Callback(ActionBarLayout layout, Runnable plainBack, boolean aospStyle) {
             this.layout = layout;
             this.plainBack = plainBack;
+            this.aospStyle = aospStyle;
         }
 
         @Override
@@ -65,6 +66,7 @@ public final class IosPredictiveBack {
                 runningAnim.removeAllListeners();
                 runningAnim.cancel();
                 runningAnim = null;
+                finalizeStock(finishCancel);
             }
             if (attached) {
                 finalizeStock(true);
@@ -91,6 +93,9 @@ public final class IosPredictiveBack {
                 attached = true;
                 layout.m3PredictiveActive = true;
                 layout.invalidate();
+                if (!aospStyle) {
+                    attachRoundedCorners();
+                }
             }
             float p = clamp(rawP, 0f, 1f);
             applyFrame(p);
@@ -126,6 +131,35 @@ public final class IosPredictiveBack {
             layout.onSlideAnimationEnd(true);
         }
 
+        private void attachRoundedCorners() {
+            ViewGroup cv = layout.containerView;
+            if (cv == null) return;
+            savedOutlineProvider = cv.getOutlineProvider();
+            savedClipToOutline = cv.getClipToOutline();
+            WindowInsets insets = cv.getRootWindowInsets();
+            if (insets != null) {
+                RoundedCorner tl = insets.getRoundedCorner(RoundedCorner.POSITION_TOP_LEFT);
+                RoundedCorner tr = insets.getRoundedCorner(RoundedCorner.POSITION_TOP_RIGHT);
+                RoundedCorner br = insets.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_RIGHT);
+                RoundedCorner bl = insets.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_LEFT);
+                cornerRadius = Math.max(
+                    Math.max(tl == null ? 0 : tl.getRadius(), tr == null ? 0 : tr.getRadius()),
+                    Math.max(br == null ? 0 : br.getRadius(), bl == null ? 0 : bl.getRadius())
+                );
+            } else {
+                cornerRadius = AndroidUtilities.dp(28);
+            }
+            if (cornerRadius > 0) {
+                cv.setOutlineProvider(new ViewOutlineProvider() {
+                    @Override
+                    public void getOutline(View v, Outline outline) {
+                        outline.setRoundRect(0, 0, v.getWidth(), v.getHeight(), cornerRadius);
+                    }
+                });
+                cv.setClipToOutline(true);
+            }
+        }
+
         private void applyFrame(float p) {
             ViewGroup cv = layout.containerView;
             ViewGroup cvb = layout.containerViewBack;
@@ -136,28 +170,54 @@ public final class IosPredictiveBack {
             if (w <= 0f) {
                 return;
             }
-            cv.setTranslationX(w * p);
-            cvb.setTranslationX(-AndroidUtilities.dp(PARALLAX_DP) * (1f - p));
+            if (aospStyle) {
+                cv.setTranslationX(w * 0.2f * p);
+                cvb.setTranslationX(-w * 0.2f * (1f - p));
+                float alphaP = clamp((p - 0.125f) / 0.25f, 0f, 1f);
+                cv.setAlpha(1f - alphaP);
+                cvb.setAlpha(alphaP);
+            } else {
+                cv.setTranslationX(w * p);
+                cvb.setTranslationX(-AndroidUtilities.dp(PARALLAX_DP) * (1f - p));
+            }
         }
 
-        private void runFinishAnim(boolean cancel) {
-            ViewGroup cv = layout.containerView;
-            ViewGroup cvb = layout.containerViewBack;
-            if (cv == null || cvb == null) {
-                finalizeStock(cancel);
-                return;
-            }
-            float cvTarget = cancel ? 0f : cv.getWidth();
+private void runFinishAnim(boolean cancel) {
+        finishCancel = cancel;
+        ViewGroup cv = layout.containerView;
+        ViewGroup cvb = layout.containerViewBack;
+        if (cv == null || cvb == null) {
+            finalizeStock(cancel);
+            return;
+        }
+        float w = cv.getWidth();
+        float cvTarget = cancel ? 0f : (aospStyle ? w * 0.2f : w);
+        long duration = cancel ? CANCEL_DURATION : COMMIT_DURATION;
 
-            AnimatorSet set = new AnimatorSet();
-            set.playTogether(
-                    ObjectAnimator.ofFloat(cv, View.TRANSLATION_X, cvTarget),
-                    ObjectAnimator.ofFloat(cvb, View.TRANSLATION_X, 0f)
-            );
-            set.setDuration(cancel ? CANCEL_DURATION : COMMIT_DURATION);
-            set.setInterpolator(cancel
-                    ? CubicBezierInterpolator.EASE_OUT_QUINT
-                    : CubicBezierInterpolator.EASE_OUT_QUINT);
+        AnimatorSet set = new AnimatorSet();
+        java.util.List<Animator> animators = new java.util.ArrayList<>();
+        animators.add(ObjectAnimator.ofFloat(cv, View.TRANSLATION_X, cvTarget));
+        animators.add(ObjectAnimator.ofFloat(cvb, View.TRANSLATION_X, 0f));
+
+        if (aospStyle) {
+            float cvAlphaFrom = cv.getAlpha();
+            float cvAlphaTo = cancel ? 1f : 0f;
+            float cvbAlphaFrom = cvb.getAlpha();
+            float cvbAlphaTo = cancel ? 0f : 1f;
+            android.animation.ValueAnimator alphaAnim = android.animation.ValueAnimator.ofFloat(0f, 1f);
+            alphaAnim.addUpdateListener(a -> {
+                float f = (float) a.getAnimatedValue();
+                cv.setAlpha(cvAlphaFrom + (cvAlphaTo - cvAlphaFrom) * f);
+                cvb.setAlpha(cvbAlphaFrom + (cvbAlphaTo - cvbAlphaFrom) * f);
+            });
+            alphaAnim.setDuration((long) (duration * 0.3));
+            alphaAnim.setInterpolator(CubicBezierInterpolator.EASE_OUT_QUINT);
+            animators.add(alphaAnim);
+        }
+
+        set.playTogether(animators);
+        set.setDuration(duration);
+        set.setInterpolator(CubicBezierInterpolator.EASE_OUT_QUINT);
             set.addListener(new AnimatorListenerAdapter() {
                 @Override
                 public void onAnimationEnd(Animator animation) {
@@ -187,11 +247,18 @@ public final class IosPredictiveBack {
             ViewGroup cv = layout.containerView;
             if (cv != null) {
                 cv.setTranslationX(0f);
+                cv.setAlpha(1f);
+                if (!aospStyle) {
+                    cv.setClipToOutline(savedClipToOutline);
+                    cv.setOutlineProvider(savedOutlineProvider != null ? savedOutlineProvider : ViewOutlineProvider.BACKGROUND);
+                }
             }
             ViewGroup cvb = layout.containerViewBack;
             if (cvb != null) {
                 cvb.setTranslationX(0f);
+                cvb.setAlpha(1f);
             }
+            savedOutlineProvider = null;
         }
 
         public void cancelAndCleanup() {

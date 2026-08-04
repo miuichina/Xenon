@@ -565,6 +565,7 @@
     <string name="PredictiveBackAnimationStyle">Predictive back animation style</string>
     <string name="AnimationStyleIos">iOS</string>
     <string name="AnimationStyleAosp">AOSP</string>
+    <string name="AnimationStyleAospAlt">AOSP alt</string>
     <string name="Ease">Ease</string>
     <string name="Off">Off</string>
 </resources>

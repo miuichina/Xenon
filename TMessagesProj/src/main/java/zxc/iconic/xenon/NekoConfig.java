@@ -207,6 +207,7 @@ public class NekoConfig {
     public static final int ANIMATION_STYLE_DEFAULT = 0;
     public static final int ANIMATION_STYLE_IOS = 1;
     public static final int ANIMATION_STYLE_AOSP = 2;
+    public static final int ANIMATION_STYLE_AOSP_ALT = 3;
     public static int openAnimationStyle = ANIMATION_STYLE_DEFAULT;
     public static int closeAnimationStyle = ANIMATION_STYLE_DEFAULT;
     public static int predictiveBackAnimationStyle = ANIMATION_STYLE_DEFAULT;
