@@ -35,7 +35,6 @@ public class NekoNavigationSettingsActivity extends BaseNekoSettingsActivity {
     private final int predictiveBackIntensityRow = rowId++;
 
     private final int mainTabsRow = rowId++;
-    private final int material3BottomNavigationBarRow = rowId++;
     private final int tabletModeRow = rowId++;
 
     private final int transitionSpeedRow = rowId++;
@@ -69,9 +68,6 @@ public class NekoNavigationSettingsActivity extends BaseNekoSettingsActivity {
         items.add(SeekbarCellFactory.of(predictiveBackIntensityRow, intensityConfig, NekoConfig.predictiveBackIntensity).slug("predictiveBackIntensity"));
 
         items.add(TextSettingsCellFactory.of(mainTabsRow, LocaleController.getString(R.string.MainTabsCustomizeTitle), LocaleController.getString(R.string.MainTabsCustomizeHint)).slug("mainTabs"));
-        items.add(UItem.asHeader("Material Design 3"));
-        items.add(UItem.asCheck(material3BottomNavigationBarRow, LocaleController.getString(R.string.BottomNavigationBar)).setChecked(NekoConfig.material3BottomNavigationBar).slug("material3BottomNavigationBar"));
-        items.add(UItem.asShadow(null));
         items.add(TextSettingsCellFactory.of(tabletModeRow, LocaleController.getString(R.string.TabletMode), switch (NekoConfig.tabletMode) {
             case NekoConfig.TABLET_AUTO -> LocaleController.getString(R.string.TabletModeAuto);
             case NekoConfig.TABLET_ENABLE -> LocaleController.getString(R.string.Enable);
@@ -121,12 +117,6 @@ public class NekoNavigationSettingsActivity extends BaseNekoSettingsActivity {
             }, resourcesProvider);
         } else if (id == mainTabsRow) {
             presentFragment(new MainTabsSettingsActivity());
-        } else if (id == material3BottomNavigationBarRow) {
-            NekoConfig.toggleMaterial3BottomNavigationBar();
-            if (view instanceof org.telegram.ui.Cells.TextCheckCell) {
-                ((org.telegram.ui.Cells.TextCheckCell) view).setChecked(NekoConfig.material3BottomNavigationBar);
-            }
-            parentLayout.rebuildAllFragmentViews(false, false);
         } else if (id == easeRow) {
             showEaseDialog();
         }
