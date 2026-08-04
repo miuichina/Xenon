@@ -189,9 +189,11 @@ public class NekoConfig {
     public static int textAnimFadeDuration = 300;
     public static int textAnimBlurStrength = 20;
     public static int textAnimBlurDuration = 350;
-    public static boolean alternativeTransition = false;
     public static int alternativeTransitionSpeed = 300;
     public static String alternativeTransitionEase = "0.37,0.01,0.1,1";
+    public static String aospBezier = "0.5,0,0,1";
+    public static int aospDuration = 400;
+    public static int aospAlphaTime = 250;
     public static boolean material3Switches = false;
     public static boolean m3SectionsStyle = false;
     public static boolean material3ChatHeaders = false;
@@ -201,6 +203,13 @@ public class NekoConfig {
     public static final int AVATAR_PLACEMENT_RIGHT = 2;
     public static int avatarPlacement = AVATAR_PLACEMENT_LEFT;
     public static boolean aospTransition = false;
+    public static final int ANIMATION_STYLE_DEFAULT = 0;
+    public static final int ANIMATION_STYLE_IOS = 1;
+    public static final int ANIMATION_STYLE_AOSP = 2;
+    public static int openAnimationStyle = ANIMATION_STYLE_DEFAULT;
+    public static int closeAnimationStyle = ANIMATION_STYLE_DEFAULT;
+    public static int predictiveBackAnimationStyle = ANIMATION_STYLE_DEFAULT;
+    public static int predictiveBackIntensity = 0;
     public static boolean removeChatDelay = false;
     public static boolean showOnlineDotsInChat = false;
     public static boolean optimizedPushService = false;
@@ -439,15 +448,22 @@ public class NekoConfig {
             textAnimFadeDuration = preferences.getInt("textAnimFadeDuration", 300);
             textAnimBlurStrength = preferences.getInt("textAnimBlurStrength", 20);
             textAnimBlurDuration = preferences.getInt("textAnimBlurDuration", 350);
-            alternativeTransition = preferences.getBoolean("alternativeTransition", false);
             alternativeTransitionSpeed = preferences.getInt("alternativeTransitionSpeed", 300);
             alternativeTransitionEase = preferences.getString("alternativeTransitionEase", "0.37,0.01,0.1,1");
+            aospBezier = preferences.getString("aospBezier", "0.5,0,0,1");
+            aospDuration = preferences.getInt("aospDuration", 400);
+            aospAlphaTime = preferences.getInt("aospAlphaTime", 250);
             material3Switches = preferences.getBoolean("material3Switches", false);
             m3SectionsStyle = preferences.getBoolean("m3SectionsStyle", false);
             material3ChatHeaders = preferences.getBoolean("material3ChatHeaders", false);
             centerChatHeader = preferences.getBoolean("centerChatHeader", false);
             avatarPlacement = preferences.getInt("avatarPlacement", AVATAR_PLACEMENT_LEFT);
             aospTransition = preferences.getBoolean("aospTransition", false);
+            openAnimationStyle = preferences.getInt("openAnimationStyle", ANIMATION_STYLE_DEFAULT);
+            closeAnimationStyle = preferences.getInt("closeAnimationStyle", ANIMATION_STYLE_DEFAULT);
+            predictiveBackAnimationStyle = preferences.getInt("predictiveBackAnimationStyle", ANIMATION_STYLE_DEFAULT);
+            predictiveBackIntensity = preferences.getInt("predictiveBackIntensity", 0);
+            predictiveBackAnimation = predictiveBackIntensity > 0;
             removeChatDelay = preferences.getBoolean("removeChatDelay", false);
             showOnlineDotsInChat = preferences.getBoolean("showOnlineDotsInChat", false);
             optimizedPushService = preferences.getBoolean("optimizedPushService", false);
@@ -680,22 +696,6 @@ public class NekoConfig {
         editor.apply();
     }
 
-    public static void togglePredictiveBackAnimation() {
-        predictiveBackAnimation = !predictiveBackAnimation;
-        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
-        SharedPreferences.Editor editor = preferences.edit();
-        editor.putBoolean("predictiveBackAnimation", predictiveBackAnimation);
-        editor.apply();
-    }
-
-    public static void toggleAlternativeTransition() {
-        alternativeTransition = !alternativeTransition;
-        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
-        SharedPreferences.Editor editor = preferences.edit();
-        editor.putBoolean("alternativeTransition", alternativeTransition);
-        editor.apply();
-    }
-
     public static void setAlternativeTransitionSpeed(int value) {
         alternativeTransitionSpeed = value;
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
@@ -709,6 +709,30 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putString("alternativeTransitionEase", alternativeTransitionEase);
+        editor.apply();
+    }
+
+    public static void setAospBezier(String value) {
+        aospBezier = value;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putString("aospBezier", aospBezier);
+        editor.apply();
+    }
+
+    public static void setAospDuration(int value) {
+        aospDuration = value;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("aospDuration", aospDuration);
+        editor.apply();
+    }
+
+    public static void setAospAlphaTime(int value) {
+        aospAlphaTime = value;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("aospAlphaTime", aospAlphaTime);
         editor.apply();
     }
 
@@ -757,6 +781,40 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("aospTransition", aospTransition);
+        editor.apply();
+    }
+
+    public static void setOpenAnimationStyle(int style) {
+        openAnimationStyle = style;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("openAnimationStyle", openAnimationStyle);
+        editor.apply();
+    }
+
+    public static void setCloseAnimationStyle(int style) {
+        closeAnimationStyle = style;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("closeAnimationStyle", closeAnimationStyle);
+        editor.apply();
+    }
+
+    public static void setPredictiveBackAnimationStyle(int style) {
+        predictiveBackAnimationStyle = style;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("predictiveBackAnimationStyle", predictiveBackAnimationStyle);
+        editor.apply();
+    }
+
+    public static void setPredictiveBackIntensity(int value) {
+        predictiveBackIntensity = value;
+        predictiveBackAnimation = value > 0;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("predictiveBackIntensity", predictiveBackIntensity);
+        editor.putBoolean("predictiveBackAnimation", predictiveBackAnimation);
         editor.apply();
     }
 

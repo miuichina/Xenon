@@ -613,6 +613,27 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         return altTransitionInterpolatorOpen;
     }
 
+    private static PathInterpolator aospInterpolator;
+    private static String aospInterpolatorLastBezier;
+
+    private static PathInterpolator getAospInterpolator() {
+        String bezier = NekoConfig.aospBezier;
+        if (aospInterpolator == null || !bezier.equals(aospInterpolatorLastBezier)) {
+            try {
+                String[] parts = bezier.split(",");
+                float x1 = Float.parseFloat(parts[0].trim());
+                float y1 = Float.parseFloat(parts[1].trim());
+                float x2 = Float.parseFloat(parts[2].trim());
+                float y2 = Float.parseFloat(parts[3].trim());
+                aospInterpolator = new PathInterpolator(x1, y1, x2, y2);
+                aospInterpolatorLastBezier = bezier;
+            } catch (Exception e) {
+                aospInterpolator = new PathInterpolator(0.8f, 0f, 0f, 1f);
+            }
+        }
+        return aospInterpolator;
+    }
+
     public float innerTranslationX;
 
     private boolean maybeStartTracking;
@@ -1922,37 +1943,22 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
     }
 
     private void startLayoutAnimation(final boolean open, final boolean first, final boolean preview) {
+        boolean altOpen = NekoConfig.openAnimationStyle == NekoConfig.ANIMATION_STYLE_IOS;
+        boolean altClose = NekoConfig.closeAnimationStyle == NekoConfig.ANIMATION_STYLE_IOS;
+        boolean aospOpen = NekoConfig.openAnimationStyle == NekoConfig.ANIMATION_STYLE_AOSP;
+        boolean aospClose = NekoConfig.closeAnimationStyle == NekoConfig.ANIMATION_STYLE_AOSP;
+        boolean styledOpen = altOpen || aospOpen;
+        boolean styledClose = altClose || aospClose;
         if (first) {
             animationProgress = 0.0f;
             lastFrameTime = System.nanoTime() / 1000000;
-            if (NekoConfig.alternativeTransition && !open && !preview) {
-                containerView.setTranslationX(0);
-                containerViewBack.setTranslationX(0);
-                containerView.setPivotX(containerView.getMeasuredWidth() / 2f);
-                containerView.setPivotY(containerView.getMeasuredHeight() / 2f);
-                final WindowInsets insets = getRootWindowInsets();
-                final float cornerRadius;
-                if (insets != null) {
-                    final RoundedCorner topLeft = insets.getRoundedCorner(RoundedCorner.POSITION_TOP_LEFT);
-                    final RoundedCorner topRight = insets.getRoundedCorner(RoundedCorner.POSITION_TOP_RIGHT);
-                    final RoundedCorner bottomRight = insets.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_RIGHT);
-                    final RoundedCorner bottomLeft = insets.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_LEFT);
-                    cornerRadius = Math.max(
-                        Math.max(topLeft == null ? 0 : topLeft.getRadius(), topRight == null ? 0 : topRight.getRadius()),
-                        Math.max(bottomRight == null ? 0 : bottomRight.getRadius(), bottomLeft == null ? 0 : bottomLeft.getRadius())
-                    );
+            if (styledClose && !open && !preview) {
+                if (aospClose) {
+                    containerView.setTranslationX(-getWidth() * 0.2f);
                 } else {
-                    cornerRadius = dp(28);
+                    containerView.setTranslationX(-dp(96));
                 }
-                if (cornerRadius > 0) {
-                    containerView.setOutlineProvider(new ViewOutlineProvider() {
-                        @Override
-                        public void getOutline(View view, Outline outline) {
-                            outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), cornerRadius);
-                        }
-                    });
-                    containerView.setClipToOutline(true);
-                }
+                containerViewBack.setTranslationX(0);
             }
         }
         AndroidUtilities.runOnUIThread(animationRunnable = new Runnable() {
@@ -1974,8 +1980,8 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                 }
                 lastFrameTime = newTime;
                 float duration = preview && open ? 190.0f : 150.0f;
-                if (NekoConfig.alternativeTransition && !preview) {
-                    duration = NekoConfig.alternativeTransitionSpeed + (open ? 0 : 300);
+                if ((open ? styledOpen : styledClose) && !preview) {
+                    duration = (open ? aospOpen : aospClose) ? NekoConfig.aospDuration : NekoConfig.alternativeTransitionSpeed;
                 }
                 animationProgress += dt / duration;
                 if (animationProgress > 1.0f) {
@@ -2018,14 +2024,16 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                     } else {
                         interpolated = CubicBezierInterpolator.EASE_OUT_QUINT.getInterpolation(animationProgress);
                     }
-                } else if (NekoConfig.alternativeTransition) {
-                    interpolated = open ? getAltTransitionInterpolator().getInterpolation(animationProgress) : CubicBezierInterpolator.EASE_OUT_QUINT.getInterpolation(animationProgress);
+                } else if (open ? altOpen : altClose) {
+                    interpolated = getAltTransitionInterpolator().getInterpolation(animationProgress);
+                } else if (open ? aospOpen : aospClose) {
+                    interpolated = getAospInterpolator().getInterpolation(animationProgress);
                 } else {
                     interpolated = decelerateInterpolator.getInterpolation(animationProgress);
                 }
                 if (open) {
                     float clampedInterpolated = MathUtils.clamp(interpolated, 0, 1);
-                    if (!NekoConfig.alternativeTransition || preview) {
+                    if (!altOpen && !aospOpen || preview) {
                         containerView.setAlpha(clampedInterpolated);
                     }
                     if (preview) {
@@ -2042,16 +2050,24 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                         containerView.invalidate();
                         invalidate();
                     } else {
-                        if (NekoConfig.alternativeTransition) {
+                        if (altOpen) {
                             containerView.setTranslationX(getWidth() * (1.0f - interpolated));
                             containerViewBack.setTranslationX(-dp(96) * interpolated);
+                        } else if (aospOpen) {
+                            containerView.setTranslationX(getWidth() * 0.2f * (1.0f - interpolated));
+                            containerViewBack.setTranslationX(-getWidth() * 0.2f * interpolated);
+                            float alphaStart = 50f / NekoConfig.aospDuration;
+                            float alphaEnd = (50f + NekoConfig.aospAlphaTime) / NekoConfig.aospDuration;
+                            float alphaP = MathUtils.clamp((interpolated - alphaStart) / (alphaEnd - alphaStart), 0f, 1f);
+                            containerView.setAlpha(alphaP);
+                            containerViewBack.setAlpha(1f - alphaP);
                         } else {
                             containerView.setTranslationX(dp(48) * (1.0f - interpolated));
                         }
                     }
                 } else {
                     float clampedReverseInterpolated = MathUtils.clamp(1f - interpolated, 0, 1);
-                    if (!NekoConfig.alternativeTransition || preview) {
+                    if (!styledClose || preview) {
                         containerViewBack.setAlpha(clampedReverseInterpolated);
                     }
                     if (preview) {
@@ -2064,17 +2080,17 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                         containerView.invalidate();
                         invalidate();
                     } else {
-                        if (NekoConfig.alternativeTransition) {
-                            float dragP = MathUtils.clamp(interpolated / 0.18f, 0, 1);
-                            float commitP = MathUtils.clamp((interpolated - 0.18f) / 0.82f, 0, 1);
-                            float dragTx = dp(64) * CubicBezierInterpolator.StandardDecelerate.getInterpolation(dragP);
-                            float commitTx = getMeasuredWidth() * CubicBezierInterpolator.EASE_OUT_QUINT.getInterpolation(commitP);
-                            containerViewBack.setTranslationX(dragTx + commitTx);
-                            float dip = MathUtils.clamp(interpolated / 0.18f, 0, 1);
-                            float rec = MathUtils.clamp((interpolated - 0.18f) / 0.82f, 0, 1);
-                            float prevScale = 1f - 0.03f * (dip - rec);
-                            containerView.setScaleX(prevScale);
-                            containerView.setScaleY(prevScale);
+                        if (altClose) {
+                            containerViewBack.setTranslationX(getWidth() * interpolated);
+                            containerView.setTranslationX(-dp(96) * (1.0f - interpolated));
+                        } else if (aospClose) {
+                            containerViewBack.setTranslationX(getWidth() * 0.2f * interpolated);
+                            containerView.setTranslationX(-getWidth() * 0.2f * (1.0f - interpolated));
+                            float alphaStart = 50f / NekoConfig.aospDuration;
+                            float alphaEnd = (50f + NekoConfig.aospAlphaTime) / NekoConfig.aospDuration;
+                            float alphaP = MathUtils.clamp((interpolated - alphaStart) / (alphaEnd - alphaStart), 0f, 1f);
+                            containerViewBack.setAlpha(1f - alphaP);
+                            containerView.setAlpha(alphaP);
                         } else {
                             containerViewBack.setTranslationX(dp(48) * interpolated);
                         }
@@ -2390,7 +2406,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                     } else {
                         presentFragmentInternalRemoveOld(removeLast, currentFragment);
                         containerView.setTranslationX(0);
-                        if (NekoConfig.alternativeTransition) {
+                        if (NekoConfig.openAnimationStyle != NekoConfig.ANIMATION_STYLE_DEFAULT) {
                             containerViewBack.setTranslationX(0);
                         }
                     }
@@ -2416,7 +2432,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                     animation = fragment.onCustomTransitionAnimation(true, () -> onAnimationEndCheck(false));
                 }
                 if (animation == null) {
-                    if (NekoConfig.alternativeTransition && !preview) {
+                    if (NekoConfig.openAnimationStyle == NekoConfig.ANIMATION_STYLE_IOS && !preview) {
                         containerView.setAlpha(1.0f);
                     } else {
                         containerView.setAlpha(0.0f);
@@ -2426,8 +2442,10 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                         containerView.setScaleX(0.9f);
                         containerView.setScaleY(0.9f);
                     } else {
-                        if (NekoConfig.alternativeTransition) {
+                        if (NekoConfig.openAnimationStyle == NekoConfig.ANIMATION_STYLE_IOS) {
                             containerView.setTranslationX(getWidth());
+                        } else if (NekoConfig.openAnimationStyle == NekoConfig.ANIMATION_STYLE_AOSP) {
+                            containerView.setTranslationX(getWidth() * 0.2f);
                         } else {
                             containerView.setTranslationX(dp(48));
                         }
@@ -2893,6 +2911,7 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                         transitionAnimationPreviewMode = false;
                     } else {
                         containerViewBack.setTranslationX(0);
+                        containerView.setTranslationX(0);
                     }
                     closeLastFragmentInternalRemoveOld(currentFragment);
                     currentFragment.setRemovingFromStack(false);

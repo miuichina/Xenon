@@ -1,12 +1,8 @@
 package zxc.iconic.xenon.settings;
 
 import android.content.Context;
-import android.content.DialogInterface;
 import android.graphics.Canvas;
 import android.graphics.Paint;
-import android.text.InputType;
-import android.text.SpannableStringBuilder;
-import android.text.Spanned;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -26,14 +22,11 @@ import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.TextCheckCell;
 import org.telegram.ui.Components.BulletinFactory;
 import org.telegram.ui.Components.ChatAvatarContainer;
-import org.telegram.ui.Components.EditTextBoldCursor;
-import org.telegram.ui.Components.URLSpanNoUnderline;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.UniversalAdapter;
 import org.telegram.ui.Components.UniversalRecyclerView;
-import org.telegram.ui.LaunchActivity;
 
 import java.util.ArrayList;
 
@@ -44,14 +37,11 @@ import zxc.iconic.xenon.helpers.PopupHelper;
 public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity implements NotificationCenter.NotificationCenterDelegate {
 
     private final int emojiSetsRow = rowId++;
-    private final int predictiveBackAnimationRow = rowId++;
+    private final int navigationSettingsRow = rowId++;
     private final int appBarShadowRow = rowId++;
     private final int formatTimeWithSecondsRow = rowId++;
     private final int disableNumberRoundingRow = rowId++;
-    private final int hideBottomNavigationBarRow = rowId++;
     private final int dynamicTabSizeRow = rowId++;
-    private final int mainTabsCustomizeRow = rowId++;
-    private final int tabletModeRow = rowId++;
 
     private final int hideStoriesRow = rowId++;
     private final int mediaPreviewRow = rowId++;
@@ -66,11 +56,6 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int gooeyAvatarOffsetRow = rowId++;
     private final int keepUnreadChatsOnTopRow = rowId++;
     private final int keepUnreadArchivedOnTopRow = rowId++;
-    private final int alternativeTransitionRow = rowId++;
-    private final int alternativeTransitionSpeedRow = rowId++;
-    private final int alternativeTransitionEaseRow = rowId++;
-    private final int alternativeTransitionEaseDescriptionRow = rowId++;
-    private final int aospTransitionRow = rowId++;
     private final int material3SwitchesRow = rowId++;
     private final int m3SectionsStyleRow = rowId++;
     private final int material3ChatHeadersRow = rowId++;
@@ -112,9 +97,12 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         items.add(TextSettingsCellFactory.of(liquidGlassRow, LocaleController.getString(R.string.BlurAndLiquidGlass), "›").slug("liquidGlass"));
         items.add(UItem.asShadow(null));
 
+        items.add(UItem.asHeader(LocaleController.getString(R.string.Navigation)));
+        items.add(TextSettingsCellFactory.of(navigationSettingsRow, LocaleController.getString(R.string.NavigationSettings), "›").slug("navigationSettings"));
+        items.add(UItem.asShadow(null));
+
         items.add(UItem.asHeader(LocaleController.getString(R.string.ChangeChannelNameColor2)));
         items.add(EmojiSetCellFactory.of(emojiSetsRow, LocaleController.getString(R.string.EmojiSets)).slug("emojiSets"));
-        items.add(UItem.asCheck(predictiveBackAnimationRow, LocaleController.getString(R.string.PredictiveBackAnimation)).slug("predictiveBackAnimation").setChecked(NekoConfig.predictiveBackAnimation));
         items.add(UItem.asCheck(disableGooeyAvatarAnimationRow, LocaleController.getString(R.string.DisableGooeyAvatarAnimation)).setChecked(NekoConfig.disableGooeyAvatarAnimation).slug("disableGooeyAvatarAnimation"));
         SeekbarConfig offsetConfig = new SeekbarConfig(
                 LocaleController.getString(R.string.GooeyAvatarOffset),
@@ -132,29 +120,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         items.add(UItem.asCheck(appBarShadowRow, LocaleController.getString(R.string.DisableAppBarShadow)).slug("appBarShadow").setChecked(NekoConfig.disableAppBarShadow));
         items.add(UItem.asCheck(formatTimeWithSecondsRow, LocaleController.getString(R.string.FormatWithSeconds)).slug("formatTimeWithSeconds").setChecked(NekoConfig.formatTimeWithSeconds));
         items.add(UItem.asCheck(disableNumberRoundingRow, LocaleController.getString(R.string.DisableNumberRounding), "4.8K -> 4777").slug("disableNumberRounding").setChecked(NekoConfig.disableNumberRounding));
-        items.add(UItem.asCheck(hideBottomNavigationBarRow, LocaleController.getString(R.string.HideBottomNavigationBar)).setChecked(NekoConfig.hideBottomNavigationBar).slug("hideBottomNavigationBar"));
         items.add(UItem.asCheck(dynamicTabSizeRow, LocaleController.getString(R.string.DynamicTabSize)).slug("dynamicTabSize").setChecked(NekoConfig.dynamicTabSize));
-        items.add(TextSettingsCellFactory.of(mainTabsCustomizeRow, LocaleController.getString(R.string.MainTabsCustomizeTitle), LocaleController.getString(R.string.MainTabsCustomizeHint)).slug("mainTabsCustomize"));
-        items.add(TextSettingsCellFactory.of(tabletModeRow, LocaleController.getString(R.string.TabletMode), switch (NekoConfig.tabletMode) {
-            case NekoConfig.TABLET_AUTO -> LocaleController.getString(R.string.TabletModeAuto);
-            case NekoConfig.TABLET_ENABLE -> LocaleController.getString(R.string.Enable);
-            default -> LocaleController.getString(R.string.Disable);
-        }).slug("tabletMode"));
-        items.add(UItem.asCheck(alternativeTransitionRow, LocaleController.getString(R.string.AlternativeTransition)).setChecked(NekoConfig.alternativeTransition).slug("alternativeTransition"));
-        if (NekoConfig.alternativeTransition) {
-            SeekbarConfig speedConfig = new SeekbarConfig(
-                    LocaleController.getString(R.string.TransitionSpeed),
-                    "100", "1000", 100, 1000, 5,
-                    progress -> NekoConfig.setAlternativeTransitionSpeed(Math.round(progress / 5f) * 5));
-            items.add(SeekbarCellFactory.of(alternativeTransitionSpeedRow, speedConfig, NekoConfig.alternativeTransitionSpeed).slug("alternativeTransitionSpeed"));
-            items.add(TextSettingsCellFactory.of(alternativeTransitionEaseRow, "Change ease", NekoConfig.alternativeTransitionEase).slug("alternativeTransitionEase"));
-            var description = new SpannableStringBuilder(LocaleController.getString(R.string.AlternativeTransitionEaseDescription));
-            int linkStart = description.toString().indexOf("cubic-bezier.com");
-            if (linkStart >= 0) {
-                description.setSpan(new URLSpanNoUnderline("https://cubic-bezier.com"), linkStart, linkStart + "cubic-bezier.com".length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            }
-            items.add(UItem.asShadow(alternativeTransitionEaseDescriptionRow, description));
-        }
         items.add(UItem.asHeader("Material Design 3"));
         items.add(UItem.asCheck(material3SwitchesRow, LocaleController.getString(R.string.Switches)).setChecked(NekoConfig.material3Switches).slug("material3Switches"));
         items.add(UItem.asCheck(m3SectionsStyleRow, LocaleController.getString(R.string.ListItems)).setChecked(NekoConfig.m3SectionsStyle).slug("m3SectionsStyle"));
@@ -200,24 +166,8 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         var id = item.id;
         if (id == textAnimationSettingsRow) {
             presentFragment(new NekoTextAnimationSettingsActivity());
-        } else if (id == tabletModeRow) {
-            ArrayList<String> arrayList = new ArrayList<>();
-            ArrayList<Integer> types = new ArrayList<>();
-            arrayList.add(LocaleController.getString(R.string.TabletModeAuto));
-            types.add(NekoConfig.TABLET_AUTO);
-            arrayList.add(LocaleController.getString(R.string.Enable));
-            types.add(NekoConfig.TABLET_ENABLE);
-            arrayList.add(LocaleController.getString(R.string.Disable));
-            types.add(NekoConfig.TABLET_DISABLE);
-            PopupHelper.show(arrayList, LocaleController.getString(R.string.TabletMode), types.indexOf(NekoConfig.tabletMode), getParentActivity(), view, i -> {
-                NekoConfig.setTabletMode(types.get(i));
-                item.textValue = arrayList.get(i);
-                listView.adapter.notifyItemChanged(position, PARTIAL);
-                AndroidUtilities.resetTabletFlag();
-                if (getParentActivity() instanceof LaunchActivity) {
-                    ((LaunchActivity) getParentActivity()).invalidateTabletMode();
-                }
-            }, resourcesProvider);
+        } else if (id == navigationSettingsRow) {
+            presentFragment(new NekoNavigationSettingsActivity());
         } else if (id == emojiSetsRow) {
             presentFragment(new NekoEmojiSettingsActivity());
         } else if (id == disableNumberRoundingRow) {
@@ -271,26 +221,12 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
                 listView.adapter.notifyItemChanged(position, PARTIAL);
                 getNotificationCenter().postNotificationName(NotificationCenter.dialogFiltersUpdated);
             }, resourcesProvider);
-        } else if (id == predictiveBackAnimationRow) {
-            NekoConfig.togglePredictiveBackAnimation();
-            if (view instanceof TextCheckCell) {
-                ((TextCheckCell) view).setChecked(NekoConfig.predictiveBackAnimation);
-            }
-            showRestartBulletin();
-        } else if (id == hideBottomNavigationBarRow) {
-            NekoConfig.toggleHideBottomNavigationBar();
-            if (view instanceof TextCheckCell) {
-                ((TextCheckCell) view).setChecked(NekoConfig.hideBottomNavigationBar);
-            }
-            parentLayout.rebuildAllFragmentViews(false, false);
         } else if (id == dynamicTabSizeRow) {
             NekoConfig.toggleDynamicTabSize();
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.dynamicTabSize);
             }
             parentLayout.rebuildAllFragmentViews(false, false);
-        } else if (id == mainTabsCustomizeRow) {
-            presentFragment(new MainTabsSettingsActivity());
         } else if (id == tabsPositionRow) {
             ArrayList<String> arrayList = new ArrayList<>();
             arrayList.add(LocaleController.getString(R.string.TabsPositionTop));
@@ -325,22 +261,6 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             NekoConfig.toggleHideRecordButton();
             if (view instanceof TextCheckCell) {
                 ((TextCheckCell) view).setChecked(NekoConfig.hideRecordButton);
-            }
-        } else if (id == alternativeTransitionRow) {
-            NekoConfig.toggleAlternativeTransition();
-            if (view instanceof TextCheckCell) {
-                ((TextCheckCell) view).setChecked(NekoConfig.alternativeTransition);
-            }
-            listView.adapter.update(true);
-            // Predictive back is registered once in LaunchActivity.onCreate, so switching the
-            // Material 3 predictive-back animation only takes effect after a restart.
-            showRestartBulletin();
-        } else if (id == alternativeTransitionEaseRow) {
-            showEaseDialog();
-        } else if (id == aospTransitionRow) {
-            NekoConfig.toggleAospTransition();
-            if (view instanceof TextCheckCell) {
-                ((TextCheckCell) view).setChecked(NekoConfig.aospTransition);
             }
         } else if (id == material3SwitchesRow) {
             NekoConfig.toggleMaterial3Switches();
@@ -568,52 +488,6 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
                 LocaleController.formatString(R.string.InuMaterial3ChatHeadersConflict, disableWhat, enableWhat),
                 LocaleController.getString(R.string.Disable),
                 onDisable).show();
-    }
-
-    private void showEaseDialog() {
-        Context context = getParentActivity();
-        if (context == null) return;
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(context, resourcesProvider);
-        builder.setTitle("Change ease");
-
-        LinearLayout container = new LinearLayout(context);
-        container.setOrientation(LinearLayout.VERTICAL);
-        container.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(16), AndroidUtilities.dp(24), 0);
-
-        EditTextBoldCursor editText = new EditTextBoldCursor(context);
-        editText.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
-        editText.setTextColor(Theme.getColor(Theme.key_dialogTextBlack, resourcesProvider));
-        editText.setInputType(InputType.TYPE_CLASS_TEXT);
-        editText.setText(NekoConfig.alternativeTransitionEase);
-        editText.setSelection(editText.getText().length());
-
-        container.addView(editText, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-        builder.setView(container);
-
-        builder.setPositiveButton(LocaleController.getString("OK", R.string.OK), (dialog, which) -> {
-            String text = editText.getText().toString().trim();
-            if (!text.isEmpty()) {
-                NekoConfig.setAlternativeTransitionEase(text);
-                listView.adapter.update(true);
-            }
-        });
-
-        builder.setNegativeButton(LocaleController.getString("Cancel", R.string.Cancel), null);
-
-        String defaultEase = "0.37,0.01,0.1,1";
-        builder.setNeutralButton(LocaleController.getString("Reset", R.string.Reset), (dialog, which) -> {
-            NekoConfig.setAlternativeTransitionEase(defaultEase);
-            listView.adapter.update(true);
-        });
-
-        AlertDialog dialog = builder.show();
-        if (NekoConfig.alternativeTransitionEase.equals(defaultEase)) {
-            dialog.getButton(DialogInterface.BUTTON_NEUTRAL).setAlpha(0.5f);
-        }
-
-        editText.requestFocus();
-        AndroidUtilities.showKeyboard(editText);
     }
 
     @Override

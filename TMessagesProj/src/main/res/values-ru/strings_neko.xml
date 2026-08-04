@@ -559,5 +559,15 @@
     <string name="SaveEditsHistoryDesc">Сохранять исходный текст при редактировании сообщения</string>
     <string name="EditsHistoryMenuText">История правок</string>
     <string name="EditsHistoryEmpty">Нет сохранённых версий</string>
+    <string name="NavigationSettings">Настройки навигации</string>
+    <string name="Navigation">Навигация</string>
+    <string name="PredictiveBackIntensity">Интенсивность predictive back</string>
+    <string name="OpenAnimationStyle">Стиль анимации открытия</string>
+    <string name="CloseAnimationStyle">Стиль анимации закрытия</string>
+    <string name="PredictiveBackAnimationStyle">Стиль predictive back анимации</string>
+    <string name="AnimationStyleIos">iOS</string>
+    <string name="AnimationStyleAosp">AOSP</string>
+    <string name="Ease">Плавность</string>
+    <string name="Off">Выкл</string>
 </resources>
 

@@ -769,11 +769,29 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         BackupAgent.requestBackup();
 
         //RestrictedLanguagesSelectActivity.checkRestrictedLanguages(false);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && NekoConfig.alternativeTransition && actionBarLayout != null) {
-            // Alternative transition opts predictive back into the Material 3 animation (ported from Inugram).
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && NekoConfig.predictiveBackAnimationStyle == NekoConfig.ANIMATION_STYLE_AOSP && NekoConfig.predictiveBackIntensity > 0 && actionBarLayout != null) {
+            // AOSP predictive back animation (ported from Inugram).
             if (onBackAnimationCallback == null) {
                 onBackAnimationCallback = zxc.iconic.xenon.helpers.Material3PredictiveBack.createCallback(
                     this,
+                    actionBarLayout,
+                    () -> {
+                        if (AndroidUtilities.isTablet()) {
+                            onBackPressed();
+                            return;
+                        }
+                        if (!onBackPressed(true)) return;
+                        onBackPressed();
+                    }
+                );
+            }
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                (OnBackAnimationCallback) onBackAnimationCallback
+            );
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && NekoConfig.predictiveBackAnimationStyle == NekoConfig.ANIMATION_STYLE_IOS && NekoConfig.predictiveBackIntensity > 0 && actionBarLayout != null) {
+            if (onBackAnimationCallback == null) {
+                onBackAnimationCallback = zxc.iconic.xenon.helpers.IosPredictiveBack.createCallback(
                     actionBarLayout,
                     () -> {
                         if (AndroidUtilities.isTablet()) {
