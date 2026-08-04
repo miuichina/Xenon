@@ -1420,14 +1420,26 @@ public class ChatActivity extends BaseFragment implements
     public void showHeaderItem(boolean show) {
         if (show) {
             if (chatActivityEnterView.hasText() && TextUtils.isEmpty(chatActivityEnterView.getSlowModeTimer())) {
-                if (attachItem != null) {
-                    attachItem.setVisibility(View.VISIBLE);
-                }
-                if (headerItem != null) {
-                    headerItem.setVisibility(View.GONE);
-                }
-                if (otherIcon != null) {
-                    otherIcon.setIconVisible(true);
+                if (inuAvatarRight) {
+                    if (attachItem != null) {
+                        attachItem.setVisibility(View.GONE);
+                    }
+                    if (headerItem != null) {
+                        headerItem.setVisibility(View.VISIBLE);
+                    }
+                    if (otherIcon != null) {
+                        otherIcon.setIconVisible(false);
+                    }
+                } else {
+                    if (attachItem != null) {
+                        attachItem.setVisibility(View.VISIBLE);
+                    }
+                    if (headerItem != null) {
+                        headerItem.setVisibility(View.GONE);
+                    }
+                    if (otherIcon != null) {
+                        otherIcon.setIconVisible(true);
+                    }
                 }
             } else {
                 if (attachItem != null) {
@@ -2423,14 +2435,26 @@ public class ChatActivity extends BaseFragment implements
                 editTextItem.setVisibility(View.GONE);
             }
             if (TextUtils.isEmpty(chatActivityEnterView.getSlowModeTimer())) {
-                if (headerItem != null) {
-                    headerItem.setVisibility(View.GONE);
-                }
-                if (attachItem != null) {
-                    attachItem.setVisibility(View.VISIBLE);
-                }
-                if (otherIcon != null) {
-                    otherIcon.setIconVisible(true);
+                if (inuAvatarRight) {
+                    if (headerItem != null) {
+                        headerItem.setVisibility(View.VISIBLE);
+                    }
+                    if (attachItem != null) {
+                        attachItem.setVisibility(View.GONE);
+                    }
+                    if (otherIcon != null) {
+                        otherIcon.setIconVisible(false);
+                    }
+                } else {
+                    if (headerItem != null) {
+                        headerItem.setVisibility(View.GONE);
+                    }
+                    if (attachItem != null) {
+                        attachItem.setVisibility(View.VISIBLE);
+                    }
+                    if (otherIcon != null) {
+                        otherIcon.setIconVisible(true);
+                    }
                 }
             }
         }

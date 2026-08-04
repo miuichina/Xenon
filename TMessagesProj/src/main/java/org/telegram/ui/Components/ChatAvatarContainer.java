@@ -102,6 +102,7 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
     private int rightTextInset = 0;
     private boolean textOnlyPill = false;
     private View rightAnchorView;
+    private int lastRightAvatarLeft = Integer.MIN_VALUE;
     StatusDrawable currentTypingDrawable;
 
     private int lastWidth = -1;
@@ -793,9 +794,11 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
     public void setAvatarPlacement(int placement) {
         avatarPlacement = placement;
         avatarSizeInDp = effectiveM3() ? 48 : 42;
+        lastRightAvatarLeft = Integer.MIN_VALUE;
         if (avatarImageView != null) {
             avatarImageView.setRoundRadius(getAvatarCornerRadius());
         }
+        requestLayout();
     }
 
     public void setRightTextInset(int inset) {
@@ -872,8 +875,12 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
             if (anchor != null) {
                 avatarLeft = anchor[0] - avatarImageView.getMeasuredWidth() / 2 - lp.leftMargin;
                 avatarTop = anchor[1] - avatarImageView.getMeasuredHeight() / 2 + dp(0.3f);
+                lastRightAvatarLeft = avatarLeft;
             } else {
-                avatarLeft = getWidth() - dp(47);
+                avatarLeft = lastRightAvatarLeft != Integer.MIN_VALUE ? lastRightAvatarLeft : getWidth() + dp(3);
+                if (rightAnchorView != null && !rightAnchorView.isLaidOut()) {
+                    post(() -> requestLayout());
+                }
             }
             badgeBase = avatarLeft;
         } else {

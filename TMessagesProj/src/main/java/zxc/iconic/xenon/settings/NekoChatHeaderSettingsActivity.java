@@ -270,11 +270,18 @@ public class NekoChatHeaderSettingsActivity extends BaseNekoSettingsActivity {
             previewMoreItem.getIconView().setVisibility(avatarRight ? View.INVISIBLE : View.VISIBLE);
         }
         previewAvatar.setTranslationX(0);
-        previewActionBar.checkAvatarContainerWidth(false);
+        if (!previewCenter) {
+            previewAvatar.setAvatarOffset(0);
+        }
+        previewActionBar.requestLayout();
         previewAvatar.requestLayout();
-        previewContainer.invalidate();
-        previewActionBar.invalidate();
-        previewAvatar.invalidate();
+        previewContainer.post(() -> {
+            previewActionBar.checkAvatarContainerWidth(false);
+            previewAvatar.requestLayout();
+            previewContainer.invalidate();
+            previewActionBar.invalidate();
+            previewAvatar.invalidate();
+        });
     }
 
     private void updatePreview() {
