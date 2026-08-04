@@ -277,13 +277,13 @@ public class NekoConfig {
     public static boolean hideFadeView = false;
     public static boolean disableGlassGlare = true;
     public static boolean disableScrimBlur = false;
-    public static boolean nonIslandBottomBar = false;
+    public static boolean material3BottomNavigationBar = false;
     public static boolean wavyEnabled = true;
     public static boolean holdToOpenPopup = false;
     public static float popupHoldTime = 0.5f;
 
-    public static float wavyAmplitudeFactor = 0.05f;
-    public static int wavyWaves = 11;
+    public static float wavyAmplitudeFactor = 0.125f;
+    public static int wavyWaves = 6;
     public static float wavySpeed = 60f;
     public static int wavyGeneration;
 
@@ -485,13 +485,13 @@ public class NekoConfig {
                 glassGlareMode = GLASS_GLARE_FULL;
             }
             disableScrimBlur = preferences.getBoolean("disableScrimBlur", false);
-            nonIslandBottomBar = preferences.getBoolean("nonIslandBottomBar", false);
+            material3BottomNavigationBar = preferences.getBoolean("material3BottomNavigationBar", false);
             wavyEnabled = preferences.getBoolean("wavyEnabled", true);
             holdToOpenPopup = preferences.getBoolean("holdToOpenPopup", false);
             popupHoldTime = preferences.getFloat("popupHoldTime", 0.5f);
 
-            wavyAmplitudeFactor = preferences.getFloat("wavyAmplitudeFactor", 0.05f);
-            wavyWaves = preferences.getInt("wavyWaves", 11);
+            wavyAmplitudeFactor = preferences.getFloat("wavyAmplitudeFactor", 0.125f);
+            wavyWaves = preferences.getInt("wavyWaves", 6);
             wavySpeed = preferences.getFloat("wavySpeed", 60f);
 
             LensHelper.checkLensSupportAsync();
@@ -1848,11 +1848,11 @@ public class NekoConfig {
         editor.apply();
     }
 
-    public static void toggleNonIslandBottomBar() {
-        nonIslandBottomBar = !nonIslandBottomBar;
+    public static void toggleMaterial3BottomNavigationBar() {
+        material3BottomNavigationBar = !material3BottomNavigationBar;
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
-        editor.putBoolean("nonIslandBottomBar", nonIslandBottomBar);
+        editor.putBoolean("material3BottomNavigationBar", material3BottomNavigationBar);
         editor.apply();
     }
 

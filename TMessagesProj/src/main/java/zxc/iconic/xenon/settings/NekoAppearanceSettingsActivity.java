@@ -64,8 +64,8 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int chatHeaderSettingsRow = rowId++;
     private final int nonIslandTabBarsRow = rowId++;
     private final int nonIslandGlobalSearchRow = rowId++;
+    private final int material3BottomNavigationBarRow = rowId++;
     private final int nonIslandChatElementsRow = rowId++;
-    private final int nonIslandBottomBarRow = rowId++;
 
     private final int textAnimationSettingsRow = rowId++;
     private final int roundedBulletinRow = rowId++;
@@ -126,6 +126,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         items.add(UItem.asCheck(material3SwitchesRow, LocaleController.getString(R.string.Switches)).setChecked(NekoConfig.material3Switches).slug("material3Switches"));
         items.add(UItem.asCheck(m3SectionsStyleRow, LocaleController.getString(R.string.ListItems)).setChecked(NekoConfig.m3SectionsStyle).slug("m3SectionsStyle"));
         items.add(UItem.asCheck(materialSlidersRow, LocaleController.getString(R.string.MaterialSliders)).setChecked(NekoConfig.materialSliders).slug("materialSliders"));
+        items.add(UItem.asCheck(material3BottomNavigationBarRow, LocaleController.getString(R.string.BottomNavigationBar)).setChecked(NekoConfig.material3BottomNavigationBar).slug("material3BottomNavigationBar"));
         items.add(InfoCheckCellFactory.of(loadingIndicatorsRow, LocaleController.getString(R.string.LoadingIndicators), NekoConfig.wavyEnabled, () -> showLoadingIndicatorsInfo()).slug("loadingIndicators"));
         items.add(UItem.asShadow(null));
 
@@ -137,7 +138,6 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         items.add(UItem.asCheck(nonIslandTabBarsRow, LocaleController.getString(R.string.InuNonIslandTabBars)).setChecked(NekoConfig.nonIslandTabBars).slug("nonIslandTabBars"));
         items.add(UItem.asCheck(nonIslandGlobalSearchRow, LocaleController.getString(R.string.InuNonIslandGlobalSearch)).setChecked(NekoConfig.nonIslandGlobalSearch).slug("nonIslandGlobalSearch"));
         items.add(UItem.asCheck(nonIslandChatElementsRow, LocaleController.getString(R.string.InuNonIslandChatElements)).setChecked(NekoConfig.nonIslandChatElements).slug("nonIslandChatElements"));
-        items.add(UItem.asCheck(nonIslandBottomBarRow, LocaleController.getString(R.string.InuNonIslandBottomBar)).setChecked(NekoConfig.nonIslandBottomBar).slug("nonIslandBottomBar"));
         items.add(UItem.asShadow(LocaleController.getString(R.string.InuNonIslandHint)));
 
         items.add(UItem.asHeader(LocaleController.getString(R.string.TextAnimation)));
@@ -323,12 +323,12 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             if (view instanceof InfoCheckCell) {
                 ((InfoCheckCell) view).setChecked(NekoConfig.wavyEnabled);
             }
-        } else if (id == nonIslandBottomBarRow) {
-            NekoConfig.toggleNonIslandBottomBar();
+        } else if (id == material3BottomNavigationBarRow) {
+            NekoConfig.toggleMaterial3BottomNavigationBar();
             if (view instanceof TextCheckCell) {
-                ((TextCheckCell) view).setChecked(NekoConfig.nonIslandBottomBar);
+                ((TextCheckCell) view).setChecked(NekoConfig.material3BottomNavigationBar);
             }
-            showRestartBulletin();
+            parentLayout.rebuildAllFragmentViews(false, false);
         } else if (id == roundedBulletinRow) {
             NekoConfig.toggleRoundedBulletin();
             if (view instanceof TextCheckCell) {

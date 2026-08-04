@@ -28,6 +28,7 @@ public class MainTabsSettingsActivity extends BaseNekoSettingsActivity {
     private final int tabsPreviewRow = rowId++;
     private final int showTabsRow = rowId++;
     private final int showTabTitleRow = rowId++;
+    private final int material3BottomNavigationBarRow = rowId++;
     private final int resetOrderRow = rowId++;
 
     private MainTabsPreviewCell tabsView;
@@ -92,6 +93,10 @@ public class MainTabsSettingsActivity extends BaseNekoSettingsActivity {
                 .setEnabled(NekoConfig.showMainTabs));
         items.add(UItem.asShadow(LocaleController.getString(R.string.MainTabsShowHint)));
 
+        items.add(UItem.asHeader("Material Design 3"));
+        items.add(UItem.asCheck(material3BottomNavigationBarRow, LocaleController.getString(R.string.BottomNavigationBar)).setChecked(NekoConfig.material3BottomNavigationBar).slug("material3BottomNavigationBar"));
+        items.add(UItem.asShadow(null));
+
         items.add(UItem.asButton(resetOrderRow, R.drawable.msg_reset,
                         LocaleController.getString(R.string.MainTabsResetOrder))
                 .accent().slug("mainTabsReset"));
@@ -120,6 +125,10 @@ public class MainTabsSettingsActivity extends BaseNekoSettingsActivity {
                 tabsView.setShowTitle(NekoConfig.showMainTabsTitle, true);
             }
             hadChanges = true;
+        } else if (id == material3BottomNavigationBarRow) {
+            NekoConfig.toggleMaterial3BottomNavigationBar();
+            setChecked(view, NekoConfig.material3BottomNavigationBar);
+            parentLayout.rebuildAllFragmentViews(false, false);
         } else if (id == resetOrderRow) {
             confirmResetOrder();
         }

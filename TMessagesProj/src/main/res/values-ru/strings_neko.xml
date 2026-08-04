@@ -571,5 +571,6 @@
     <string name="Ease">Плавность</string>
     <string name="Off">Выкл</string>
     <string name="MaterialSliders">Слайдеры</string>
+    <string name="BottomNavigationBar">Нижняя панель навигации</string>
 </resources>
 
