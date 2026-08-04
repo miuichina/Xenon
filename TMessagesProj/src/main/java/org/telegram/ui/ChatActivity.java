@@ -7052,6 +7052,7 @@ actionBar.inu_nonIsland = NonIslandHelper.chatElements();
         chatListView.setOnItemClickListener(onItemClickListener);
         chatListView.setOnInterceptTouchListener(event -> {
             if (!NekoConfig.holdToOpenPopup) return false;
+            if (actionBar.isActionModeShowed() || isReport()) return false;
             int action = event.getActionMasked();
             if (action == MotionEvent.ACTION_DOWN) {
                 cancelHold();
@@ -7064,10 +7065,11 @@ actionBar.inu_nonIsland = NonIslandHelper.chatElements();
                     final long holdDelay = 200L;
                     final long scaleDuration = (long) (NekoConfig.popupHoldTime * 1000);
                     holdPopupRunnable = () -> {
-                        hv.setPivotX(hv.getWidth() / 2f);
-                        hv.setPivotY(hv.getHeight() / 2f);
+                        ChatMessageCell cellHv = (ChatMessageCell) hv;
+                        hv.setPivotX((cellHv.getBackgroundDrawableLeft() + cellHv.getBackgroundDrawableRight()) / 2f);
+                        hv.setPivotY((cellHv.getBackgroundDrawableTop() + cellHv.getBackgroundDrawableBottom()) / 2f);
                         hv.animate().scaleX(0.95f).scaleY(0.95f).setDuration(scaleDuration).setInterpolator(CubicBezierInterpolator.EASE_OUT).start();
-                        hv.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+                        hv.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
                         holdOpenRunnable = () -> {
                             hv.animate().scaleX(1f).scaleY(1f).setDuration(150).setInterpolator(CubicBezierInterpolator.EASE_OUT).start();
                             hv.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK);
