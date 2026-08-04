@@ -417,8 +417,8 @@ public class MainTabsLayout extends AnimatedLinearLayout {
             View selected = findSelectedTab();
             if (selected != null) {
                 animatedLongSelectedViewCenterX = selected.getX() + selected.getWidth() / 2f;
-                animatedLongSelectedViewOffsetX = animatedLongSelectedViewCenterX - x;
-                selectedTabPositionOffsetX.animateToFinalPosition(0);
+                animatedLongSelectedViewOffsetX = 0f;
+                selectedTabPositionOffsetX.cancel();
                 if (selected != found && found != null) {
                     found.performClick();
                 }
