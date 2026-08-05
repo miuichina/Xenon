@@ -363,16 +363,30 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         container.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(16), AndroidUtilities.dp(24), AndroidUtilities.dp(24));
 
         View previewView = new View(getParentActivity()) {
-            private final org.telegram.ui.Components.CircularProgressDrawable defaultDrawable;
-            private final org.telegram.ui.Components.CircularProgressDrawable md3Drawable;
+            private final org.telegram.ui.Components.CircularProgressDrawable defaultCpd;
+            private final org.telegram.ui.Components.CircularProgressDrawable md3Cpd;
+            private final org.telegram.ui.Components.MediaActionDrawable defaultMad;
+            private final org.telegram.ui.Components.MediaActionDrawable md3Mad;
             {
                 int color = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText, resourcesProvider);
-                defaultDrawable = new org.telegram.ui.Components.CircularProgressDrawable(color);
-                defaultDrawable.size = AndroidUtilities.dp(36);
-                defaultDrawable.thickness = AndroidUtilities.dp(3);
-                md3Drawable = new org.telegram.ui.Components.CircularProgressDrawable(color);
-                md3Drawable.size = AndroidUtilities.dp(36);
-                md3Drawable.thickness = AndroidUtilities.dp(3);
+                defaultCpd = new org.telegram.ui.Components.CircularProgressDrawable(color);
+                defaultCpd.size = AndroidUtilities.dp(36);
+                defaultCpd.thickness = AndroidUtilities.dp(3);
+                defaultCpd.setCallback(this);
+                md3Cpd = new org.telegram.ui.Components.CircularProgressDrawable(color);
+                md3Cpd.size = AndroidUtilities.dp(36);
+                md3Cpd.thickness = AndroidUtilities.dp(3);
+                md3Cpd.setCallback(this);
+                defaultMad = new org.telegram.ui.Components.MediaActionDrawable();
+                defaultMad.setColor(color);
+                defaultMad.setCallback(this);
+                defaultMad.setIcon(org.telegram.ui.Components.MediaActionDrawable.ICON_CANCEL, false);
+                defaultMad.setProgress(0, false);
+                md3Mad = new org.telegram.ui.Components.MediaActionDrawable();
+                md3Mad.setColor(color);
+                md3Mad.setCallback(this);
+                md3Mad.setIcon(org.telegram.ui.Components.MediaActionDrawable.ICON_CANCEL, false);
+                md3Mad.setProgress(0, false);
                 setWillNotDraw(false);
             }
             @Override
@@ -380,25 +394,31 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
                 super.onDraw(canvas);
                 int w = getWidth();
                 int halfW = w / 2;
-                int size = AndroidUtilities.dp(70);
-                int cy = getHeight() / 2;
+                int cpdSize = AndroidUtilities.dp(60);
+                int madSize = AndroidUtilities.dp(48);
+                int cy1 = getHeight() / 4;
+                int cy2 = 3 * getHeight() / 4;
                 int leftCenterX = halfW / 2;
                 int rightCenterX = halfW + halfW / 2;
                 boolean savedWavy = zxc.iconic.xenon.NekoConfig.wavyEnabled;
 
                 zxc.iconic.xenon.NekoConfig.wavyEnabled = false;
-                defaultDrawable.setBounds(leftCenterX - size / 2, cy - size / 2, leftCenterX + size / 2, cy + size / 2);
-                defaultDrawable.draw(canvas);
+                defaultCpd.setBounds(leftCenterX - cpdSize / 2, cy1 - cpdSize / 2, leftCenterX + cpdSize / 2, cy1 + cpdSize / 2);
+                defaultCpd.draw(canvas);
+                defaultMad.setBounds(leftCenterX - madSize / 2, cy2 - madSize / 2, leftCenterX + madSize / 2, cy2 + madSize / 2);
+                defaultMad.draw(canvas);
 
                 zxc.iconic.xenon.NekoConfig.wavyEnabled = true;
-                md3Drawable.setBounds(rightCenterX - size / 2, cy - size / 2, rightCenterX + size / 2, cy + size / 2);
-                md3Drawable.draw(canvas);
+                md3Cpd.setBounds(rightCenterX - cpdSize / 2, cy1 - cpdSize / 2, rightCenterX + cpdSize / 2, cy1 + cpdSize / 2);
+                md3Cpd.draw(canvas);
+                md3Mad.setBounds(rightCenterX - madSize / 2, cy2 - madSize / 2, rightCenterX + madSize / 2, cy2 + madSize / 2);
+                md3Mad.draw(canvas);
 
                 zxc.iconic.xenon.NekoConfig.wavyEnabled = savedWavy;
                 invalidate();
             }
         };
-        previewView.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, AndroidUtilities.dp(90)));
+        previewView.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, AndroidUtilities.dp(140)));
         container.addView(previewView);
 
         LinearLayout labelsLayout = new LinearLayout(getParentActivity());
