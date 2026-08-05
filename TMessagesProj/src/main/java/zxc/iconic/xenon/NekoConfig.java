@@ -199,6 +199,7 @@ public class NekoConfig {
     public static boolean material3ChatHeaders = false;
     public static boolean materialSliders = false;
     public static boolean centerChatHeader = false;
+    public static boolean biggerAvatar = false;
     public static final int AVATAR_PLACEMENT_LEFT = 0;
     public static final int AVATAR_PLACEMENT_CENTER = 1;
     public static final int AVATAR_PLACEMENT_RIGHT = 2;
@@ -281,6 +282,12 @@ public class NekoConfig {
     public static boolean disableGlassGlare = true;
     public static boolean disableScrimBlur = false;
     public static boolean material3BottomNavigationBar = false;
+    public static int avatarShape = 0;
+    public static boolean avatarShapeInChatList = true;
+    public static boolean avatarShapeInChatMessages = true;
+    public static boolean rotateAvatarShape = false;
+    public static int avatarShapeRotationSpeed = 60;
+    public static boolean avatarShapeSquareBase = false;
     public static boolean wavyEnabled = true;
     public static boolean holdToOpenPopup = false;
     public static float popupHoldTime = 0.5f;
@@ -465,6 +472,7 @@ public class NekoConfig {
             materialSliders = preferences.getBoolean("materialSliders", false);
             centerChatHeader = preferences.getBoolean("centerChatHeader", false);
             avatarPlacement = preferences.getInt("avatarPlacement", AVATAR_PLACEMENT_LEFT);
+            biggerAvatar = preferences.getBoolean("biggerAvatar", false);
             aospTransition = preferences.getBoolean("aospTransition", false);
             openAnimationStyle = preferences.getInt("openAnimationStyle", ANIMATION_STYLE_DEFAULT);
             closeAnimationStyle = preferences.getInt("closeAnimationStyle", ANIMATION_STYLE_DEFAULT);
@@ -491,6 +499,12 @@ public class NekoConfig {
             }
             disableScrimBlur = preferences.getBoolean("disableScrimBlur", false);
             material3BottomNavigationBar = preferences.getBoolean("material3BottomNavigationBar", false);
+            avatarShape = preferences.getInt("avatarShape", 0);
+            avatarShapeInChatList = preferences.getBoolean("avatarShapeInChatList", true);
+            avatarShapeInChatMessages = preferences.getBoolean("avatarShapeInChatMessages", true);
+            rotateAvatarShape = preferences.getBoolean("rotateAvatarShape", false);
+            avatarShapeRotationSpeed = preferences.getInt("avatarShapeRotationSpeed", 60);
+            avatarShapeSquareBase = preferences.getBoolean("avatarShapeSquareBase", false);
             wavyEnabled = preferences.getBoolean("wavyEnabled", true);
             holdToOpenPopup = preferences.getBoolean("holdToOpenPopup", false);
             popupHoldTime = preferences.getFloat("popupHoldTime", 0.5f);
@@ -789,6 +803,14 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("centerChatHeader", centerChatHeader);
+        editor.apply();
+    }
+
+    public static void toggleBiggerAvatar() {
+        biggerAvatar = !biggerAvatar;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("biggerAvatar", biggerAvatar);
         editor.apply();
     }
 
@@ -1874,6 +1896,54 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("material3BottomNavigationBar", material3BottomNavigationBar);
+        editor.apply();
+    }
+
+    public static void setAvatarShape(int value) {
+        avatarShape = value;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("avatarShape", avatarShape);
+        editor.apply();
+    }
+
+    public static void toggleAvatarShapeInChatList() {
+        avatarShapeInChatList = !avatarShapeInChatList;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("avatarShapeInChatList", avatarShapeInChatList);
+        editor.apply();
+    }
+
+    public static void toggleAvatarShapeInChatMessages() {
+        avatarShapeInChatMessages = !avatarShapeInChatMessages;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("avatarShapeInChatMessages", avatarShapeInChatMessages);
+        editor.apply();
+    }
+
+    public static void toggleRotateAvatarShape() {
+        rotateAvatarShape = !rotateAvatarShape;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("rotateAvatarShape", rotateAvatarShape);
+        editor.apply();
+    }
+
+    public static void setAvatarShapeRotationSpeed(int value) {
+        avatarShapeRotationSpeed = value;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("avatarShapeRotationSpeed", avatarShapeRotationSpeed);
+        editor.apply();
+    }
+
+    public static void toggleAvatarShapeSquareBase() {
+        avatarShapeSquareBase = !avatarShapeSquareBase;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("avatarShapeSquareBase", avatarShapeSquareBase);
         editor.apply();
     }
 

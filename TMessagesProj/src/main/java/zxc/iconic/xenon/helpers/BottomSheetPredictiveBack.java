@@ -16,6 +16,8 @@ import androidx.annotation.RequiresApi;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.ui.ActionBar.BottomSheet;
 
+import zxc.iconic.xenon.NekoConfig;
+
 @RequiresApi(api = Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
 public final class BottomSheetPredictiveBack {
 
@@ -28,6 +30,10 @@ public final class BottomSheetPredictiveBack {
     private static final class Callback implements OnBackAnimationCallback {
         private final BottomSheet sheet;
         private boolean attached = false;
+
+        private static float clamp(float v, float min, float max) {
+            return v < min ? min : Math.min(v, max);
+        }
         private boolean isButton = false;
         private AnimatorSet runningAnim = null;
         private float maxTranslateY = 0f;
@@ -71,7 +77,9 @@ public final class BottomSheetPredictiveBack {
             float p = Math.min((backEvent.getProgress() - LAZY_START) / (1f - LAZY_START), 1f);
             if (p <= lastP && p >= 0.99f) return;
             lastP = p;
-            float eased = 1f - (1f - p) * (1f - p);
+            float intensity = Math.max(NekoConfig.predictiveBackIntensity / 10f, 0.001f);
+            float effectiveP = clamp(p * intensity, 0f, 1f);
+            float eased = 1f - (1f - effectiveP) * (1f - effectiveP);
             currentEased = eased;
             cv.setTranslationY(maxTranslateY * eased);
             sheet.setPredictiveBackProgress(eased);

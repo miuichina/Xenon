@@ -913,10 +913,12 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                         }
 
                         final float fixedProgress = Math.max(0, progress - LAZY_START) / (1 - LAZY_START);
+                        final float intensity = Math.max(NekoConfig.predictiveBackIntensity / 10f, 0.001f);
+                        final float scaledProgress = Math.min(fixedProgress * intensity, 1f);
 
                         if (AndroidUtilities.isTablet()) return;
                         if (actionBarLayout != null) {
-                            actionBarLayout.onBackProgress(fixedProgress);
+                            actionBarLayout.onBackProgress(scaledProgress);
                         }
                     }
 

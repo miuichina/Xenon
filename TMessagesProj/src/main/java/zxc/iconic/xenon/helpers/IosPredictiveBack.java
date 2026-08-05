@@ -20,6 +20,8 @@ import org.telegram.messenger.AndroidUtilities;
 import org.telegram.ui.ActionBar.ActionBarLayout;
 import org.telegram.ui.Components.CubicBezierInterpolator;
 
+import zxc.iconic.xenon.NekoConfig;
+
 @RequiresApi(api = Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
 public final class IosPredictiveBack {
 
@@ -100,7 +102,9 @@ public final class IosPredictiveBack {
                 }
             }
             float p = clamp(rawP, 0f, 1f);
-            applyFrame(p);
+            float intensity = Math.max(NekoConfig.predictiveBackIntensity / 10f, 0.001f);
+            float effectiveP = clamp(p * intensity, 0f, 1f);
+            applyFrame(effectiveP);
         }
 
         @Override
