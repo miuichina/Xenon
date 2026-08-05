@@ -41,7 +41,6 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int appBarShadowRow = rowId++;
     private final int formatTimeWithSecondsRow = rowId++;
     private final int disableNumberRoundingRow = rowId++;
-    private final int dynamicTabSizeRow = rowId++;
 
     private final int hideStoriesRow = rowId++;
     private final int mediaPreviewRow = rowId++;
@@ -66,6 +65,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int nonIslandGlobalSearchRow = rowId++;
     private final int material3BottomNavigationBarRow = rowId++;
     private final int md3PlayerSeekBarRow = rowId++;
+    private final int md3FoldersRow = rowId++;
     private final int material3DialogsRow = rowId++;
     private final int avatarShapeRow = rowId++;
     private final int nonIslandChatElementsRow = rowId++;
@@ -124,13 +124,13 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         items.add(UItem.asCheck(appBarShadowRow, LocaleController.getString(R.string.DisableAppBarShadow)).slug("appBarShadow").setChecked(NekoConfig.disableAppBarShadow));
         items.add(UItem.asCheck(formatTimeWithSecondsRow, LocaleController.getString(R.string.FormatWithSeconds)).slug("formatTimeWithSeconds").setChecked(NekoConfig.formatTimeWithSeconds));
         items.add(UItem.asCheck(disableNumberRoundingRow, LocaleController.getString(R.string.DisableNumberRounding), "4.8K -> 4777").slug("disableNumberRounding").setChecked(NekoConfig.disableNumberRounding));
-        items.add(UItem.asCheck(dynamicTabSizeRow, LocaleController.getString(R.string.DynamicTabSize)).slug("dynamicTabSize").setChecked(NekoConfig.dynamicTabSize));
         items.add(UItem.asHeader("Material Design 3"));
         items.add(UItem.asCheck(material3SwitchesRow, LocaleController.getString(R.string.Switches)).setChecked(NekoConfig.material3Switches).slug("material3Switches"));
         items.add(UItem.asCheck(m3SectionsStyleRow, LocaleController.getString(R.string.ListItems)).setChecked(NekoConfig.m3SectionsStyle).slug("m3SectionsStyle"));
         items.add(UItem.asCheck(materialSlidersRow, LocaleController.getString(R.string.MaterialSliders)).setChecked(NekoConfig.materialSliders).slug("materialSliders"));
         items.add(UItem.asCheck(material3BottomNavigationBarRow, LocaleController.getString(R.string.BottomNavigationBar)).setChecked(NekoConfig.material3BottomNavigationBar).slug("material3BottomNavigationBar"));
         items.add(UItem.asCheck(md3PlayerSeekBarRow, LocaleController.getString(R.string.PlayerSeekBar)).setChecked(NekoConfig.md3PlayerSeekBar).slug("md3PlayerSeekBar"));
+        items.add(UItem.asCheck(md3FoldersRow, LocaleController.getString(R.string.Md3Folders)).setChecked(NekoConfig.md3Folders).slug("md3Folders"));
         items.add(InfoCheckCellFactory.of(loadingIndicatorsRow, LocaleController.getString(R.string.LoadingIndicators), NekoConfig.wavyEnabled, () -> showLoadingIndicatorsInfo()).slug("loadingIndicators"));
         items.add(UItem.asCheck(material3DialogsRow, LocaleController.getString(R.string.Material3Dialogs)).setChecked(NekoConfig.material3Dialogs).slug("material3Dialogs"));
         items.add(TextSettingsCellFactory.of(avatarShapeRow, LocaleController.getString(R.string.Avatars), "›").slug("avatarShape"));
@@ -214,6 +214,12 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             }
             getNotificationCenter().postNotificationName(NotificationCenter.dialogFiltersUpdated);
             getNotificationCenter().postNotificationName(NotificationCenter.mainUserInfoChanged);
+        } else if (id == md3FoldersRow) {
+            NekoConfig.toggleMd3Folders();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.md3Folders);
+            }
+            showRestartBulletin();
         } else if (id == tabsTitleTypeRow) {
             ArrayList<String> arrayList = new ArrayList<>();
             ArrayList<Integer> types = new ArrayList<>();
@@ -229,12 +235,6 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
                 listView.adapter.notifyItemChanged(position, PARTIAL);
                 getNotificationCenter().postNotificationName(NotificationCenter.dialogFiltersUpdated);
             }, resourcesProvider);
-        } else if (id == dynamicTabSizeRow) {
-            NekoConfig.toggleDynamicTabSize();
-            if (view instanceof TextCheckCell) {
-                ((TextCheckCell) view).setChecked(NekoConfig.dynamicTabSize);
-            }
-            parentLayout.rebuildAllFragmentViews(false, false);
         } else if (id == tabsPositionRow) {
             ArrayList<String> arrayList = new ArrayList<>();
             arrayList.add(LocaleController.getString(R.string.TabsPositionTop));
