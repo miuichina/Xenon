@@ -118,9 +118,9 @@ public class NekoLiquidGlassSettingsActivity extends BaseNekoSettingsActivity {
         items.add(UItem.asShadow(null));
 
         // --- Glass / fade ---
-        items.add(UItem.asCheck(disableScrimBlurRow, LocaleController.getString(R.string.InuDisableScrimBlur))
+        items.add(UItem.asCheck(disableScrimBlurRow, LocaleController.getString(R.string.DisableScrimBlur))
                 .setChecked(NekoConfig.disableScrimBlur).slug("disableScrimBlur"));
-        items.add(UItem.asCheck(hideFadeViewRow, LocaleController.getString(R.string.InuHideFadeView))
+        items.add(UItem.asCheck(hideFadeViewRow, LocaleController.getString(R.string.HideFadeView))
                 .setChecked(NekoConfig.hideFadeView).slug("hideFadeView"));
         items.add(TextSettingsCellFactory.of(glassGlareRow, LocaleController.getString(R.string.GlassGlare), glassGlareModeValue())
                 .slug("glassGlare"));

@@ -65,6 +65,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int nonIslandTabBarsRow = rowId++;
     private final int nonIslandGlobalSearchRow = rowId++;
     private final int material3BottomNavigationBarRow = rowId++;
+    private final int md3PlayerSeekBarRow = rowId++;
     private final int material3DialogsRow = rowId++;
     private final int avatarShapeRow = rowId++;
     private final int nonIslandChatElementsRow = rowId++;
@@ -129,6 +130,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         items.add(UItem.asCheck(m3SectionsStyleRow, LocaleController.getString(R.string.ListItems)).setChecked(NekoConfig.m3SectionsStyle).slug("m3SectionsStyle"));
         items.add(UItem.asCheck(materialSlidersRow, LocaleController.getString(R.string.MaterialSliders)).setChecked(NekoConfig.materialSliders).slug("materialSliders"));
         items.add(UItem.asCheck(material3BottomNavigationBarRow, LocaleController.getString(R.string.BottomNavigationBar)).setChecked(NekoConfig.material3BottomNavigationBar).slug("material3BottomNavigationBar"));
+        items.add(UItem.asCheck(md3PlayerSeekBarRow, LocaleController.getString(R.string.PlayerSeekBar)).setChecked(NekoConfig.md3PlayerSeekBar).slug("md3PlayerSeekBar"));
         items.add(InfoCheckCellFactory.of(loadingIndicatorsRow, LocaleController.getString(R.string.LoadingIndicators), NekoConfig.wavyEnabled, () -> showLoadingIndicatorsInfo()).slug("loadingIndicators"));
         items.add(UItem.asCheck(material3DialogsRow, LocaleController.getString(R.string.Material3Dialogs)).setChecked(NekoConfig.material3Dialogs).slug("material3Dialogs"));
         items.add(TextSettingsCellFactory.of(avatarShapeRow, LocaleController.getString(R.string.Avatars), "›").slug("avatarShape"));
@@ -138,10 +140,10 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         items.add(TextSettingsCellFactory.of(chatHeaderSettingsRow, LocaleController.getString(R.string.ChatHeaderSettings), "›").slug("chatHeaderSettings"));
         items.add(UItem.asShadow(null));
 
-        items.add(UItem.asHeader(LocaleController.getString(R.string.InuNonIslandUI)));
-        items.add(UItem.asCheck(nonIslandTabBarsRow, LocaleController.getString(R.string.InuNonIslandTabBars)).setChecked(NekoConfig.nonIslandTabBars).slug("nonIslandTabBars"));
-        items.add(UItem.asCheck(nonIslandGlobalSearchRow, LocaleController.getString(R.string.InuNonIslandGlobalSearch)).setChecked(NekoConfig.nonIslandGlobalSearch).slug("nonIslandGlobalSearch"));
-        items.add(UItem.asCheck(nonIslandChatElementsRow, LocaleController.getString(R.string.InuNonIslandChatElements)).setChecked(NekoConfig.nonIslandChatElements).slug("nonIslandChatElements"));
+        items.add(UItem.asHeader(LocaleController.getString(R.string.NonIslandUI)));
+        items.add(UItem.asCheck(nonIslandTabBarsRow, LocaleController.getString(R.string.NonIslandTabBars)).setChecked(NekoConfig.nonIslandTabBars).slug("nonIslandTabBars"));
+        items.add(UItem.asCheck(nonIslandGlobalSearchRow, LocaleController.getString(R.string.NonIslandGlobalSearch)).setChecked(NekoConfig.nonIslandGlobalSearch).slug("nonIslandGlobalSearch"));
+        items.add(UItem.asCheck(nonIslandChatElementsRow, LocaleController.getString(R.string.NonIslandChatElements)).setChecked(NekoConfig.nonIslandChatElements).slug("nonIslandChatElements"));
         items.add(UItem.asShadow(LocaleController.getString(R.string.InuNonIslandHint)));
 
         items.add(UItem.asHeader(LocaleController.getString(R.string.TextAnimation)));
@@ -298,7 +300,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             }
         } else if (id == nonIslandChatElementsRow) {
             if (!NekoConfig.nonIslandChatElements && NekoConfig.material3ChatHeaders) {
-                showHeaderConflictBulletin(LocaleController.getString(R.string.InuMaterial3ChatHeaders), LocaleController.getString(R.string.InuNonIslandChatElements), () -> {
+                showHeaderConflictBulletin(LocaleController.getString(R.string.Material3ChatHeaders), LocaleController.getString(R.string.NonIslandChatElements), () -> {
                     NekoConfig.toggleMaterial3ChatHeaders();
                     NekoConfig.toggleNonIslandChatElements();
                     listView.adapter.update(true);
@@ -311,7 +313,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
             }
         } else if (id == material3ChatHeadersRow) {
             if (!NekoConfig.material3ChatHeaders && NekoConfig.nonIslandChatElements) {
-                showHeaderConflictBulletin(LocaleController.getString(R.string.InuNonIslandChatElements), LocaleController.getString(R.string.InuMaterial3ChatHeaders), () -> {
+                showHeaderConflictBulletin(LocaleController.getString(R.string.NonIslandChatElements), LocaleController.getString(R.string.Material3ChatHeaders), () -> {
                     NekoConfig.toggleNonIslandChatElements();
                     NekoConfig.toggleMaterial3ChatHeaders();
                     listView.adapter.update(true);
@@ -333,6 +335,12 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
                 ((TextCheckCell) view).setChecked(NekoConfig.material3BottomNavigationBar);
             }
             parentLayout.rebuildAllFragmentViews(false, false);
+        } else if (id == md3PlayerSeekBarRow) {
+            NekoConfig.toggleMd3PlayerSeekBar();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.md3PlayerSeekBar);
+            }
+            listView.adapter.update(true);
         } else if (id == material3DialogsRow) {
             if (!NekoConfig.material3Dialogs && NekoConfig.replaceDialogsWithSheet) {
                 showMaterial3DialogsConflictBulletin();
@@ -454,7 +462,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private void showChatHeadersInfo() {
         if (getParentActivity() == null) return;
         org.telegram.ui.ActionBar.BottomSheet sheet = new org.telegram.ui.ActionBar.BottomSheet(getParentActivity(), false, resourcesProvider);
-        sheet.setTitle(LocaleController.getString(R.string.InuMaterial3ChatHeaders));
+        sheet.setTitle(LocaleController.getString(R.string.Material3ChatHeaders));
 
         LinearLayout container = new LinearLayout(getParentActivity());
         container.setOrientation(LinearLayout.VERTICAL);
@@ -529,7 +537,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
 
     private void showHeaderConflictBulletin(String disableWhat, String enableWhat, Runnable onDisable) {
         BulletinFactory.of(this).createSimpleBulletin(R.raw.chats_infotip,
-                LocaleController.formatString(R.string.InuMaterial3ChatHeadersConflict, disableWhat, enableWhat),
+                LocaleController.formatString(R.string.Material3ChatHeadersConflict, disableWhat, enableWhat),
                 LocaleController.getString(R.string.Disable),
                 onDisable).show();
     }

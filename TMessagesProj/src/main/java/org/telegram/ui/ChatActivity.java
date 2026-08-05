@@ -440,6 +440,11 @@ public class ChatActivity extends BaseFragment implements
     private final @NonNull BlurredBackgroundSourceWrapped navbarContentSourceWallpaper;
     private final @NonNull BlurredBackgroundDrawableViewFactory navbarContentDrawableFactory;
 
+    private final @Nullable BlurredBackgroundSourceRenderNode fadeBlurSource;
+    private final @Nullable BlurredBackgroundDrawableViewFactory fadeBlurFactory;
+    private OnPostDrawView fadeBlurCaptureView;
+    private final RectF fadeBlurCaptureRect = new RectF();
+
     private Dialog closeChatDialog;
     private boolean showCloseChatDialogLater;
     private FrameLayout progressView;
@@ -2832,6 +2837,14 @@ public class ChatActivity extends BaseFragment implements
         glassBackgroundDrawableFactoryFrosted.setLinkedViewsRef(glassAttachedViews);
         scrimBlur3Factory.setLinkedViewsRef(new ReferenceList<>());
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && NekoConfig.blurredFadeView) {
+            fadeBlurSource = new BlurredBackgroundSourceRenderNode(null);
+            fadeBlurFactory = new BlurredBackgroundDrawableViewFactory(fadeBlurSource);
+        } else {
+            fadeBlurSource = null;
+            fadeBlurFactory = null;
+        }
+
         navbarContentDrawableFactory.setLinkedDrawablesRef(glassAttachedDrawables);
         glassBackgroundDrawableFactory.setLinkedDrawablesRef(glassAttachedDrawables);
         glassBackgroundDrawableFactoryFrosted.setLinkedDrawablesRef(glassAttachedDrawables);
@@ -4385,6 +4398,7 @@ public class ChatActivity extends BaseFragment implements
         };
         avatarContainer.setGlassMode();
         avatarContainer.setM3HeaderMode(NekoConfig.material3ChatHeaders);
+        avatarContainer.setBiggerAvatar(NekoConfig.biggerAvatar);
         avatarContainer.allowShorterStatus = true;
         avatarContainer.premiumIconHiddable = true;
         avatarContainer.allowDrawStories = dialog_id < 0 && !isTopic;
@@ -4804,6 +4818,11 @@ public class ChatActivity extends BaseFragment implements
         invalidateBlurredSourcesView = new OnPostDrawView(context, true, this::invalidateMergedVisibleBlurredPositionsAndSourcesImpl);
         contentView.addView(invalidateBlurredSourcesView);
 
+        if (fadeBlurSource != null) {
+            fadeBlurCaptureView = new OnPostDrawView(context, true, flags -> invalidateFadeBlurImpl());
+            contentView.addView(fadeBlurCaptureView);
+        }
+
         final ViewPositionWatcher viewPositionWatcher = new ViewPositionWatcher(contentView);
 
         final ViewGroup parentView = parentChatActivity != null ? parentChatActivity.contentView : contentView;
@@ -4811,6 +4830,9 @@ public class ChatActivity extends BaseFragment implements
         glassBackgroundDrawableFactoryFrosted.setSourceRootView(viewPositionWatcher, parentView);
         navbarContentDrawableFactory.setSourceRootView(viewPositionWatcher, parentView);
         scrimBlur3Factory.setSourceRootView(viewPositionWatcher, parentView);
+        if (fadeBlurFactory != null) {
+            fadeBlurFactory.setSourceRootView(viewPositionWatcher, parentView);
+        }
 
         contentView.setOccupyStatusBar(!inBubbleMode && !isInsideContainer && !inPreviewMode);
 
@@ -4853,6 +4875,7 @@ actionBar.inu_nonIsland = NonIslandHelper.chatElements();
                 if (iconView != null) {
                     iconView.setVisibility(View.INVISIBLE);
                 }
+                actionBar.inu_avatarRightBigger = NekoConfig.biggerAvatar;
             }
         } else if (textOnlyPill) {
             avatarContainer.setRightTextInset(AndroidUtilities.dp(92));
@@ -7304,14 +7327,25 @@ actionBar.inu_nonIsland = NonIslandHelper.chatElements();
         contentView.addView(chatListView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
         chatActivityFadeView = new ChatActivityFadeView(context);
-        chatActivityFadeView.setup(navbarContentDrawableFactory);
-        if (NekoConfig.material3ChatHeaders) {
+        if (fadeBlurFactory != null) {
+            chatActivityFadeView.setup(fadeBlurFactory);
+        } else {
+            chatActivityFadeView.setup(NekoConfig.blurredFadeView ? glassBackgroundDrawableFactoryFrosted : navbarContentDrawableFactory);
+        }
+        if (NekoConfig.material3ChatHeaders || fadeBlurFactory != null) {
             chatActivityFadeView.setFadeHeightTop(dp(48), false);
         } else {
             chatActivityFadeView.setFadeHeightTop(dp(48));
         }
-        chatActivityFadeView.setFadeHeightBottom(dp(48));
+        if (fadeBlurFactory != null) {
+            chatActivityFadeView.setFadeHeightBottom(dp(48), false);
+        } else {
+            chatActivityFadeView.setFadeHeightBottom(dp(48));
+        }
         contentView.addView(chatActivityFadeView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+        if (fadeBlurSource != null) {
+            chatActivityFadeView.post(this::invalidateFadeBlur);
+        }
 
         if (getDialogId() != getUserConfig().getClientUserId()) {
             selectionReactionsOverlay = new ChatSelectionReactionMenuOverlay(this, context);
@@ -48480,6 +48514,8 @@ final BlurredBackgroundDrawable topPanelLayoutBackground = glassBackgroundDrawab
             parentChatActivity.invalidateMergedVisibleBlurredPositionsAndSources(flags);
         }
 
+        invalidateFadeBlur();
+
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || scrollableViewNoiseSuppressor == null) {
             return;
         }
@@ -48521,6 +48557,34 @@ final BlurredBackgroundDrawable topPanelLayoutBackground = glassBackgroundDrawab
         }
 
         //}
+    }
+
+    private void invalidateFadeBlur() {
+        if (fadeBlurCaptureView != null) {
+            fadeBlurCaptureView.invalidate(1);
+        }
+    }
+
+    private void invalidateFadeBlurImpl() {
+        if (fadeBlurSource == null || chatActivityFadeView == null || contentView == null) {
+            return;
+        }
+        if (fadeBlurSource.inRecording()) {
+            return;
+        }
+        final int fw = contentView.getWidth();
+        final int fh = contentView.getHeight();
+        if (fw <= 0 || fh <= 0) {
+            return;
+        }
+        fadeBlurCaptureRect.set(0, 0, fw, fh);
+        fadeBlurSource.setBlur(AndroidUtilities.dpf2(NekoConfig.blurredFadeBlurStrength));
+        fadeBlurSource.setPixelation(NekoConfig.blurredFadePixelation);
+        Canvas c = fadeBlurSource.beginRecording(fw, fh);
+        contentView.drawList(c, fadeBlurCaptureRect);
+        fadeBlurSource.endRecording();
+        chatActivityFadeView.setDim(NekoConfig.blurredFadeDimming ? NekoConfig.blurredFadeDimStrength * 255 / 100 : 0);
+        chatActivityFadeView.invalidate();
     }
 
     private int getMergedVisibleBlurredPositions(List<RectF> positions) {

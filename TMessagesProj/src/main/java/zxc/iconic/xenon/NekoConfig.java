@@ -200,6 +200,11 @@ public class NekoConfig {
     public static boolean materialSliders = false;
     public static boolean centerChatHeader = false;
     public static boolean biggerAvatar = false;
+    public static boolean blurredFadeView = false;
+    public static int blurredFadeBlurStrength = 20;
+    public static int blurredFadePixelation = 1;
+    public static boolean blurredFadeDimming = false;
+    public static int blurredFadeDimStrength = 50;
     public static final int AVATAR_PLACEMENT_LEFT = 0;
     public static final int AVATAR_PLACEMENT_CENTER = 1;
     public static final int AVATAR_PLACEMENT_RIGHT = 2;
@@ -282,6 +287,7 @@ public class NekoConfig {
     public static boolean disableGlassGlare = true;
     public static boolean disableScrimBlur = false;
     public static boolean material3BottomNavigationBar = false;
+    public static boolean md3PlayerSeekBar = false;
     public static int avatarShape = 0;
     public static boolean avatarShapeInChatList = true;
     public static boolean avatarShapeInChatMessages = true;
@@ -473,6 +479,11 @@ public class NekoConfig {
             centerChatHeader = preferences.getBoolean("centerChatHeader", false);
             avatarPlacement = preferences.getInt("avatarPlacement", AVATAR_PLACEMENT_LEFT);
             biggerAvatar = preferences.getBoolean("biggerAvatar", false);
+            blurredFadeView = preferences.getBoolean("blurredFadeView", false);
+            blurredFadeBlurStrength = preferences.getInt("blurredFadeBlurStrength", 20);
+            blurredFadePixelation = preferences.getInt("blurredFadePixelation", 1);
+            blurredFadeDimming = preferences.getBoolean("blurredFadeDimming", false);
+            blurredFadeDimStrength = preferences.getInt("blurredFadeDimStrength", 50);
             aospTransition = preferences.getBoolean("aospTransition", false);
             openAnimationStyle = preferences.getInt("openAnimationStyle", ANIMATION_STYLE_DEFAULT);
             closeAnimationStyle = preferences.getInt("closeAnimationStyle", ANIMATION_STYLE_DEFAULT);
@@ -499,6 +510,7 @@ public class NekoConfig {
             }
             disableScrimBlur = preferences.getBoolean("disableScrimBlur", false);
             material3BottomNavigationBar = preferences.getBoolean("material3BottomNavigationBar", false);
+            md3PlayerSeekBar = preferences.getBoolean("md3PlayerSeekBar", false);
             avatarShape = preferences.getInt("avatarShape", 0);
             avatarShapeInChatList = preferences.getBoolean("avatarShapeInChatList", true);
             avatarShapeInChatMessages = preferences.getBoolean("avatarShapeInChatMessages", true);
@@ -811,6 +823,46 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("biggerAvatar", biggerAvatar);
+        editor.apply();
+    }
+
+    public static void toggleBlurredFadeView() {
+        blurredFadeView = !blurredFadeView;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("blurredFadeView", blurredFadeView);
+        editor.apply();
+    }
+
+    public static void setBlurredFadeBlurStrength(int value) {
+        blurredFadeBlurStrength = Math.max(0, Math.min(40, value));
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("blurredFadeBlurStrength", blurredFadeBlurStrength);
+        editor.apply();
+    }
+
+    public static void setBlurredFadePixelation(int value) {
+        blurredFadePixelation = Math.max(1, Math.min(16, value));
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("blurredFadePixelation", blurredFadePixelation);
+        editor.apply();
+    }
+
+    public static void toggleBlurredFadeDimming() {
+        blurredFadeDimming = !blurredFadeDimming;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("blurredFadeDimming", blurredFadeDimming);
+        editor.apply();
+    }
+
+    public static void setBlurredFadeDimStrength(int value) {
+        blurredFadeDimStrength = Math.max(0, Math.min(100, value));
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("blurredFadeDimStrength", blurredFadeDimStrength);
         editor.apply();
     }
 
@@ -1766,8 +1818,11 @@ public class NekoConfig {
             advancedGlassGlare = 0.1f;
         } else if (mode == GLASS_GLARE_DISABLE) {
             advancedGlassGlare = 0f;
+        } else if (mode == GLASS_GLARE_FULL) {
+            if (advancedGlassGlare < 0.1f) {
+                advancedGlassGlare = DEFAULT_ADVANCED_GLASS_GLARE;
+            }
         }
-        // Full: advancedGlassGlare is left unchanged (the slider controls it).
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putInt("glassGlareMode", glassGlareMode);
@@ -1896,6 +1951,14 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("material3BottomNavigationBar", material3BottomNavigationBar);
+        editor.apply();
+    }
+
+    public static void toggleMd3PlayerSeekBar() {
+        md3PlayerSeekBar = !md3PlayerSeekBar;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("md3PlayerSeekBar", md3PlayerSeekBar);
         editor.apply();
     }
 

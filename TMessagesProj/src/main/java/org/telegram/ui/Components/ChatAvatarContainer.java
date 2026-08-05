@@ -101,6 +101,7 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
     private int avatarPlacement = zxc.iconic.xenon.NekoConfig.AVATAR_PLACEMENT_LEFT;
     private int rightTextInset = 0;
     private boolean textOnlyPill = false;
+    private boolean biggerAvatar = false;
     private View rightAnchorView;
     private int lastRightAvatarLeft = Integer.MIN_VALUE;
     StatusDrawable currentTypingDrawable;
@@ -781,19 +782,32 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
     public void setM3HeaderMode(boolean enabled) {
         if (zxc.iconic.xenon.helpers.NonIslandHelper.chatElements()) enabled = false;
         m3HeaderMode = enabled;
-        avatarSizeInDp = effectiveM3() ? 48 : 42;
-        if (avatarImageView != null) {
-            avatarImageView.setRoundRadius(getAvatarCornerRadius());
-        }
+        updateAvatarSizeIfNeeded();
         if (subtitleTextView != null) {
             subtitleTextView.setTextSizePx(dp(effectiveM3() ? 14f : 13.5f));
             subtitleTextView.setAlpha(effectiveM3() ? 0.85f : 1f);
         }
     }
 
+    public void setBiggerAvatar(boolean enabled) {
+        biggerAvatar = enabled;
+        updateAvatarSizeIfNeeded();
+    }
+
+    private void updateAvatarSizeIfNeeded() {
+        int newSize = biggerAvatar ? 48 : 42;
+        if (avatarSizeInDp != newSize) {
+            avatarSizeInDp = newSize;
+            if (avatarImageView != null) {
+                avatarImageView.setRoundRadius(getAvatarCornerRadius());
+            }
+            requestLayout();
+        }
+    }
+
     public void setAvatarPlacement(int placement) {
         avatarPlacement = placement;
-        avatarSizeInDp = effectiveM3() ? 48 : 42;
+        avatarSizeInDp = biggerAvatar ? 48 : 42;
         lastRightAvatarLeft = Integer.MIN_VALUE;
         if (avatarImageView != null) {
             avatarImageView.setRoundRadius(getAvatarCornerRadius());
@@ -853,7 +867,13 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
     @Override
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
         final int actionBarHeight = ActionBar.getCurrentActionBarHeight();
-        int viewTop = (actionBarHeight - avatarImageView.getMeasuredHeight() - 2) / 2 + (occupyStatusBar ? AndroidUtilities.statusBarHeight : 0);
+        final boolean rightPlacement = avatarPlacement == zxc.iconic.xenon.NekoConfig.AVATAR_PLACEMENT_RIGHT && avatarImageView.getVisibility() == VISIBLE;
+        int viewTop;
+        if (rightPlacement) {
+            viewTop = (actionBarHeight - (dp(42) - 2) - 2) / 2 + (occupyStatusBar ? AndroidUtilities.statusBarHeight : 0);
+        } else {
+            viewTop = (actionBarHeight - avatarImageView.getMeasuredHeight() - 2) / 2 + (occupyStatusBar ? AndroidUtilities.statusBarHeight : 0);
+        }
         final boolean m3 = effectiveM3();
         int subtitleTop;
         if (m3) {
@@ -878,6 +898,7 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
                 lastRightAvatarLeft = avatarLeft;
             } else {
                 avatarLeft = lastRightAvatarLeft != Integer.MIN_VALUE ? lastRightAvatarLeft : getWidth() + dp(3);
+                avatarTop = 1 + (actionBarHeight - avatarImageView.getMeasuredHeight() - 2) / 2 + (occupyStatusBar ? AndroidUtilities.statusBarHeight : 0) + dp(0.3f);
                 if (rightAnchorView != null && !rightAnchorView.isLaidOut()) {
                     post(() -> requestLayout());
                 }
@@ -888,8 +909,10 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
             badgeBase = leftPadding;
         }
         final int l;
-        if (textOnly || rightAvatar) {
+        if (textOnly) {
             l = leftPadding;
+        } else if (rightAvatar) {
+            l = leftPadding + (!m3HeaderMode && !textOnlyPill ? dp(7f) : 0);
         } else {
             l = leftPadding + (avatarVisible ? dp(m3 ? 57f : glassMode ? 49.66f : 55) : dp(glassMode ? 13 : 1)) + rightAvatarPadding;
         }

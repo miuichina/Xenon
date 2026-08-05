@@ -29,6 +29,12 @@ public class BlurredBackgroundSourceRenderNode implements BlurredBackgroundSourc
     private int scrollableNoiseSuppressorIndex;
     public BlurredBackgroundSource underSource;
     private boolean noClip;
+    private float pixelationScale = 1f;
+    private float lastBlurRadius = -1f;
+
+    public void setPixelation(float scale) {
+        this.pixelationScale = Math.max(1f, scale);
+    }
 
     public BlurredBackgroundSourceRenderNode(BlurredBackgroundSource fallbackSource) {
         this.fallbackSource = fallbackSource;
@@ -61,7 +67,10 @@ public class BlurredBackgroundSourceRenderNode implements BlurredBackgroundSourc
 
     @RequiresApi(api = Build.VERSION_CODES.S)
     public void setBlur(float radius) {
-        renderNode.setRenderEffect(radius > 0 ? RenderEffect.createBlurEffect(radius, radius, Shader.TileMode.CLAMP) : null);
+        if (lastBlurRadius != radius) {
+            lastBlurRadius = radius;
+            renderNode.setRenderEffect(radius > 0 ? RenderEffect.createBlurEffect(radius, radius, Shader.TileMode.CLAMP) : null);
+        }
     }
 
     @RequiresApi(api = Build.VERSION_CODES.S)
@@ -91,6 +100,16 @@ public class BlurredBackgroundSourceRenderNode implements BlurredBackgroundSourc
 
         renderNode.setPosition(0, 0, width, height);
         recordingCanvas = renderNode.beginRecording(width, height);
+        if (pixelationScale > 1f) {
+            recordingCanvas.scale(1f / pixelationScale, 1f / pixelationScale);
+            renderNode.setScaleX(pixelationScale);
+            renderNode.setScaleY(pixelationScale);
+            renderNode.setPivotX(0);
+            renderNode.setPivotY(0);
+        } else {
+            renderNode.setScaleX(1f);
+            renderNode.setScaleY(1f);
+        }
         return recordingCanvas;
     }
 

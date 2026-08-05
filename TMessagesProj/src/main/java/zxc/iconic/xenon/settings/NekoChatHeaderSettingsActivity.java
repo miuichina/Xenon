@@ -46,6 +46,12 @@ public class NekoChatHeaderSettingsActivity extends BaseNekoSettingsActivity {
     private final int removeHeaderPillRow = rowId++;
     private final int centerHeaderRow = rowId++;
     private final int avatarPlacementRow = rowId++;
+    private final int biggerAvatarRow = rowId++;
+    private final int blurredFadeViewRow = rowId++;
+    private final int blurredFadeBlurAmountRow = rowId++;
+    private final int blurredFadePixelationRow = rowId++;
+    private final int blurredFadeDimmingRow = rowId++;
+    private final int blurredFadeDimStrengthRow = rowId++;
 
     private ActionBar previewActionBar;
     private ChatAvatarContainer previewAvatar;
@@ -67,6 +73,45 @@ public class NekoChatHeaderSettingsActivity extends BaseNekoSettingsActivity {
         items.add(UItem.asHeader("Header"));
         items.add(UItem.asCheck(removeHeaderPillRow, "Remove header pill").setChecked(NekoConfig.material3ChatHeaders).slug("removeHeaderPill"));
         items.add(UItem.asCheck(centerHeaderRow, LocaleController.getString(R.string.CenterChatHeader)).setChecked(NekoConfig.centerChatHeader).slug("centerHeader"));
+        items.add(UItem.asCheck(biggerAvatarRow, "Bigger avatar").setChecked(NekoConfig.biggerAvatar).slug("biggerAvatar"));
+        items.add(UItem.asCheck(blurredFadeViewRow, LocaleController.getString(R.string.BlurredFadeView)).setChecked(NekoConfig.blurredFadeView).slug("blurredFadeView"));
+        if (NekoConfig.blurredFadeView) {
+            items.add(SeekbarCellFactory.of(blurredFadeBlurAmountRow,
+                    new SeekbarConfig(LocaleController.getString(R.string.BlurredFadeBlurAmount),
+                            "0", "40", 0, 40,
+                            progress -> {
+                                int v = Math.max(0, Math.min(40, Math.round(progress)));
+                                if (v != NekoConfig.blurredFadeBlurStrength) {
+                                    NekoConfig.setBlurredFadeBlurStrength(v);
+                                }
+                            }),
+                    NekoConfig.blurredFadeBlurStrength).slug("blurredFadeBlurAmount"));
+            items.add(SeekbarCellFactory.of(blurredFadePixelationRow,
+                    new SeekbarConfig(LocaleController.getString(R.string.BlurredFadePixelation),
+                            "1", "16", 1, 16,
+                            progress -> {
+                                int v = Math.max(1, Math.min(16, Math.round(progress)));
+                                if (v != NekoConfig.blurredFadePixelation) {
+                                    NekoConfig.setBlurredFadePixelation(v);
+                                }
+                            }),
+                    NekoConfig.blurredFadePixelation).slug("blurredFadePixelation"));
+        }
+        if (NekoConfig.blurredFadeView) {
+            items.add(UItem.asCheck(blurredFadeDimmingRow, LocaleController.getString(R.string.BlurredFadeDimming)).setChecked(NekoConfig.blurredFadeDimming).slug("blurredFadeDimming"));
+            if (NekoConfig.blurredFadeDimming) {
+                items.add(SeekbarCellFactory.of(blurredFadeDimStrengthRow,
+                        new SeekbarConfig(LocaleController.getString(R.string.BlurredFadeDimStrength),
+                                "0", "100", 0, 100,
+                                progress -> {
+                                    int v = Math.max(0, Math.min(100, Math.round(progress)));
+                                    if (v != NekoConfig.blurredFadeDimStrength) {
+                                        NekoConfig.setBlurredFadeDimStrength(v);
+                                    }
+                                }),
+                        NekoConfig.blurredFadeDimStrength).slug("blurredFadeDimStrength"));
+            }
+        }
         items.add(TextSettingsCellFactory.of(avatarPlacementRow, LocaleController.getString(R.string.AvatarPlacement), placementName(effectivePlacement())));
         items.add(UItem.asShadow(null));
     }
@@ -106,6 +151,28 @@ public class NekoChatHeaderSettingsActivity extends BaseNekoSettingsActivity {
             }
             notifyItemChanged(avatarPlacementRow);
             updatePreview();
+        } else if (id == biggerAvatarRow) {
+            NekoConfig.toggleBiggerAvatar();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.biggerAvatar);
+            }
+            updatePreview();
+        } else if (id == blurredFadeViewRow) {
+            NekoConfig.toggleBlurredFadeView();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.blurredFadeView);
+            }
+            if (listView != null && listView.adapter != null) {
+                listView.adapter.update(true);
+            }
+        } else if (id == blurredFadeDimmingRow) {
+            NekoConfig.toggleBlurredFadeDimming();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.blurredFadeDimming);
+            }
+            if (listView != null && listView.adapter != null) {
+                listView.adapter.update(true);
+            }
         } else if (id == avatarPlacementRow) {
             int current = effectivePlacement();
             ItemOptions options = ItemOptions.makeOptions(this, view).setMinWidth(190);
@@ -223,6 +290,7 @@ public class NekoChatHeaderSettingsActivity extends BaseNekoSettingsActivity {
         previewAvatar.setSubtitle(onlineText);
         previewAvatar.setGlassMode();
         previewAvatar.setM3HeaderMode(previewM3);
+        previewAvatar.setBiggerAvatar(NekoConfig.biggerAvatar);
 
         BackDrawable backDrawable = new BackDrawable(false);
         backDrawable.setColor(0xFFFFFFFF);
@@ -269,6 +337,9 @@ public class NekoChatHeaderSettingsActivity extends BaseNekoSettingsActivity {
         if (previewMoreItem != null && previewMoreItem.getIconView() != null) {
             previewMoreItem.getIconView().setVisibility(avatarRight ? View.INVISIBLE : View.VISIBLE);
         }
+        if (previewMoreItem != null) {
+            previewActionBar.inu_avatarRightBigger = avatarRight && NekoConfig.biggerAvatar;
+        }
         previewAvatar.setTranslationX(0);
         if (!previewCenter) {
             previewAvatar.setAvatarOffset(0);
@@ -290,6 +361,7 @@ public class NekoChatHeaderSettingsActivity extends BaseNekoSettingsActivity {
         previewCenter = NekoConfig.centerChatHeader;
         previewActionBar.inu_m3ChatHeader = previewM3;
         previewAvatar.setM3HeaderMode(previewM3);
+        previewAvatar.setBiggerAvatar(NekoConfig.biggerAvatar);
         applyPreviewPlacement();
     }
 

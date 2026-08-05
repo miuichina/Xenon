@@ -97,6 +97,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
     public boolean inu_m3ChatHeader;
     public boolean inu_centerChatHeader;
     public boolean inu_textOnlyPill;
+    public boolean inu_avatarRightBigger;
     private INavigationLayout.BackButtonState backButtonState = INavigationLayout.BackButtonState.BACK;
     public ImageView backButtonImageView;
     private BackupImageView avatarSearchImageView;
@@ -2295,7 +2296,7 @@ public class ActionBar extends FrameLayout implements FactorAnimator.Target, The
             glassDrawableBack.setBounds(0, t, s + p * 2, b);
             glassDrawableBack.draw(canvas);
         }
-        if (glassDrawableMenu != null && menuWidth > 0 && !inu_nonIsland && !glassOnlyBack) {
+        if (glassDrawableMenu != null && menuWidth > 0 && !inu_nonIsland && !glassOnlyBack && !inu_avatarRightBigger) {
             glassDrawableMenu.setBounds(getWidth() - Math.max(s, menuWidth) - p * 2, t, getWidth(), b);
             glassDrawableMenu.setAlpha(hasForcedMenuWidth ? 255 : (int) (255 * animatorHasMenuItems.getFloatValue()));
             glassDrawableMenu.draw(canvas);

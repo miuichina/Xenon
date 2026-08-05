@@ -76,6 +76,12 @@ public class ChatActivityFadeView extends View implements Theme.Colorable {
         }
     }
 
+    public void setFadeHeightBottom(int height, boolean opacity) {
+        if (fadeDrawableBottom instanceof BlurredBackgroundWithFadeDrawable) {
+            ((BlurredBackgroundWithFadeDrawable) fadeDrawableBottom).setFadeHeight(height, opacity);
+        }
+    }
+
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
@@ -117,6 +123,16 @@ public class ChatActivityFadeView extends View implements Theme.Colorable {
         if (fadeDrawableBottom instanceof BlurredBackgroundWithFadeDrawable) {
             ((BlurredBackgroundWithFadeDrawable) fadeDrawableBottom).setIgnoreFastWay(ignoreFastWay);
         }
+    }
+
+    public void setDim(int alpha) {
+        if (fadeDrawableTop instanceof BlurredBackgroundWithFadeDrawable) {
+            ((BlurredBackgroundWithFadeDrawable) fadeDrawableTop).setDimAlpha(alpha);
+        }
+        if (fadeDrawableBottom instanceof BlurredBackgroundWithFadeDrawable) {
+            ((BlurredBackgroundWithFadeDrawable) fadeDrawableBottom).setDimAlpha(alpha);
+        }
+        invalidate();
     }
 
     @Override
