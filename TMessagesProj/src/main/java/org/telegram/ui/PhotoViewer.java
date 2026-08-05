@@ -10703,7 +10703,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
         }
         if ((videoPlayer != null ? videoPlayer.isPlaying() : photoViewerWebView.isPlaying()) && playbackState != ExoPlayer.STATE_ENDED) {
             if (!isPlaying) {
-                isPlaying = true;
+                isPlaying = true; if (videoPlayerSeekbar != null) videoPlayerSeekbar.setPlaying(true);
                 photoProgressViews[0].setBackgroundState(isCurrentVideo ? PROGRESS_NONE : PROGRESS_PAUSE, false, true);
                 photoProgressViews[0].setIndexedAlpha(1, !isCurrentVideo && (!isAccessibilityEnabled() || playerWasPlaying) && ((playerAutoStarted && !playerWasPlaying) || !isActionBarVisible) ? 0f : 1f, false);
                 playerWasPlaying = true;
@@ -10714,7 +10714,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                 photoProgressViews[0].setIndexedAlpha(1, 1f, playbackState == ExoPlayer.STATE_ENDED);
                 photoProgressViews[0].setBackgroundState(PROGRESS_PLAY, false, photoProgressViews[0].animAlphas[1] > 0f);
             }
-            isPlaying = false;
+            isPlaying = false; if (videoPlayerSeekbar != null) videoPlayerSeekbar.setPlaying(false);
             AndroidUtilities.cancelRunOnUIThread(updateProgressRunnable);
             if (playbackState == ExoPlayer.STATE_ENDED) {
                 if (isCurrentVideo) {
@@ -10760,7 +10760,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
     private void playVideoOrWeb() {
         if (isGifControllable()) {
             centerImage.startAnimation();
-            isPlaying = true;
+            isPlaying = true; if (videoPlayerSeekbar != null) videoPlayerSeekbar.setPlaying(true);
             if (photoProgressViews != null && photoProgressViews[0] != null) {
                 photoProgressViews[0].setBackgroundState(PROGRESS_PAUSE, false, true);
                 photoProgressViews[0].setIndexedAlpha(1, isActionBarVisible ? 1f : 0f, false);
@@ -10777,7 +10777,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
     private void pauseVideoOrWeb() {
         if (isGifControllable()) {
             centerImage.stopAnimation();
-            isPlaying = false;
+            isPlaying = false; if (videoPlayerSeekbar != null) videoPlayerSeekbar.setPlaying(false);
             if (photoProgressViews != null && photoProgressViews[0] != null) {
                 photoProgressViews[0].setIndexedAlpha(1, 1f, false);
                 photoProgressViews[0].setBackgroundState(PROGRESS_PLAY, false, true);
@@ -11491,7 +11491,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             videoSurfaceView = null;
         }
         if (isPlaying) {
-            isPlaying = false;
+            isPlaying = false; if (videoPlayerSeekbar != null) videoPlayerSeekbar.setPlaying(false);
             AndroidUtilities.cancelRunOnUIThread(updateProgressRunnable);
         }
         if (!onClose && !inPreview && !requestingPreview) {
@@ -14977,8 +14977,8 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                 gifSetupRetries = 0;
                 AndroidUtilities.cancelRunOnUIThread(gifSetupRunnable);
                 if (isPlaying && videoPlayer == null && (photoViewerWebView == null || !photoViewerWebView.isControllable())) {
-                    isPlaying = false;
-                    AndroidUtilities.cancelRunOnUIThread(updateProgressRunnable);
+            isPlaying = false; if (videoPlayerSeekbar != null) videoPlayerSeekbar.setPlaying(false);
+            AndroidUtilities.cancelRunOnUIThread(updateProgressRunnable);
                 }
                 if (videoPlayer == null && (photoViewerWebView == null || !photoViewerWebView.isControllable())) {
                     setVideoPlayerControlVisible(false, true);
@@ -15004,7 +15004,7 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             videoPlayerSeekbar.clearTimestamps();
             videoPlayerSeekbar.setProgress(0);
         }
-        isPlaying = true;
+        isPlaying = true; if (videoPlayerSeekbar != null) videoPlayerSeekbar.setPlaying(true);
         if (photoProgressViews != null && photoProgressViews[0] != null) {
             photoProgressViews[0].setBackgroundState(PROGRESS_PAUSE, false, true);
             photoProgressViews[0].setIndexedAlpha(1, isActionBarVisible ? 1f : 0f, false);
