@@ -1975,21 +1975,32 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
         boolean altClose = NekoConfig.closeAnimationStyle == NekoConfig.ANIMATION_STYLE_IOS;
         boolean aospOpen = NekoConfig.openAnimationStyle == NekoConfig.ANIMATION_STYLE_AOSP;
         boolean aospClose = NekoConfig.closeAnimationStyle == NekoConfig.ANIMATION_STYLE_AOSP;
-        boolean styledOpen = altOpen || aospOpen;
-        boolean styledClose = altClose || aospClose;
+        boolean fadeOpen = NekoConfig.openAnimationStyle == NekoConfig.ANIMATION_STYLE_FADE;
+        boolean fadeClose = NekoConfig.closeAnimationStyle == NekoConfig.ANIMATION_STYLE_FADE;
+        boolean styledOpen = altOpen || aospOpen || fadeOpen;
+        boolean styledClose = altClose || aospClose || fadeClose;
         if (first) {
             animationProgress = 0.0f;
             lastFrameTime = System.nanoTime() / 1000000;
             if (styledClose && !open && !preview) {
                 if (aospClose) {
                     containerView.setTranslationX(-getWidth() * 0.2f);
-                } else {
+                } else if (!fadeClose) {
                     containerView.setTranslationX(-dp(96));
                 }
                 containerViewBack.setTranslationX(0);
                 if (altClose) {
                     setupRoundedCorners(containerViewBack);
                 }
+                if (fadeClose) {
+                    containerView.setAlpha(1f);
+                }
+            }
+            if (fadeOpen && open && !preview) {
+                containerView.setTranslationX(0);
+                containerView.setAlpha(0f);
+                containerViewBack.setTranslationX(0);
+                containerViewBack.setAlpha(1f);
             }
         }
         AndroidUtilities.runOnUIThread(animationRunnable = new Runnable() {
@@ -2012,7 +2023,11 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                 lastFrameTime = newTime;
                 float duration = preview && open ? 190.0f : 150.0f;
                 if ((open ? styledOpen : styledClose) && !preview) {
-                    duration = (open ? aospOpen : aospClose) ? NekoConfig.aospDuration : NekoConfig.alternativeTransitionSpeed;
+                    if (open ? fadeOpen : fadeClose) {
+                        duration = NekoConfig.fadeDuration;
+                    } else {
+                        duration = (open ? aospOpen : aospClose) ? NekoConfig.aospDuration : NekoConfig.alternativeTransitionSpeed;
+                    }
                 }
                 animationProgress += dt / duration;
                 if (animationProgress > 1.0f) {
@@ -2059,12 +2074,14 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                     interpolated = getAltTransitionInterpolator().getInterpolation(animationProgress);
                 } else if (open ? aospOpen : aospClose) {
                     interpolated = getAospInterpolator().getInterpolation(animationProgress);
+                } else if (open ? fadeOpen : fadeClose) {
+                    interpolated = CubicBezierInterpolator.EASE_OUT_QUINT.getInterpolation(animationProgress);
                 } else {
                     interpolated = decelerateInterpolator.getInterpolation(animationProgress);
                 }
                 if (open) {
                     float clampedInterpolated = MathUtils.clamp(interpolated, 0, 1);
-                    if (!altOpen && !aospOpen || preview) {
+                    if (!altOpen && !aospOpen && !fadeOpen || preview) {
                         containerView.setAlpha(clampedInterpolated);
                     }
                     if (preview) {
@@ -2092,6 +2109,8 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                             float alphaP = MathUtils.clamp((interpolated - alphaStart) / (alphaEnd - alphaStart), 0f, 1f);
                             containerView.setAlpha(alphaP);
                             containerViewBack.setAlpha(1f - alphaP);
+                        } else if (fadeOpen) {
+                            containerView.setAlpha(clampedInterpolated);
                         } else {
                             containerView.setTranslationX(dp(48) * (1.0f - interpolated));
                         }
@@ -2122,6 +2141,9 @@ public class ActionBarLayout extends FrameLayout implements INavigationLayout, F
                             float alphaP = MathUtils.clamp((interpolated - alphaStart) / (alphaEnd - alphaStart), 0f, 1f);
                             containerViewBack.setAlpha(1f - alphaP);
                             containerView.setAlpha(alphaP);
+                        } else if (fadeClose) {
+                            containerViewBack.setAlpha(clampedReverseInterpolated);
+                            containerView.setAlpha(1f);
                         } else {
                             containerViewBack.setTranslationX(dp(48) * interpolated);
                         }

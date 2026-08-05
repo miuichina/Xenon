@@ -801,6 +801,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                         if (!onBackPressed(true)) return;
                         onBackPressed();
                     },
+                    false,
                     false
                 );
             }
@@ -820,6 +821,27 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                         if (!onBackPressed(true)) return;
                         onBackPressed();
                     },
+                    true,
+                    false
+                );
+            }
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                (OnBackAnimationCallback) onBackAnimationCallback
+            );
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && NekoConfig.predictiveBackAnimationStyle == NekoConfig.ANIMATION_STYLE_FADE && NekoConfig.predictiveBackIntensity > 0 && actionBarLayout != null) {
+            if (onBackAnimationCallback == null) {
+                onBackAnimationCallback = zxc.iconic.xenon.helpers.IosPredictiveBack.createCallback(
+                    actionBarLayout,
+                    () -> {
+                        if (AndroidUtilities.isTablet()) {
+                            onBackPressed();
+                            return;
+                        }
+                        if (!onBackPressed(true)) return;
+                        onBackPressed();
+                    },
+                    false,
                     true
                 );
             }

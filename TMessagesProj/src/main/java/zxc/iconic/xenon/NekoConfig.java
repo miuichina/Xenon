@@ -208,10 +208,12 @@ public class NekoConfig {
     public static final int ANIMATION_STYLE_IOS = 1;
     public static final int ANIMATION_STYLE_AOSP = 2;
     public static final int ANIMATION_STYLE_AOSP_ALT = 3;
+    public static final int ANIMATION_STYLE_FADE = 4;
     public static int openAnimationStyle = ANIMATION_STYLE_DEFAULT;
     public static int closeAnimationStyle = ANIMATION_STYLE_DEFAULT;
     public static int predictiveBackAnimationStyle = ANIMATION_STYLE_DEFAULT;
     public static int predictiveBackIntensity = 0;
+    public static int fadeDuration = 300;
     public static boolean removeChatDelay = false;
     public static boolean showOnlineDotsInChat = false;
     public static boolean optimizedPushService = false;
@@ -468,6 +470,7 @@ public class NekoConfig {
             closeAnimationStyle = preferences.getInt("closeAnimationStyle", ANIMATION_STYLE_DEFAULT);
             predictiveBackAnimationStyle = preferences.getInt("predictiveBackAnimationStyle", ANIMATION_STYLE_DEFAULT);
             predictiveBackIntensity = preferences.getInt("predictiveBackIntensity", 0);
+            fadeDuration = preferences.getInt("fadeDuration", 300);
             predictiveBackAnimation = predictiveBackIntensity > 0;
             removeChatDelay = preferences.getBoolean("removeChatDelay", false);
             showOnlineDotsInChat = preferences.getBoolean("showOnlineDotsInChat", false);
@@ -738,6 +741,14 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putInt("aospAlphaTime", aospAlphaTime);
+        editor.apply();
+    }
+
+    public static void setFadeDuration(int value) {
+        fadeDuration = value;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("fadeDuration", fadeDuration);
         editor.apply();
     }
 

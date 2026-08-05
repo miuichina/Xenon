@@ -31,8 +31,8 @@ public final class IosPredictiveBack {
     private IosPredictiveBack() {
     }
 
-    public static OnBackAnimationCallback createCallback(ActionBarLayout layout, Runnable plainBack, boolean aospStyle) {
-        Callback callback = new Callback(layout, plainBack, aospStyle);
+    public static OnBackAnimationCallback createCallback(ActionBarLayout layout, Runnable plainBack, boolean aospStyle, boolean fadeStyle) {
+        Callback callback = new Callback(layout, plainBack, aospStyle, fadeStyle);
         layout.m3PredictiveCallbackCancelRunnable = () -> callback.cancelAndCleanup();
         return callback;
     }
@@ -46,6 +46,7 @@ public final class IosPredictiveBack {
         private final ActionBarLayout layout;
         private final Runnable plainBack;
         private final boolean aospStyle;
+        private final boolean fadeStyle;
         private boolean attached = false;
         private boolean invoked = false;
         private boolean finishCancel = false;
@@ -54,10 +55,11 @@ public final class IosPredictiveBack {
         private boolean savedClipToOutline = false;
         private float cornerRadius = 0f;
 
-        Callback(ActionBarLayout layout, Runnable plainBack, boolean aospStyle) {
+        Callback(ActionBarLayout layout, Runnable plainBack, boolean aospStyle, boolean fadeStyle) {
             this.layout = layout;
             this.plainBack = plainBack;
             this.aospStyle = aospStyle;
+            this.fadeStyle = fadeStyle;
         }
 
         @Override
@@ -93,7 +95,7 @@ public final class IosPredictiveBack {
                 attached = true;
                 layout.m3PredictiveActive = true;
                 layout.invalidate();
-                if (!aospStyle) {
+                if (!aospStyle && !fadeStyle) {
                     attachRoundedCorners();
                 }
             }
@@ -170,7 +172,10 @@ public final class IosPredictiveBack {
             if (w <= 0f) {
                 return;
             }
-            if (aospStyle) {
+            if (fadeStyle) {
+                cv.setAlpha(1f - p);
+                cvb.setAlpha(p);
+            } else if (aospStyle) {
                 cv.setTranslationX(w * 0.2f * p);
                 cvb.setTranslationX(-w * 0.2f * (1f - p));
                 float alphaP = clamp((p - 0.125f) / 0.25f, 0f, 1f);
@@ -183,41 +188,44 @@ public final class IosPredictiveBack {
         }
 
 private void runFinishAnim(boolean cancel) {
-        finishCancel = cancel;
-        ViewGroup cv = layout.containerView;
-        ViewGroup cvb = layout.containerViewBack;
-        if (cv == null || cvb == null) {
-            finalizeStock(cancel);
-            return;
-        }
-        float w = cv.getWidth();
-        float cvTarget = cancel ? 0f : (aospStyle ? w * 0.2f : w);
-        long duration = cancel ? CANCEL_DURATION : COMMIT_DURATION;
+            finishCancel = cancel;
+            ViewGroup cv = layout.containerView;
+            ViewGroup cvb = layout.containerViewBack;
+            if (cv == null || cvb == null) {
+                finalizeStock(cancel);
+                return;
+            }
+            float w = cv.getWidth();
+            boolean useAlpha = aospStyle || fadeStyle;
+            long duration = cancel ? CANCEL_DURATION : COMMIT_DURATION;
 
-        AnimatorSet set = new AnimatorSet();
-        java.util.List<Animator> animators = new java.util.ArrayList<>();
-        animators.add(ObjectAnimator.ofFloat(cv, View.TRANSLATION_X, cvTarget));
-        animators.add(ObjectAnimator.ofFloat(cvb, View.TRANSLATION_X, 0f));
+            AnimatorSet set = new AnimatorSet();
+            java.util.List<Animator> animators = new java.util.ArrayList<>();
+            if (!fadeStyle) {
+                float cvTarget = cancel ? 0f : (aospStyle ? w * 0.2f : w);
+                animators.add(ObjectAnimator.ofFloat(cv, View.TRANSLATION_X, cvTarget));
+                animators.add(ObjectAnimator.ofFloat(cvb, View.TRANSLATION_X, 0f));
+            }
 
-        if (aospStyle) {
-            float cvAlphaFrom = cv.getAlpha();
-            float cvAlphaTo = cancel ? 1f : 0f;
-            float cvbAlphaFrom = cvb.getAlpha();
-            float cvbAlphaTo = cancel ? 0f : 1f;
-            android.animation.ValueAnimator alphaAnim = android.animation.ValueAnimator.ofFloat(0f, 1f);
-            alphaAnim.addUpdateListener(a -> {
-                float f = (float) a.getAnimatedValue();
-                cv.setAlpha(cvAlphaFrom + (cvAlphaTo - cvAlphaFrom) * f);
-                cvb.setAlpha(cvbAlphaFrom + (cvbAlphaTo - cvbAlphaFrom) * f);
-            });
-            alphaAnim.setDuration((long) (duration * 0.3));
-            alphaAnim.setInterpolator(CubicBezierInterpolator.EASE_OUT_QUINT);
-            animators.add(alphaAnim);
-        }
+            if (useAlpha) {
+                float cvAlphaFrom = cv.getAlpha();
+                float cvAlphaTo = cancel ? 1f : 0f;
+                float cvbAlphaFrom = cvb.getAlpha();
+                float cvbAlphaTo = cancel ? 0f : 1f;
+                android.animation.ValueAnimator alphaAnim = android.animation.ValueAnimator.ofFloat(0f, 1f);
+                alphaAnim.addUpdateListener(a -> {
+                    float f = (float) a.getAnimatedValue();
+                    cv.setAlpha(cvAlphaFrom + (cvAlphaTo - cvAlphaFrom) * f);
+                    cvb.setAlpha(cvbAlphaFrom + (cvbAlphaTo - cvbAlphaFrom) * f);
+                });
+                alphaAnim.setDuration((long) (duration * 0.3));
+                alphaAnim.setInterpolator(CubicBezierInterpolator.EASE_OUT_QUINT);
+                animators.add(alphaAnim);
+            }
 
-        set.playTogether(animators);
-        set.setDuration(duration);
-        set.setInterpolator(CubicBezierInterpolator.EASE_OUT_QUINT);
+            set.playTogether(animators);
+            set.setDuration(duration);
+            set.setInterpolator(CubicBezierInterpolator.EASE_OUT_QUINT);
             set.addListener(new AnimatorListenerAdapter() {
                 @Override
                 public void onAnimationEnd(Animator animation) {
@@ -248,7 +256,7 @@ private void runFinishAnim(boolean cancel) {
             if (cv != null) {
                 cv.setTranslationX(0f);
                 cv.setAlpha(1f);
-                if (!aospStyle) {
+                if (!aospStyle && !fadeStyle) {
                     cv.setClipToOutline(savedClipToOutline);
                     cv.setOutlineProvider(savedOutlineProvider != null ? savedOutlineProvider : ViewOutlineProvider.BACKGROUND);
                 }

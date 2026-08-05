@@ -41,6 +41,8 @@ public class NekoNavigationSettingsActivity extends BaseNekoSettingsActivity {
     private final int easeRow = rowId++;
     private final int easeDescriptionRow = rowId++;
 
+    private final int fadeSpeedRow = rowId++;
+
     @Override
     protected void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
         items.add(UItem.asHeader(LocaleController.getString(R.string.Navigation)));
@@ -74,6 +76,7 @@ public class NekoNavigationSettingsActivity extends BaseNekoSettingsActivity {
             default -> LocaleController.getString(R.string.Disable);
         }).slug("tabletMode"));
 
+        items.add(UItem.asHeader(LocaleController.getString(R.string.IOSAnimation)));
         SeekbarConfig speedConfig = new SeekbarConfig(
                 LocaleController.getString(R.string.TransitionSpeed),
                 "100", "1000", 100, 1000, 5,
@@ -86,6 +89,13 @@ public class NekoNavigationSettingsActivity extends BaseNekoSettingsActivity {
             description.setSpan(new URLSpanNoUnderline("https://cubic-bezier.com"), linkStart, linkStart + "cubic-bezier.com".length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         items.add(UItem.asShadow(easeDescriptionRow, description));
+
+        items.add(UItem.asHeader(LocaleController.getString(R.string.FadeAnimation)));
+        SeekbarConfig fadeConfig = new SeekbarConfig(
+                LocaleController.getString(R.string.FadeTransitionSpeed),
+                "100", "1000", 100, 1000, 5,
+                progress -> NekoConfig.setFadeDuration(Math.round(progress / 5f) * 5));
+        items.add(SeekbarCellFactory.of(fadeSpeedRow, fadeConfig, NekoConfig.fadeDuration).slug("fadeDuration"));
     }
 
     @Override
@@ -136,6 +146,8 @@ public class NekoNavigationSettingsActivity extends BaseNekoSettingsActivity {
             arrayList.add(LocaleController.getString(R.string.AnimationStyleAospAlt));
             types.add(NekoConfig.ANIMATION_STYLE_AOSP_ALT);
         }
+        arrayList.add(LocaleController.getString(R.string.AnimationStyleFade));
+        types.add(NekoConfig.ANIMATION_STYLE_FADE);
         PopupHelper.show(arrayList, LocaleController.getString(titleRes), types.indexOf(currentStyle), getParentActivity(), view, i -> {
             setter.accept(types.get(i));
             item.textValue = arrayList.get(i);
@@ -151,6 +163,7 @@ public class NekoNavigationSettingsActivity extends BaseNekoSettingsActivity {
             case NekoConfig.ANIMATION_STYLE_IOS -> LocaleController.getString(R.string.AnimationStyleIos);
             case NekoConfig.ANIMATION_STYLE_AOSP -> LocaleController.getString(R.string.AnimationStyleAosp);
             case NekoConfig.ANIMATION_STYLE_AOSP_ALT -> LocaleController.getString(R.string.AnimationStyleAospAlt);
+            case NekoConfig.ANIMATION_STYLE_FADE -> LocaleController.getString(R.string.AnimationStyleFade);
             default -> LocaleController.getString(R.string.Default);
         };
     }
