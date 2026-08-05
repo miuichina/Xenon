@@ -578,5 +578,12 @@
     <string name="MaterialSliders">Слайдеры</string>
     <string name="BottomNavigationBar">Нижняя панель навигации</string>
     <string name="Material3Dialogs">Диалоги</string>
+    <string name="AvatarShapesHeader">Формы</string>
+    <string name="Avatars">Аватарки</string>
+    <string name="ApplyInChatList">Применять в списке чатов</string>
+    <string name="ApplyForChatMessages">Применять к сообщениям в чате</string>
+    <string name="RotateShape">Вращать форму</string>
+    <string name="RotationSpeed">Скорость вращения</string>
+    <string name="SquareBase">Квадратная основа</string>
 </resources>
 

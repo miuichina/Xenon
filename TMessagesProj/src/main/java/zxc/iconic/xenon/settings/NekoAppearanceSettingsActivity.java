@@ -66,6 +66,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int nonIslandGlobalSearchRow = rowId++;
     private final int material3BottomNavigationBarRow = rowId++;
     private final int material3DialogsRow = rowId++;
+    private final int avatarShapeRow = rowId++;
     private final int nonIslandChatElementsRow = rowId++;
 
     private final int textAnimationSettingsRow = rowId++;
@@ -130,6 +131,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         items.add(UItem.asCheck(material3BottomNavigationBarRow, LocaleController.getString(R.string.BottomNavigationBar)).setChecked(NekoConfig.material3BottomNavigationBar).slug("material3BottomNavigationBar"));
         items.add(InfoCheckCellFactory.of(loadingIndicatorsRow, LocaleController.getString(R.string.LoadingIndicators), NekoConfig.wavyEnabled, () -> showLoadingIndicatorsInfo()).slug("loadingIndicators"));
         items.add(UItem.asCheck(material3DialogsRow, LocaleController.getString(R.string.Material3Dialogs)).setChecked(NekoConfig.material3Dialogs).slug("material3Dialogs"));
+        items.add(TextSettingsCellFactory.of(avatarShapeRow, LocaleController.getString(R.string.Avatars), "›").slug("avatarShape"));
         items.add(UItem.asShadow(null));
 
         items.add(UItem.asHeader("Chat Header"));
@@ -341,6 +343,8 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
                 ((TextCheckCell) view).setChecked(NekoConfig.material3Dialogs);
             }
             listView.adapter.update(true);
+        } else if (id == avatarShapeRow) {
+            presentFragment(new NekoAvatarShapeSettingsActivity());
         } else if (id == roundedBulletinRow) {
             NekoConfig.toggleRoundedBulletin();
             if (view instanceof TextCheckCell) {

@@ -146,6 +146,13 @@
     <string name="BottomNavigationBar">Bottom navigation bar</string>
     <string name="Material3Dialogs">Dialogs</string>
     <string name="Material3DialogsConflict">Disable \"%1$s\" to enable \"%2$s\"</string>
+    <string name="Avatars">Avatars</string>
+    <string name="AvatarShapesHeader">Shapes</string>
+    <string name="ApplyInChatList">Apply in chat list</string>
+    <string name="ApplyForChatMessages">Apply for chat messages</string>
+    <string name="RotateShape">Rotate shape</string>
+    <string name="RotationSpeed">Rotation speed</string>
+    <string name="SquareBase">Square base</string>
     <string name="ChatHeaderSettings">Chat header settings</string>
     <string name="AutoPauseVideo">Auto pause video</string>
     <string name="AutoPauseVideoAbout">When lock screen/switch to background.</string>
