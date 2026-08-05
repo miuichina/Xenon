@@ -96,6 +96,10 @@ public class NekoBlurSettingsActivity extends BaseNekoSettingsActivity {
                         }).show();
             }
         } else if (id == replaceDialogsWithSheetRow) {
+            if (!NekoConfig.replaceDialogsWithSheet && NekoConfig.material3Dialogs) {
+                showReplaceDialogsConflictBulletin();
+                return;
+            }
             NekoConfig.toggleReplaceDialogsWithSheet();
             item.checked = NekoConfig.replaceDialogsWithSheet;
             if (view instanceof TextCheckCell) {
@@ -121,6 +125,19 @@ public class NekoBlurSettingsActivity extends BaseNekoSettingsActivity {
                 ((TextCheckCell) view).setChecked(NekoConfig.disableBlurBs);
             }
         }
+    }
+
+    private void showReplaceDialogsConflictBulletin() {
+        BulletinFactory.of(this).createSimpleBulletin(R.raw.chats_infotip,
+                LocaleController.formatString(R.string.Material3DialogsConflict,
+                        LocaleController.getString(R.string.Material3Dialogs),
+                        LocaleController.getString(R.string.ReplaceDialogsWithSheet)),
+                LocaleController.getString(R.string.Disable),
+                () -> {
+                    NekoConfig.toggleMaterial3Dialogs();
+                    NekoConfig.toggleReplaceDialogsWithSheet();
+                    listView.adapter.update(true);
+                }).show();
     }
 
     @Override

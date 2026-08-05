@@ -144,6 +144,8 @@
     <string name="Switches">Switches</string>
     <string name="MaterialSliders">Sliders</string>
     <string name="BottomNavigationBar">Bottom navigation bar</string>
+    <string name="Material3Dialogs">Dialogs</string>
+    <string name="Material3DialogsConflict">Disable \"%1$s\" to enable \"%2$s\"</string>
     <string name="ChatHeaderSettings">Chat header settings</string>
     <string name="AutoPauseVideo">Auto pause video</string>
     <string name="AutoPauseVideoAbout">When lock screen/switch to background.</string>
@@ -567,8 +569,12 @@
     <string name="AnimationStyleIos">iOS</string>
     <string name="AnimationStyleAosp">AOSP</string>
     <string name="AnimationStyleAospAlt">AOSP alt</string>
+    <string name="AnimationStyleFade">Fade</string>
     <string name="Ease">Ease</string>
     <string name="Off">Off</string>
+    <string name="IOSAnimation">iOS animation</string>
+    <string name="FadeAnimation">Fade animation</string>
+    <string name="FadeTransitionSpeed">Fade transition speed (ms)</string>
 </resources>
 
 

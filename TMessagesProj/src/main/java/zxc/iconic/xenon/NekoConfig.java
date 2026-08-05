@@ -267,6 +267,7 @@ public class NekoConfig {
     public static boolean disableBlurBs = false;
     public static int blurPixelation = 0;
     public static boolean replaceDialogsWithSheet = false;
+    public static boolean material3Dialogs = false;
     public static boolean keepUnreadChatsOnTop = false;
     public static boolean keepUnreadArchivedOnTop = false;
     public static boolean shouldNOTTrustMe = false;
@@ -344,6 +345,7 @@ public class NekoConfig {
             disableBlurBs = preferences.getBoolean("disableBlurBs", false);
             blurPixelation = preferences.getInt("blurPixelation", 0);
             replaceDialogsWithSheet = preferences.getBoolean("replaceDialogsWithSheet", false);
+            material3Dialogs = preferences.getBoolean("material3Dialogs", false);
             keepUnreadChatsOnTop = preferences.getBoolean("keepUnreadChatsOnTop", false);
             keepUnreadArchivedOnTop = preferences.getBoolean("keepUnreadArchivedOnTop", false);
             disableNumberRounding = preferences.getBoolean("disableNumberRounding", false);
@@ -1379,6 +1381,14 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("replaceDialogsWithSheet", replaceDialogsWithSheet);
+        editor.apply();
+    }
+
+    public static void toggleMaterial3Dialogs() {
+        material3Dialogs = !material3Dialogs;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("material3Dialogs", material3Dialogs);
         editor.apply();
     }
 

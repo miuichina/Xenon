@@ -65,6 +65,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
     private final int nonIslandTabBarsRow = rowId++;
     private final int nonIslandGlobalSearchRow = rowId++;
     private final int material3BottomNavigationBarRow = rowId++;
+    private final int material3DialogsRow = rowId++;
     private final int nonIslandChatElementsRow = rowId++;
 
     private final int textAnimationSettingsRow = rowId++;
@@ -128,6 +129,7 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
         items.add(UItem.asCheck(materialSlidersRow, LocaleController.getString(R.string.MaterialSliders)).setChecked(NekoConfig.materialSliders).slug("materialSliders"));
         items.add(UItem.asCheck(material3BottomNavigationBarRow, LocaleController.getString(R.string.BottomNavigationBar)).setChecked(NekoConfig.material3BottomNavigationBar).slug("material3BottomNavigationBar"));
         items.add(InfoCheckCellFactory.of(loadingIndicatorsRow, LocaleController.getString(R.string.LoadingIndicators), NekoConfig.wavyEnabled, () -> showLoadingIndicatorsInfo()).slug("loadingIndicators"));
+        items.add(UItem.asCheck(material3DialogsRow, LocaleController.getString(R.string.Material3Dialogs)).setChecked(NekoConfig.material3Dialogs).slug("material3Dialogs"));
         items.add(UItem.asShadow(null));
 
         items.add(UItem.asHeader("Chat Header"));
@@ -329,6 +331,16 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
                 ((TextCheckCell) view).setChecked(NekoConfig.material3BottomNavigationBar);
             }
             parentLayout.rebuildAllFragmentViews(false, false);
+        } else if (id == material3DialogsRow) {
+            if (!NekoConfig.material3Dialogs && NekoConfig.replaceDialogsWithSheet) {
+                showMaterial3DialogsConflictBulletin();
+                return;
+            }
+            NekoConfig.toggleMaterial3Dialogs();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.material3Dialogs);
+            }
+            listView.adapter.update(true);
         } else if (id == roundedBulletinRow) {
             NekoConfig.toggleRoundedBulletin();
             if (view instanceof TextCheckCell) {
@@ -496,6 +508,19 @@ public class NekoAppearanceSettingsActivity extends BaseNekoSettingsActivity imp
                 LocaleController.formatString(R.string.InuMaterial3ChatHeadersConflict, disableWhat, enableWhat),
                 LocaleController.getString(R.string.Disable),
                 onDisable).show();
+    }
+
+    private void showMaterial3DialogsConflictBulletin() {
+        BulletinFactory.of(this).createSimpleBulletin(R.raw.chats_infotip,
+                LocaleController.formatString(R.string.Material3DialogsConflict,
+                        LocaleController.getString(R.string.ReplaceDialogsWithSheet),
+                        LocaleController.getString(R.string.Material3Dialogs)),
+                LocaleController.getString(R.string.Disable),
+                () -> {
+                    NekoConfig.toggleReplaceDialogsWithSheet();
+                    NekoConfig.toggleMaterial3Dialogs();
+                    listView.adapter.update(true);
+                }).show();
     }
 
     @Override
