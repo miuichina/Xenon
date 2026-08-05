@@ -11501,9 +11501,10 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
     }
 
     private void setVideoPlayerControlVisible(boolean visible, boolean animated) {
-        if (videoPlayerControlVisible != visible) {
+        final boolean controlsVisible = visible && (videoPlayer != null || photoViewerWebView != null && photoViewerWebView.isControllable() || isGifControllable());
+        if (videoPlayerControlVisible != controlsVisible) {
 
-            if (visible) {
+            if (controlsVisible) {
                 bottomLayout.setTag(1);
             } else {
                 bottomLayout.setTag(null);
@@ -11512,14 +11513,14 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             if (videoPlayerControlAnimator != null) {
                 videoPlayerControlAnimator.cancel();
             }
-            videoPlayerControlVisible = visible;
+            videoPlayerControlVisible = controlsVisible;
 
             if (animated) {
-                if (visible) {
+                if (controlsVisible) {
                     videoPlayerControlFrameLayout.setVisibility(View.VISIBLE);
                 }
 
-                final ValueAnimator anim = ValueAnimator.ofFloat(videoPlayerControlFrameLayout.getAlpha(), visible ? 1f : 0f);
+                final ValueAnimator anim = ValueAnimator.ofFloat(videoPlayerControlFrameLayout.getAlpha(), controlsVisible ? 1f : 0f);
                 anim.setDuration(200);
                 anim.addUpdateListener(a -> {
                     final float alpha = (float) a.getAnimatedValue();
@@ -11528,7 +11529,11 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                 anim.addListener(new AnimatorListenerAdapter() {
                     @Override
                     public void onAnimationEnd(Animator animation) {
-                        if (!visible) {
+                        if (videoPlayerControlAnimator != animation) {
+                            return;
+                        }
+                        videoPlayerControlAnimator = null;
+                        if (!videoPlayerControlVisible) {
                             videoPlayerControlFrameLayout.setVisibility(View.GONE);
                         }
                     }
@@ -11536,16 +11541,23 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                 videoPlayerControlAnimator = anim;
                 anim.start();
             } else {
-                videoPlayerControlFrameLayout.setVisibility(visible ? View.VISIBLE : View.GONE);
-                videoPlayerControlFrameLayout.setAlpha(visible ? 1f : 0f);
+                videoPlayerControlFrameLayout.setVisibility(controlsVisible ? View.VISIBLE : View.GONE);
+                videoPlayerControlFrameLayout.setAlpha(controlsVisible ? 1f : 0f);
             }
             if (allowShare && pageBlocksAdapter == null) {
-                if (visible) {
+                if (controlsVisible) {
                     menuItem.showSubItem(gallery_menu_share);
                 } else {
                     menuItem.hideSubItem(gallery_menu_share);
                 }
             }
+        } else if (!controlsVisible && (videoPlayerControlFrameLayout.getVisibility() != View.GONE || videoPlayerControlFrameLayout.getAlpha() != 0f)) {
+            if (videoPlayerControlAnimator != null) {
+                videoPlayerControlAnimator.cancel();
+                videoPlayerControlAnimator = null;
+            }
+            videoPlayerControlFrameLayout.setVisibility(View.GONE);
+            videoPlayerControlFrameLayout.setAlpha(0f);
         }
     }
 
@@ -12752,6 +12764,9 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
             });
             imageMoveAnimation.start();
         } else if (mode == EDIT_MODE_CROP) {
+            final Bitmap cropBitmap = centerImage.getBitmap();
+            final int cropBitmapWidth = centerImage.getBitmapWidth();
+            final int cropBitmapHeight = centerImage.getBitmapHeight();
             startVideoPlayer();
             createCropView();
             previousHasTransform = cropTransform.hasViewTransform();
@@ -12837,12 +12852,11 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
                         animateToRotate = 0;
                     }
 
-                    final Bitmap bitmap = centerImage.getBitmap();
-                    if (bitmap != null || isCurrentVideo) {
-                        photoCropView.setBitmap(bitmap, centerImage.getOrientation(), sendPhotoType != SELECT_TYPE_AVATAR, false, paintingOverlay, cropTransform, isCurrentVideo ? (VideoEditTextureView) videoTextureView : null, editState.cropState);
+                    if (cropBitmap != null || isCurrentVideo) {
+                        photoCropView.setBitmap(cropBitmap, centerImage.getOrientation(), sendPhotoType != SELECT_TYPE_AVATAR, false, paintingOverlay, cropTransform, isCurrentVideo ? (VideoEditTextureView) videoTextureView : null, editState.cropState);
                         photoCropView.onDisappear();
-                        int bitmapWidth = centerImage.getBitmapWidth();
-                        int bitmapHeight = centerImage.getBitmapHeight();
+                        int bitmapWidth = cropBitmapWidth;
+                        int bitmapHeight = cropBitmapHeight;
                         if (editState.cropState != null) {
                             if (editState.cropState.transformRotation == 90 || editState.cropState.transformRotation == 270) {
                                 int temp = bitmapWidth;
@@ -14386,6 +14400,9 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
         containerView.setTag(1);
         playerAutoStarted = false;
         isCurrentVideo = false;
+        gifSetupRetries = 0;
+        AndroidUtilities.cancelRunOnUIThread(gifSetupRunnable);
+        setVideoPlayerControlVisible(false, false);
         shownControlsByEnd = false;
         imagesArr.clear();
         imagesArrLocations.clear();
@@ -16506,6 +16523,10 @@ public class PhotoViewer implements NotificationCenter.NotificationCenterDelegat
 
         centerImageIsVideo = isVideo;
         centerImageIsLivePhoto = isLivePhoto;
+        if (!centerImageIsVideo) {
+            isCurrentVideo = false;
+            setVideoPlayerControlVisible(false, false);
+        }
 
         if (prevIndex == -1 || force) {
             setImages();
