@@ -145,6 +145,7 @@
     <string name="MaterialSliders">Sliders</string>
     <string name="BottomNavigationBar">Bottom navigation bar</string>
     <string name="PlayerSeekBar">Player seek bar</string>
+    <string name="Md3Folders">Folder (WIP)</string>
     <string name="Material3Dialogs">Dialogs</string>
     <string name="Material3DialogsConflict">Disable \"%1$s\" to enable \"%2$s\"</string>
     <string name="Avatars">Avatars</string>
@@ -568,6 +569,8 @@
     <string name="BlurredFadePixelation">Pixelation intensity</string>
     <string name="BlurredFadeDimming">Dimming</string>
     <string name="BlurredFadeDimStrength">Dim strength</string>
+    <string name="ProgressiveFadeBlur">Progressive fade blur (wip)</string>
+    <string name="ProgressiveFadeBlurMaxRadius">Progressive blur max radius</string>
     <string name="DisableScrimBlur">Disable scrim blur</string>
     <string name="DisableScrimBlurInfo">Removes blur from the bottom sheet background</string>
     <string name="DisableGlassGlare">Disable glass glare</string>

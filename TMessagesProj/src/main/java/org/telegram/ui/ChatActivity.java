@@ -288,6 +288,7 @@ import org.telegram.ui.Components.chat.WallpaperBitmapProvider;
 import org.telegram.ui.Components.blur3.source.BlurredBackgroundSource;
 import org.telegram.ui.Components.blur3.source.BlurredBackgroundSourceBitmap;
 import org.telegram.ui.Components.blur3.source.BlurredBackgroundSourceRenderNode;
+import org.telegram.ui.Components.blur3.source.BlurredBackgroundSourceColor;
 import org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawable;
 import org.telegram.ui.Components.chat.layouts.ChatActivityFadeView;
 import org.telegram.ui.Components.chat.layouts.ChatActivitySideControlsButtonsLayout;
@@ -441,6 +442,7 @@ public class ChatActivity extends BaseFragment implements
     private final @NonNull BlurredBackgroundDrawableViewFactory navbarContentDrawableFactory;
 
     private final @Nullable BlurredBackgroundSourceRenderNode fadeBlurSource;
+    private final @Nullable BlurredBackgroundSourceColor fadeBlurUnderSource;
     private final @Nullable BlurredBackgroundDrawableViewFactory fadeBlurFactory;
     private OnPostDrawView fadeBlurCaptureView;
     private final RectF fadeBlurCaptureRect = new RectF();
@@ -2838,9 +2840,12 @@ public class ChatActivity extends BaseFragment implements
         scrimBlur3Factory.setLinkedViewsRef(new ReferenceList<>());
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && NekoConfig.blurredFadeView) {
+            fadeBlurUnderSource = new BlurredBackgroundSourceColor();
             fadeBlurSource = new BlurredBackgroundSourceRenderNode(null);
+            fadeBlurSource.setUnderSource(fadeBlurUnderSource);
             fadeBlurFactory = new BlurredBackgroundDrawableViewFactory(fadeBlurSource);
         } else {
+            fadeBlurUnderSource = null;
             fadeBlurSource = null;
             fadeBlurFactory = null;
         }
@@ -7340,6 +7345,7 @@ actionBar.inu_nonIsland = NonIslandHelper.chatElements();
         chatActivityFadeView = new ChatActivityFadeView(context);
         if (fadeBlurFactory != null) {
             chatActivityFadeView.setup(fadeBlurFactory);
+            chatActivityFadeView.setOpaqueFade(true);
         } else {
             chatActivityFadeView.setup(NekoConfig.blurredFadeView ? glassBackgroundDrawableFactoryFrosted : navbarContentDrawableFactory);
         }
@@ -18290,6 +18296,9 @@ final BlurredBackgroundDrawable topPanelLayoutBackground = glassBackgroundDrawab
             if (invalidateMessagesVisiblePart || (chatListItemAnimator != null && chatListItemAnimator.isRunning())) {
                 invalidateMessagesVisiblePart = false;
                 updateMessagesVisiblePart(false);
+            }
+            if (chatListItemAnimator != null && chatListItemAnimator.isRunning()) {
+                invalidateMergedVisibleBlurredPositionsAndSources(BLUR_INVALIDATE_FLAG_SCROLL);
             }
             updateTextureViewPosition(false, false);
             updatePagedownButtonsPosition();
@@ -47843,7 +47852,7 @@ final BlurredBackgroundDrawable topPanelLayoutBackground = glassBackgroundDrawab
         }
         fadeHeight += dp(36 + 7) * getHashtagTabsShownT();
 
-        if (NekoConfig.material3ChatHeaders) {
+        if (NekoConfig.material3ChatHeaders && fadeBlurFactory == null) {
             fadeHeight += dp(16);
             chatActivityFadeView.setFadeTopAlpha(230);
         } else {
@@ -48589,9 +48598,22 @@ final BlurredBackgroundDrawable topPanelLayoutBackground = glassBackgroundDrawab
             return;
         }
         fadeBlurCaptureRect.set(0, 0, fw, fh);
-        fadeBlurSource.setBlur(AndroidUtilities.dpf2(NekoConfig.blurredFadeBlurStrength));
-        fadeBlurSource.setPixelation(NekoConfig.blurredFadePixelation);
+        int wallpaperColor = getThemedColor(Theme.key_chat_wallpaper);
+        if (Color.alpha(wallpaperColor) < 255) {
+            wallpaperColor = ColorUtils.setAlphaComponent(wallpaperColor, 255);
+        }
+        if (fadeBlurUnderSource != null) {
+            fadeBlurUnderSource.setColor(wallpaperColor);
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && NekoConfig.progressiveFadeBlur) {
+            fadeBlurSource.setPixelation(NekoConfig.blurredFadePixelation);
+            fadeBlurSource.setProgressiveBlur(AndroidUtilities.dpf2(NekoConfig.progressiveFadeBlurMaxRadius), fh);
+        } else {
+            fadeBlurSource.setBlur(AndroidUtilities.dpf2(NekoConfig.blurredFadeBlurStrength));
+            fadeBlurSource.setPixelation(NekoConfig.blurredFadePixelation);
+        }
         Canvas c = fadeBlurSource.beginRecording(fw, fh);
+        c.drawColor(wallpaperColor);
         contentView.drawList(c, fadeBlurCaptureRect);
         fadeBlurSource.endRecording();
         chatActivityFadeView.setDim(NekoConfig.blurredFadeDimming ? NekoConfig.blurredFadeDimStrength * 255 / 100 : 0);

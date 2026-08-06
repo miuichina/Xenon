@@ -545,6 +545,8 @@
     <string name="BlurredFadePixelation">Интенсивность пикселяции</string>
     <string name="BlurredFadeDimming">Затемнение</string>
     <string name="BlurredFadeDimStrength">Сила затемнения</string>
+    <string name="ProgressiveFadeBlur">Прогрессивный блюр (WIP)</string>
+    <string name="ProgressiveFadeBlurMaxRadius">Макс. радиус прогрессивного блюра</string>
     <string name="DisableScrimBlur">Отключить размытие фона</string>
     <string name="DisableScrimBlurInfo">Убирает размытие фона у bottom sheet</string>
     <string name="DisableGlassGlare">Отключить блики стекла</string>
@@ -583,6 +585,7 @@
     <string name="MaterialSliders">Слайдеры</string>
     <string name="BottomNavigationBar">Нижняя панель навигации</string>
     <string name="PlayerSeekBar">Полоска проигрывателя</string>
+    <string name="Md3Folders">Папки (WIP)</string>
     <string name="Material3Dialogs">Диалоги</string>
     <string name="AvatarShapesHeader">Формы</string>
     <string name="Avatars">Аватарки</string>

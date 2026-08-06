@@ -205,6 +205,8 @@ public class NekoConfig {
     public static int blurredFadePixelation = 1;
     public static boolean blurredFadeDimming = false;
     public static int blurredFadeDimStrength = 50;
+    public static boolean progressiveFadeBlur = false;
+    public static int progressiveFadeBlurMaxRadius = 20;
     public static final int AVATAR_PLACEMENT_LEFT = 0;
     public static final int AVATAR_PLACEMENT_CENTER = 1;
     public static final int AVATAR_PLACEMENT_RIGHT = 2;
@@ -288,6 +290,7 @@ public class NekoConfig {
     public static boolean disableScrimBlur = false;
     public static boolean material3BottomNavigationBar = false;
     public static boolean md3PlayerSeekBar = false;
+    public static boolean md3Folders = false;
     public static int avatarShape = 0;
     public static boolean avatarShapeInChatList = true;
     public static boolean avatarShapeInChatMessages = true;
@@ -484,6 +487,8 @@ public class NekoConfig {
             blurredFadePixelation = preferences.getInt("blurredFadePixelation", 1);
             blurredFadeDimming = preferences.getBoolean("blurredFadeDimming", false);
             blurredFadeDimStrength = preferences.getInt("blurredFadeDimStrength", 50);
+            progressiveFadeBlur = preferences.getBoolean("progressiveFadeBlur", false);
+            progressiveFadeBlurMaxRadius = preferences.getInt("progressiveFadeBlurMaxRadius", 20);
             aospTransition = preferences.getBoolean("aospTransition", false);
             openAnimationStyle = preferences.getInt("openAnimationStyle", ANIMATION_STYLE_DEFAULT);
             closeAnimationStyle = preferences.getInt("closeAnimationStyle", ANIMATION_STYLE_DEFAULT);
@@ -511,6 +516,7 @@ public class NekoConfig {
             disableScrimBlur = preferences.getBoolean("disableScrimBlur", false);
             material3BottomNavigationBar = preferences.getBoolean("material3BottomNavigationBar", false);
             md3PlayerSeekBar = preferences.getBoolean("md3PlayerSeekBar", false);
+            md3Folders = preferences.getBoolean("md3Folders", false);
             avatarShape = preferences.getInt("avatarShape", 0);
             avatarShapeInChatList = preferences.getBoolean("avatarShapeInChatList", true);
             avatarShapeInChatMessages = preferences.getBoolean("avatarShapeInChatMessages", true);
@@ -863,6 +869,22 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putInt("blurredFadeDimStrength", blurredFadeDimStrength);
+        editor.apply();
+    }
+
+    public static void toggleProgressiveFadeBlur() {
+        progressiveFadeBlur = !progressiveFadeBlur;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("progressiveFadeBlur", progressiveFadeBlur);
+        editor.apply();
+    }
+
+    public static void setProgressiveFadeBlurMaxRadius(int value) {
+        progressiveFadeBlurMaxRadius = Math.max(0, Math.min(40, value));
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("progressiveFadeBlurMaxRadius", progressiveFadeBlurMaxRadius);
         editor.apply();
     }
 
@@ -1959,6 +1981,14 @@ public class NekoConfig {
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean("md3PlayerSeekBar", md3PlayerSeekBar);
+        editor.apply();
+    }
+
+    public static void toggleMd3Folders() {
+        md3Folders = !md3Folders;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("md3Folders", md3Folders);
         editor.apply();
     }
 

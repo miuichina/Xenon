@@ -135,6 +135,16 @@ public class ChatActivityFadeView extends View implements Theme.Colorable {
         invalidate();
     }
 
+    public void setOpaqueFade(boolean opaqueFade) {
+        if (fadeDrawableTop instanceof BlurredBackgroundWithFadeDrawable) {
+            ((BlurredBackgroundWithFadeDrawable) fadeDrawableTop).setOpaqueFade(opaqueFade);
+        }
+        if (fadeDrawableBottom instanceof BlurredBackgroundWithFadeDrawable) {
+            ((BlurredBackgroundWithFadeDrawable) fadeDrawableBottom).setOpaqueFade(opaqueFade);
+        }
+        invalidate();
+    }
+
     @Override
     protected void onDraw(@NonNull Canvas canvas) {
         super.onDraw(canvas);
