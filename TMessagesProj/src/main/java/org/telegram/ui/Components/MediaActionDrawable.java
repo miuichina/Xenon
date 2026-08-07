@@ -75,20 +75,17 @@ public class MediaActionDrawable extends Drawable {
     private float indeterminateArcLength = 10;
     private long indeterminatePhaseStartTime;
     private int indeterminatePhase;
-    private static final float INDETERMINATE_MIN_ARC = 10;
+    private static final float INDETERMINATE_MIN_ARC = 36;
     private static final float INDETERMINATE_MAX_ARC = 313;
     private static final int INDET_GROW = 0;
-    private static final int INDET_MAX = 1;
     private static final int INDET_SHRINK = 2;
     private static final int INDET_PAUSE = 3;
-    private static final long INDET_GROW_DURATION = 2500;
-    private static final long INDET_MAX_DURATION = 417;
-    private static final long INDET_SHRINK_DURATION = 833;
-    private static final long INDET_PAUSE_DURATION = 2083;
+    private static final long INDET_GROW_DURATION = 3354;
+    private static final long INDET_SHRINK_DURATION = 1725;
+    private static final long INDET_PAUSE_DURATION = 1628;
 
     private long kickPhaseStartTime;
-    private static final long KICK_INTERVAL = 1458;
-    private static final long KICK_DURATION = 250;
+    private static final long KICK_DURATION = 288;
     private static final float KICK_SPEED_MULTIPLIER = 3f;
 
     private final Path wavyProgressPath = new Path();
@@ -1071,11 +1068,7 @@ public class MediaActionDrawable extends Drawable {
             downloadRadOffset = -90;
         } else if (currentIcon == ICON_CANCEL || currentIcon == ICON_CANCEL_FILL || currentIcon == ICON_NONE && nextIcon == ICON_CANCEL_FILL || currentIcon == ICON_EMPTY || currentIcon == ICON_CANCEL_PERCENT) {
             long kickElapsed = newTime - kickPhaseStartTime;
-            if (kickElapsed >= KICK_INTERVAL) {
-                kickPhaseStartTime = newTime;
-                kickElapsed = 0;
-            }
-            float rotSpeed = 360 / 2083.0f;
+            float rotSpeed = 360 / 2395.0f;
             if (kickElapsed < KICK_DURATION) {
                 rotSpeed *= KICK_SPEED_MULTIPLIER;
             }
@@ -1088,12 +1081,12 @@ public class MediaActionDrawable extends Drawable {
                 float progressDiff = downloadProgress - downloadProgressAnimationStart;
                 if (progressDiff > 0) {
                     downloadProgressTime += dt;
-                    if (downloadProgressTime >= 700.0f) {
+                    if (downloadProgressTime >= 1000.0f) {
                         animatedDownloadProgress = downloadProgress;
                         downloadProgressAnimationStart = downloadProgress;
                         downloadProgressTime = 0;
                     } else {
-                        animatedDownloadProgress = downloadProgressAnimationStart + progressDiff * interpolator.getInterpolation(downloadProgressTime / 700.0f);
+                        animatedDownloadProgress = downloadProgressAnimationStart + progressDiff * interpolator.getInterpolation(downloadProgressTime / 1000.0f);
                     }
                 }
             }
@@ -1109,27 +1102,24 @@ public class MediaActionDrawable extends Drawable {
                         float t = Math.min(1f, (float) elapsed / INDET_GROW_DURATION);
                         float smooth = t * t * (3 - 2 * t);
                         indeterminateArcLength = INDETERMINATE_MIN_ARC + (INDETERMINATE_MAX_ARC - INDETERMINATE_MIN_ARC) * smooth;
-                        if (t >= 1f) {
-                            indeterminatePhase = INDET_MAX;
-                            indeterminatePhaseStartTime = newTime;
+                        if (elapsed >= INDET_GROW_DURATION / 2 && kickPhaseStartTime == indeterminatePhaseStartTime) {
+                            kickPhaseStartTime = newTime;
                         }
-                        break;
-                    }
-                    case INDET_MAX: {
-                        indeterminateArcLength = INDETERMINATE_MAX_ARC;
-                        if (elapsed >= INDET_MAX_DURATION) {
+                        if (t >= 1f) {
                             indeterminatePhase = INDET_SHRINK;
                             indeterminatePhaseStartTime = newTime;
+                            kickPhaseStartTime = newTime;
                         }
                         break;
                     }
                     case INDET_SHRINK: {
                         float t = Math.min(1f, (float) elapsed / INDET_SHRINK_DURATION);
-                        float smooth = t * t * (3 - 2 * t);
-                        indeterminateArcLength = INDETERMINATE_MAX_ARC - (INDETERMINATE_MAX_ARC - INDETERMINATE_MIN_ARC) * smooth;
+                        float eased = interpolator.getInterpolation(t);
+                        indeterminateArcLength = INDETERMINATE_MAX_ARC - (INDETERMINATE_MAX_ARC - INDETERMINATE_MIN_ARC) * eased;
                         if (t >= 1f) {
                             indeterminatePhase = INDET_PAUSE;
                             indeterminatePhaseStartTime = newTime;
+                            kickPhaseStartTime = newTime;
                         }
                         break;
                     }
