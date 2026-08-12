@@ -48,6 +48,7 @@ public class NekoChatHeaderSettingsActivity extends BaseNekoSettingsActivity {
     private final int avatarPlacementRow = rowId++;
     private final int biggerAvatarRow = rowId++;
     private final int blurredFadeViewRow = rowId++;
+    private final int progressiveFadeBlurRow = rowId++;
     private final int blurredFadeBlurAmountRow = rowId++;
     private final int blurredFadePixelationRow = rowId++;
     private final int blurredFadeDimmingRow = rowId++;
@@ -76,16 +77,20 @@ public class NekoChatHeaderSettingsActivity extends BaseNekoSettingsActivity {
         items.add(UItem.asCheck(biggerAvatarRow, "Bigger avatar").setChecked(NekoConfig.biggerAvatar).slug("biggerAvatar"));
         items.add(UItem.asCheck(blurredFadeViewRow, LocaleController.getString(R.string.BlurredFadeView)).setChecked(NekoConfig.blurredFadeView).slug("blurredFadeView"));
         if (NekoConfig.blurredFadeView) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                items.add(UItem.asCheck(progressiveFadeBlurRow, LocaleController.getString(R.string.ProgressiveFadeBlur)).setChecked(NekoConfig.progressiveFadeBlur).slug("progressiveFadeBlur"));
+            }
             items.add(SeekbarCellFactory.of(blurredFadeBlurAmountRow,
                     new SeekbarConfig(LocaleController.getString(R.string.BlurredFadeBlurAmount),
                             "0", "40", 0, 40,
                             progress -> {
                                 int v = Math.max(0, Math.min(40, Math.round(progress)));
-                                if (v != NekoConfig.blurredFadeBlurStrength) {
+                                if (v != NekoConfig.blurredFadeBlurStrength || v != NekoConfig.progressiveFadeBlurMaxRadius) {
                                     NekoConfig.setBlurredFadeBlurStrength(v);
+                                    NekoConfig.setProgressiveFadeBlurMaxRadius(v);
                                 }
                             }),
-                    NekoConfig.blurredFadeBlurStrength).slug("blurredFadeBlurAmount"));
+                    NekoConfig.progressiveFadeBlur ? NekoConfig.progressiveFadeBlurMaxRadius : NekoConfig.blurredFadeBlurStrength).slug("blurredFadeBlurAmount"));
             items.add(SeekbarCellFactory.of(blurredFadePixelationRow,
                     new SeekbarConfig(LocaleController.getString(R.string.BlurredFadePixelation),
                             "1", "16", 1, 16,
@@ -165,6 +170,12 @@ public class NekoChatHeaderSettingsActivity extends BaseNekoSettingsActivity {
             if (listView != null && listView.adapter != null) {
                 listView.adapter.update(true);
             }
+        } else if (id == progressiveFadeBlurRow) {
+            NekoConfig.toggleProgressiveFadeBlur();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.progressiveFadeBlur);
+            }
+            notifyItemChanged(blurredFadeBlurAmountRow);
         } else if (id == blurredFadeDimmingRow) {
             NekoConfig.toggleBlurredFadeDimming();
             if (view instanceof TextCheckCell) {
