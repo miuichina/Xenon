@@ -96,12 +96,20 @@ public class ChatActivityFadeView extends View implements Theme.Colorable {
         }
     }
 
+    public int getFadeZoneTop() {
+        return fadeZoneTop;
+    }
+
     public void setFadeZoneBottom(int height) {
         if (fadeZoneBottom != height) {
             fadeZoneBottom = height;
             checkBounds();
             invalidate();
         }
+    }
+
+    public int getFadeZoneBottom() {
+        return fadeZoneBottom;
     }
 
     public void setFadeTopAlpha(int alpha) {
