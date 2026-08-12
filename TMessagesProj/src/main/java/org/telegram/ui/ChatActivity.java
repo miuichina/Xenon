@@ -48607,7 +48607,13 @@ final BlurredBackgroundDrawable topPanelLayoutBackground = glassBackgroundDrawab
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && NekoConfig.progressiveFadeBlur) {
             fadeBlurSource.setPixelation(NekoConfig.blurredFadePixelation);
-            fadeBlurSource.setProgressiveBlur(AndroidUtilities.dpf2(NekoConfig.progressiveFadeBlurMaxRadius), fh);
+            int headerHeight = actionBar != null ? actionBar.getMeasuredHeight() : 0;
+            int fadeZoneTop = chatActivityFadeView.getFadeZoneTop();
+            if (headerHeight <= 0) headerHeight = fadeZoneTop;
+            float topFraction = headerHeight > 0 ? Math.min(1f, headerHeight / (float) fh) : 1f;
+            int fadeZoneBottom = chatActivityFadeView.getFadeZoneBottom();
+            float bottomFraction = fadeZoneBottom > 0 ? Math.min(1f, fadeZoneBottom / (float) fh) : 1f;
+            fadeBlurSource.setProgressiveBlur(AndroidUtilities.dpf2(NekoConfig.progressiveFadeBlurMaxRadius), fw, fh, topFraction, bottomFraction, NekoConfig.progressiveFadeBlurSamples);
         } else {
             fadeBlurSource.setBlur(AndroidUtilities.dpf2(NekoConfig.blurredFadeBlurStrength));
             fadeBlurSource.setPixelation(NekoConfig.blurredFadePixelation);
