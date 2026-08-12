@@ -35,43 +35,54 @@ public class BlurredBackgroundSourceRenderNode implements BlurredBackgroundSourc
 
     private RuntimeShader progressiveShader;
     private float progressiveMaxRadius = -1f;
+    private int progressiveWidth = -1;
     private int progressiveHeight = -1;
+    private float progressiveFadeZoneFraction = -1f;
 
     private static final String PROGRESSIVE_BLUR_SHADER =
         "uniform shader inputTexture;\n" +
         "uniform float maxRadius;\n" +
+        "uniform float textureWidth;\n" +
         "uniform float textureHeight;\n" +
+        "uniform float fadeZoneFraction;\n" +
         "\n" +
         "half4 main(float2 coord) {\n" +
-        "    float t = coord.y / textureHeight;\n" +
-        "    float radius = t * maxRadius;\n" +
-        "    int radiusInt = int(ceil(radius));\n" +
-        "    \n" +
+        "    float progress = clamp((coord.y / textureHeight) / fadeZoneFraction, 0.0, 1.0);\n" +
+        "    float radius = progress * maxRadius;\n" +
+        "    if (radius < 0.5) {\n" +
+        "        return input.eval(coord);\n" +
+        "    }\n" +
+        "    float stride = max(1.0, radius / 2.0);\n" +
         "    half4 result = half4(0.0);\n" +
         "    float totalWeight = 0.0;\n" +
-        "    \n" +
-        "    for (int i = -40; i <= 40; i++) {\n" +
-        "        if (abs(i) > radiusInt) break;\n" +
-        "        float2 offset = float2(0.0, float(i) / textureHeight);\n" +
-        "        float weight = 1.0 - abs(float(i)) / (radius + 1.0);\n" +
-        "        result += input.eval(coord + offset) * half4(weight);\n" +
-        "        totalWeight += weight;\n" +
+        "    for (int i = -2; i <= 2; i++) {\n" +
+        "        for (int j = -2; j <= 2; j++) {\n" +
+        "            float weight = exp(-(float(i * i + j * j)) / 2.0);\n" +
+        "            float2 sampleCoord = coord + float2(float(i) * stride, float(j) * stride);\n" +
+        "            sampleCoord = clamp(sampleCoord, float2(0.0, 0.0), float2(textureWidth, textureHeight));\n" +
+        "            result += input.eval(sampleCoord) * half4(weight);\n" +
+        "            totalWeight += weight;\n" +
+        "        }\n" +
         "    }\n" +
-        "    \n" +
         "    return result / half4(totalWeight);\n" +
         "}";
 
     @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
-    public void setProgressiveBlur(float maxRadius, int sourceHeight) {
+    public void setProgressiveBlur(float maxRadius, int sourceWidth, int sourceHeight, float fadeZoneFraction) {
         if (sourceHeight <= 0) return;
-        if (progressiveMaxRadius == maxRadius && progressiveHeight == sourceHeight) return;
+        final float fraction = fadeZoneFraction > 0f ? fadeZoneFraction : 1f;
+        if (progressiveMaxRadius == maxRadius && progressiveWidth == sourceWidth && progressiveHeight == sourceHeight && progressiveFadeZoneFraction == fraction) return;
         progressiveMaxRadius = maxRadius;
+        progressiveWidth = sourceWidth;
         progressiveHeight = sourceHeight;
+        progressiveFadeZoneFraction = fraction;
         if (progressiveShader == null) {
             progressiveShader = new RuntimeShader(PROGRESSIVE_BLUR_SHADER);
         }
         progressiveShader.setFloatUniform("maxRadius", maxRadius);
+        progressiveShader.setFloatUniform("textureWidth", (float) sourceWidth);
         progressiveShader.setFloatUniform("textureHeight", (float) sourceHeight);
+        progressiveShader.setFloatUniform("fadeZoneFraction", fraction);
         renderNode.setRenderEffect(RenderEffect.createRuntimeShaderEffect(progressiveShader, "inputTexture"));
         lastBlurRadius = -1f;
     }
