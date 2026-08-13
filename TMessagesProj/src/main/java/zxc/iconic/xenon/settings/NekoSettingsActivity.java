@@ -173,6 +173,11 @@ public class NekoSettingsActivity extends BaseNekoSettingsActivity implements Fa
     }
 
     @Override
+    protected boolean progressiveBlurEnabled() {
+        return false;
+    }
+
+    @Override
     protected void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
         if (isSearchFieldVisible()) {
             items.add(UItem.asSpace(ActionBar.getCurrentActionBarHeight()));

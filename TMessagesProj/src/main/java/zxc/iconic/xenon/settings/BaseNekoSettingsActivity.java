@@ -44,6 +44,7 @@ import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.ItemOptions;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.RecyclerListView;
+import org.telegram.ui.Components.ProgressiveFadeBlurController;
 import org.telegram.ui.Components.SizeNotifierFrameLayout;
 import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.URLSpanNoUnderline;
@@ -56,6 +57,8 @@ import org.telegram.ui.Components.blur3.source.BlurredBackgroundSourceRenderNode
 
 import java.util.ArrayList;
 import java.util.Locale;
+
+import zxc.iconic.xenon.NekoConfig;
 
 public abstract class BaseNekoSettingsActivity extends BaseFragment {
 
@@ -94,6 +97,10 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
         contentView = new SizeNotifierFrameLayout(context) {
             @Override
             protected void dispatchDraw(Canvas canvas) {
+                if (progressiveFadeController != null) {
+                    progressiveFadeController.setFadeZoneTop(actionBarContainer.getMeasuredHeight() + AndroidUtilities.dp(needActionBarPadding() ? 48 : 200));
+                    progressiveFadeController.invalidate();
+                }
                 if (Build.VERSION.SDK_INT >= 31 && scrollableViewNoiseSuppressor != null) {
                     blur3_InvalidateBlur();
 
@@ -122,6 +129,9 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
 
             @Override
             public void drawBlurRect(Canvas canvas, float y, Rect rectTmp, Paint blurScrimPaint, boolean top) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && NekoConfig.progressiveFadeBlurOtherActivities) {
+                    return;
+                }
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || !SharedConfig.chatBlurEnabled() || iBlur3SourceGlassFrosted == null) {
                     canvas.drawRect(rectTmp, blurScrimPaint);
                     return;
@@ -180,6 +190,9 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
                     scrollableViewNoiseSuppressor.onScrolled(dx, dy);
                     blur3_InvalidateBlur();
                 }
+                if (progressiveFadeController != null) {
+                    progressiveFadeController.invalidate();
+                }
             }
         });
         iBlur3Capture = new ViewGroupPartRenderer(listView, contentView, listView::drawChild);
@@ -215,6 +228,11 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
         });
 
         updateActionBarVisible(true, false);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && progressiveBlurEnabled() && NekoConfig.progressiveFadeBlurOtherActivities) {
+            progressiveFadeController = new ProgressiveFadeBlurController(contentView, listView, contentView.indexOfChild(actionBarBackground), () -> getThemedColor(Theme.key_windowBackgroundGray));
+            progressiveFadeController.setFadeZoneTop(actionBarContainer.getMeasuredHeight());
+        }
 
         return fragmentView = contentView;
     }
@@ -335,6 +353,10 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
         return true;
     }
 
+    protected boolean progressiveBlurEnabled() {
+        return true;
+    }
+
     protected void showRestartBulletin() {
         Activity activity = getParentActivity();
         if (activity == null) return;
@@ -425,6 +447,7 @@ public abstract class BaseNekoSettingsActivity extends BaseFragment {
 
     private boolean iBlur3Invalidated;
     private IBlur3Capture iBlur3Capture;
+    private ProgressiveFadeBlurController progressiveFadeController;
 
     private final ArrayList<RectF> iBlur3Positions = new ArrayList<>();
     private final RectF iBlur3PositionActionBar = new RectF();

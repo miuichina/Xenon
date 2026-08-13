@@ -55,7 +55,7 @@ public class BlurredBackgroundSourceRenderNode implements BlurredBackgroundSourc
         "    float radius;\n" +
         "    if (t < fadeZoneTopFraction) {\n" +
         "        radius = maxRadius * (1.0 - t / fadeZoneTopFraction);\n" +
-        "    } else if (t > 1.0 - fadeZoneBottomFraction) {\n" +
+        "    } else if (fadeZoneBottomFraction > 0.0 && t > 1.0 - fadeZoneBottomFraction) {\n" +
         "        radius = maxRadius * ((t - (1.0 - fadeZoneBottomFraction)) / fadeZoneBottomFraction);\n" +
         "    } else {\n" +
         "        radius = 0.0;\n" +
@@ -86,7 +86,7 @@ public class BlurredBackgroundSourceRenderNode implements BlurredBackgroundSourc
     public void setProgressiveBlur(float maxRadius, int sourceWidth, int sourceHeight, float fadeZoneTopFraction, float fadeZoneBottomFraction, int samples) {
         if (sourceHeight <= 0) return;
         final float topFraction = fadeZoneTopFraction > 0f ? fadeZoneTopFraction : 1f;
-        final float bottomFraction = fadeZoneBottomFraction > 0f ? fadeZoneBottomFraction : 1f;
+        final float bottomFraction = Math.max(0f, Math.min(1f, fadeZoneBottomFraction));
         final int sampleCount = Math.max(3, Math.min(25, samples | 1));
         if (progressiveMaxRadius == maxRadius && progressiveWidth == sourceWidth && progressiveHeight == sourceHeight && progressiveFadeZoneTopFraction == topFraction && progressiveFadeZoneBottomFraction == bottomFraction && progressiveSamples == sampleCount) return;
         progressiveMaxRadius = maxRadius;

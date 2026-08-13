@@ -253,6 +253,7 @@ import org.telegram.ui.Components.SearchViewPager;
 import org.telegram.ui.Components.ShareTopView;
 import org.telegram.ui.Components.SharedMediaLayout;
 import org.telegram.ui.Components.SimpleThemeDescription;
+import org.telegram.ui.Components.ProgressiveFadeBlurController;
 import org.telegram.ui.Components.SizeNotifierFrameLayout;
 import org.telegram.ui.Components.StickersAlert;
 import org.telegram.ui.Components.SwipeGestureSettingsView;
@@ -543,6 +544,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     float panTranslationY;
 
     private View blurredView;
+    private ProgressiveFadeBlurController progressiveFadeController;
 
     private ItemOptions filterOptions;
 
@@ -940,6 +942,10 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
         @Override
         public void drawBlurRect(Canvas canvas, float y, Rect rectTmp, Paint blurScrimPaint, boolean top) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && NekoConfig.progressiveFadeBlurOtherActivities) {
+                canvas.drawRect(rectTmp, blurScrimPaint);
+                return;
+            }
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || !SharedConfig.chatBlurEnabled() || iBlur3SourceGlassFrosted == null || !BlurredBackgroundProviderImpl.checkBlurEnabled(currentAccount, resourceProvider)) {
                 canvas.drawRect(rectTmp, blurScrimPaint);
                 return;
@@ -1097,6 +1103,12 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
             updateContextViewPosition();
             updateStoriesViewAlpha(storiesAlpha);
+            if (progressiveFadeController != null) {
+                progressiveFadeController.setTopOffset(top);
+                progressiveFadeController.setFadeZoneTop(top + actionBar.getHeight() + dp(SEARCH_FIELD_HEIGHT) + dp(SEARCH_TABS_HEIGHT));
+                progressiveFadeController.setCaptureTranslateY((int) (viewPages[0].getY() + viewPages[0].listView.getPaddingTop()));
+                progressiveFadeController.invalidate();
+            }
             super.dispatchDraw(canvas);
             drawHeaderShadow(canvas, top + actionBarHeight);
 
@@ -4776,7 +4788,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
 
         topBubblesFadeView = new DialogsActivityTopBubblesFadeView(context);
-        topBubblesFadeView.setColor(Theme.getColor(Theme.key_windowBackgroundGray));
+        topBubblesFadeView.setColor(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && NekoConfig.progressiveFadeBlurOtherActivities ? Color.TRANSPARENT : Theme.getColor(Theme.key_windowBackgroundGray));
         contentView.addView(topBubblesFadeView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 100, Gravity.TOP));
 
         searchViewPagerIndex = contentView.getChildCount();
@@ -5411,6 +5423,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             final FrameLayout.LayoutParams layoutParams = LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT);
             contentView.addView(actionBar, layoutParams);
         //}
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && NekoConfig.progressiveFadeBlurOtherActivities) {
+            progressiveFadeController = new ProgressiveFadeBlurController(contentView, viewPages[0], contentView.indexOfChild(searchTabsAndFiltersLayout), () -> getThemedColor(Theme.key_windowBackgroundGray));
+        }
         if (!onlySelect) {
             animatedStatusView = new AnimatedStatusView(context, 20, 60);
             contentView.addView(animatedStatusView, LayoutHelper.createFrame(20, 20, Gravity.LEFT | Gravity.TOP));
@@ -12186,7 +12201,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 topPanelLayout.updateColors();
             }
             if (topBubblesFadeView != null) {
-                topBubblesFadeView.setColor(Theme.getColor(Theme.key_windowBackgroundGray));
+                topBubblesFadeView.setColor(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && NekoConfig.progressiveFadeBlurOtherActivities ? Color.TRANSPARENT : Theme.getColor(Theme.key_windowBackgroundGray));
             }
             if (fragmentContextView != null) {
                 fragmentContextView.updateColors();
