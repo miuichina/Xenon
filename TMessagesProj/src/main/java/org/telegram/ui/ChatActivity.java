@@ -48640,6 +48640,7 @@ final BlurredBackgroundDrawable topPanelLayoutBackground = glassBackgroundDrawab
         c.drawColor(wallpaperColor);
         contentView.drawList(c, fadeBlurCaptureRect);
         fadeBlurSource.endRecording();
+        chatActivityFadeView.setDimColor(wallpaperColor);
         chatActivityFadeView.setDim(NekoConfig.blurredFadeDimming ? NekoConfig.blurredFadeDimStrength * 255 / 100 : 0);
         chatActivityFadeView.invalidate();
     }
