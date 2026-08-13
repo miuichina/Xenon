@@ -40,8 +40,6 @@ public class BlurredBackgroundSourceRenderNode implements BlurredBackgroundSourc
     private float progressiveFadeZoneTopFraction = -1f;
     private float progressiveFadeZoneBottomFraction = -1f;
     private int progressiveSamples = -1;
-    private float progressiveSimpleRadius = -1f;
-    private int progressiveSimpleLayers = -1;
 
     private static final String PROGRESSIVE_BLUR_SHADER =
         "uniform shader inputTexture;\n" +
@@ -112,22 +110,6 @@ public class BlurredBackgroundSourceRenderNode implements BlurredBackgroundSourc
 
     public void setPixelation(float scale) {
         this.pixelationScale = Math.max(1f, scale);
-    }
-
-    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
-    public void setProgressiveBlurSimple(float maxRadius, int layers) {
-        final int layerCount = Math.max(2, Math.min(8, layers));
-        if (progressiveSimpleRadius == maxRadius && progressiveSimpleLayers == layerCount) return;
-        progressiveSimpleRadius = maxRadius;
-        progressiveSimpleLayers = layerCount;
-        RenderEffect effect = null;
-        for (int i = 1; i <= layerCount; i++) {
-            float radius = maxRadius * i / layerCount;
-            RenderEffect blur = RenderEffect.createBlurEffect(radius, radius, Shader.TileMode.CLAMP);
-            effect = effect == null ? blur : RenderEffect.createChainEffect(effect, blur);
-        }
-        renderNode.setRenderEffect(effect);
-        lastBlurRadius = -1f;
     }
 
     public BlurredBackgroundSourceRenderNode(BlurredBackgroundSource fallbackSource) {

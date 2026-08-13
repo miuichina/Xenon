@@ -48614,19 +48614,22 @@ final BlurredBackgroundDrawable topPanelLayoutBackground = glassBackgroundDrawab
             fadeBlurUnderSource.setColor(wallpaperColor);
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && NekoConfig.progressiveFadeBlur) {
+            final int pixelation;
             if (NekoConfig.progressiveBlurMode == NekoConfig.PROGRESSIVE_BLUR_MODE_SIMPLE) {
-                fadeBlurSource.setPixelation(1);
-                fadeBlurSource.setProgressiveBlurSimple(AndroidUtilities.dpf2(NekoConfig.progressiveFadeBlurMaxRadius), NekoConfig.progressiveFadeBlurSamples);
+                pixelation = Math.max(2, NekoConfig.blurredFadePixelation);
+            } else if (NekoConfig.progressiveBlurMode == NekoConfig.PROGRESSIVE_BLUR_MODE_FULL) {
+                pixelation = 1;
             } else {
-                final int pixelation = NekoConfig.progressiveBlurMode == NekoConfig.PROGRESSIVE_BLUR_MODE_FULL ? 1 : Math.max(1, NekoConfig.blurredFadePixelation);
-                fadeBlurSource.setPixelation(pixelation);
-                int headerHeight = chatActivityFadeView.getFadeZoneTop();
-                if (headerHeight <= 0 && actionBar != null) headerHeight = actionBar.getMeasuredHeight();
-                float topFraction = headerHeight > 0 ? Math.min(1f, headerHeight / (float) fh) : 1f;
-                int fadeZoneBottom = chatActivityFadeView.getFadeZoneBottom();
-                float bottomFraction = fadeZoneBottom > 0 ? Math.min(1f, fadeZoneBottom / (float) fh) : 1f;
-                fadeBlurSource.setProgressiveBlur(AndroidUtilities.dpf2(NekoConfig.progressiveFadeBlurMaxRadius) / pixelation, fw / pixelation, fh / pixelation, topFraction, bottomFraction, NekoConfig.progressiveFadeBlurSamples);
+                pixelation = Math.max(1, NekoConfig.blurredFadePixelation);
             }
+            fadeBlurSource.setPixelation(pixelation);
+            int headerHeight = chatActivityFadeView.getFadeZoneTop();
+            if (headerHeight <= 0 && actionBar != null) headerHeight = actionBar.getMeasuredHeight();
+            float topFraction = headerHeight > 0 ? Math.min(1f, headerHeight / (float) fh) : 1f;
+            int fadeZoneBottom = chatActivityFadeView.getFadeZoneBottom();
+            float bottomFraction = fadeZoneBottom > 0 ? Math.min(1f, fadeZoneBottom / (float) fh) : 1f;
+            final int samples = NekoConfig.progressiveBlurMode == NekoConfig.PROGRESSIVE_BLUR_MODE_SIMPLE ? Math.min(NekoConfig.progressiveFadeBlurSamples, 11) : NekoConfig.progressiveFadeBlurSamples;
+            fadeBlurSource.setProgressiveBlur(AndroidUtilities.dpf2(NekoConfig.progressiveFadeBlurMaxRadius) / pixelation, fw / pixelation, fh / pixelation, topFraction, bottomFraction, samples);
         } else {
             fadeBlurSource.setBlur(AndroidUtilities.dpf2(NekoConfig.blurredFadeBlurStrength));
             fadeBlurSource.setPixelation(NekoConfig.blurredFadePixelation);
