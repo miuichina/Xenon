@@ -83,7 +83,7 @@ public class NekoChatHeaderSettingsActivity extends BaseNekoSettingsActivity {
                 if (NekoConfig.progressiveFadeBlur) {
                     items.add(SeekbarCellFactory.of(progressiveFadeBlurSamplesRow,
                             new SeekbarConfig(LocaleController.getString(R.string.ProgressiveFadeBlurSamples),
-                                    "3", "25", 3, 25, 2,
+                                    "3", "25", 3, 25, 1,
                                     progress -> {
                                         int v = Math.max(3, Math.min(25, Math.round(progress)));
                                         if (v != NekoConfig.progressiveFadeBlurSamples) {
