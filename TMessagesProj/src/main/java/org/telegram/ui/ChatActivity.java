@@ -48579,8 +48579,17 @@ final BlurredBackgroundDrawable topPanelLayoutBackground = glassBackgroundDrawab
         //}
     }
 
+    private long lastFadeBlurUpdateTime;
+
     private void invalidateFadeBlur() {
         if (fadeBlurCaptureView != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && NekoConfig.progressiveFadeBlur) {
+                final long now = SystemClock.uptimeMillis();
+                if (now - lastFadeBlurUpdateTime < 1000 / Math.max(15, NekoConfig.progressiveFadeBlurRefreshRate)) {
+                    return;
+                }
+                lastFadeBlurUpdateTime = now;
+            }
             fadeBlurCaptureView.invalidate(1);
         }
     }
