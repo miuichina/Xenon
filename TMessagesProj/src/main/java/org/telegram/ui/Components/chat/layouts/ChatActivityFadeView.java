@@ -124,6 +124,15 @@ public class ChatActivityFadeView extends View implements Theme.Colorable {
             ((BlurredBackgroundWithFadeDrawable) fadeDrawableTop).setDimFadeZoneTop(height);
         }
     }
+
+    public void setDimColor(int color) {
+        if (fadeDrawableTop instanceof BlurredBackgroundWithFadeDrawable) {
+            ((BlurredBackgroundWithFadeDrawable) fadeDrawableTop).setDimColor(color);
+        }
+        if (fadeDrawableBottom instanceof BlurredBackgroundWithFadeDrawable) {
+            ((BlurredBackgroundWithFadeDrawable) fadeDrawableBottom).setDimColor(color);
+        }
+    }
     
     private void checkBounds() {
         fadeDrawableTop.setBounds(0, 0, getMeasuredWidth(), fadeZoneTop);

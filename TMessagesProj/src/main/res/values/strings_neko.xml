@@ -573,6 +573,8 @@
     <string name="ProgressiveFadeBlurSamples">Progressive blur samples</string>
     <string name="ProgressiveFadeBlurMaxRadius">Progressive blur max radius</string>
     <string name="ProgressiveFadeBlurRefreshRate">Progressive blur refresh rate</string>
+    <string name="ProgressiveFadeBlurOtherActivities">Apply blurred fade view to other activities</string>
+    <string name="ProgressiveFadeBlurOtherActivitiesInfo">Applies the progressive blurred fade view to settings and the chats list</string>
     <string name="DisableScrimBlur">Disable scrim blur</string>
     <string name="DisableScrimBlurInfo">Removes blur from the bottom sheet background</string>
     <string name="DisableGlassGlare">Disable glass glare</string>
