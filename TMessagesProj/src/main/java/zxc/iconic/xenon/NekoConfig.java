@@ -202,6 +202,10 @@ public class NekoConfig {
     public static boolean progressiveFadeBlur = false;
     public static int progressiveFadeBlurMaxRadius = 20;
     public static int progressiveFadeBlurSamples = 11;
+    public static final int PROGRESSIVE_BLUR_MODE_SIMPLE = 0;
+    public static final int PROGRESSIVE_BLUR_MODE_MEDIUM = 1;
+    public static final int PROGRESSIVE_BLUR_MODE_FULL = 2;
+    public static int progressiveBlurMode = PROGRESSIVE_BLUR_MODE_SIMPLE;
     public static final int AVATAR_PLACEMENT_LEFT = 0;
     public static final int AVATAR_PLACEMENT_CENTER = 1;
     public static final int AVATAR_PLACEMENT_RIGHT = 2;
@@ -471,6 +475,7 @@ public class NekoConfig {
             progressiveFadeBlur = preferences.getBoolean("progressiveFadeBlur", false);
             progressiveFadeBlurMaxRadius = preferences.getInt("progressiveFadeBlurMaxRadius", 20);
             progressiveFadeBlurSamples = preferences.getInt("progressiveFadeBlurSamples", 11);
+            progressiveBlurMode = preferences.getInt("progressiveBlurMode", PROGRESSIVE_BLUR_MODE_SIMPLE);
             openAnimationStyle = preferences.getInt("openAnimationStyle", ANIMATION_STYLE_DEFAULT);
             closeAnimationStyle = preferences.getInt("closeAnimationStyle", ANIMATION_STYLE_DEFAULT);
             predictiveBackAnimationStyle = preferences.getInt("predictiveBackAnimationStyle", ANIMATION_STYLE_DEFAULT);
@@ -842,10 +847,18 @@ public class NekoConfig {
     }
 
     public static void setProgressiveFadeBlurSamples(int value) {
-        progressiveFadeBlurSamples = Math.max(3, Math.min(25, value | 1));
+        progressiveFadeBlurSamples = Math.max(3, Math.min(25, value));
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putInt("progressiveFadeBlurSamples", progressiveFadeBlurSamples);
+        editor.apply();
+    }
+
+    public static void setProgressiveBlurMode(int mode) {
+        progressiveBlurMode = Math.max(PROGRESSIVE_BLUR_MODE_SIMPLE, Math.min(PROGRESSIVE_BLUR_MODE_FULL, mode));
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("progressiveBlurMode", progressiveBlurMode);
         editor.apply();
     }
 

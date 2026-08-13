@@ -548,6 +548,10 @@
    <string name="ProgressiveFadeBlur">Прогрессивный блюр</string>
    <string name="ProgressiveFadeBlurSamples">Семплы прогрессивного блюра</string>
    <string name="ProgressiveFadeBlurMaxRadius">Макс. радиус прогрессивного блюра</string>
+   <string name="ProgressiveBlurMode">Режим прогрессивного блюра</string>
+   <string name="ProgressiveBlurModeSimple">Простой</string>
+   <string name="ProgressiveBlurModeMedium">Средний</string>
+   <string name="ProgressiveBlurModeFull">Полный</string>
     <string name="DisableScrimBlur">Отключить размытие фона</string>
     <string name="DisableScrimBlurInfo">Убирает размытие фона у bottom sheet</string>
     <string name="DisableGlassGlare">Отключить блики стекла</string>

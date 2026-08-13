@@ -49,6 +49,7 @@ public class NekoChatHeaderSettingsActivity extends BaseNekoSettingsActivity {
     private final int biggerAvatarRow = rowId++;
     private final int blurredFadeViewRow = rowId++;
     private final int progressiveFadeBlurRow = rowId++;
+    private final int progressiveBlurModeRow = rowId++;
     private final int progressiveFadeBlurSamplesRow = rowId++;
     private final int blurredFadeBlurAmountRow = rowId++;
     private final int blurredFadePixelationRow = rowId++;
@@ -81,9 +82,10 @@ public class NekoChatHeaderSettingsActivity extends BaseNekoSettingsActivity {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 items.add(UItem.asCheck(progressiveFadeBlurRow, LocaleController.getString(R.string.ProgressiveFadeBlur)).setChecked(NekoConfig.progressiveFadeBlur).slug("progressiveFadeBlur"));
                 if (NekoConfig.progressiveFadeBlur) {
+                    items.add(TextSettingsCellFactory.of(progressiveBlurModeRow, LocaleController.getString(R.string.ProgressiveBlurMode), progressiveBlurModeName(NekoConfig.progressiveBlurMode)));
                     items.add(SeekbarCellFactory.of(progressiveFadeBlurSamplesRow,
                             new SeekbarConfig(LocaleController.getString(R.string.ProgressiveFadeBlurSamples),
-                                    "3", "25", 3, 25, 2,
+                                    "3", "25", 3, 25, 1,
                                     progress -> {
                                         int v = Math.max(3, Math.min(25, Math.round(progress)));
                                         if (v != NekoConfig.progressiveFadeBlurSamples) {
@@ -150,6 +152,15 @@ public class NekoChatHeaderSettingsActivity extends BaseNekoSettingsActivity {
         return LocaleController.getString(R.string.AvatarPlacementLeft);
     }
 
+    private String progressiveBlurModeName(int mode) {
+        if (mode == NekoConfig.PROGRESSIVE_BLUR_MODE_SIMPLE) {
+            return LocaleController.getString(R.string.ProgressiveBlurModeSimple);
+        } else if (mode == NekoConfig.PROGRESSIVE_BLUR_MODE_FULL) {
+            return LocaleController.getString(R.string.ProgressiveBlurModeFull);
+        }
+        return LocaleController.getString(R.string.ProgressiveBlurModeMedium);
+    }
+
     @Override
     protected void onItemClick(UItem item, View view, int position, float x, float y) {
         var id = item.id;
@@ -192,6 +203,14 @@ public class NekoChatHeaderSettingsActivity extends BaseNekoSettingsActivity {
                 listView.adapter.update(true);
             }
             notifyItemChanged(blurredFadeBlurAmountRow);
+        } else if (id == progressiveBlurModeRow) {
+            int current = NekoConfig.progressiveBlurMode;
+            ItemOptions options = ItemOptions.makeOptions(this, view).setMinWidth(190);
+            options.addText(LocaleController.getString(R.string.ProgressiveBlurMode), 14);
+            options.addChecked(current == NekoConfig.PROGRESSIVE_BLUR_MODE_SIMPLE, LocaleController.getString(R.string.ProgressiveBlurModeSimple), () -> setProgressiveBlurMode(NekoConfig.PROGRESSIVE_BLUR_MODE_SIMPLE));
+            options.addChecked(current == NekoConfig.PROGRESSIVE_BLUR_MODE_MEDIUM, LocaleController.getString(R.string.ProgressiveBlurModeMedium), () -> setProgressiveBlurMode(NekoConfig.PROGRESSIVE_BLUR_MODE_MEDIUM));
+            options.addChecked(current == NekoConfig.PROGRESSIVE_BLUR_MODE_FULL, LocaleController.getString(R.string.ProgressiveBlurModeFull), () -> setProgressiveBlurMode(NekoConfig.PROGRESSIVE_BLUR_MODE_FULL));
+            options.show();
         } else if (id == blurredFadeDimmingRow) {
             NekoConfig.toggleBlurredFadeDimming();
             if (view instanceof TextCheckCell) {
@@ -215,6 +234,11 @@ public class NekoChatHeaderSettingsActivity extends BaseNekoSettingsActivity {
         NekoConfig.setAvatarPlacement(placement);
         notifyItemChanged(avatarPlacementRow);
         updatePreview();
+    }
+
+    private void setProgressiveBlurMode(int mode) {
+        NekoConfig.setProgressiveBlurMode(mode);
+        notifyItemChanged(progressiveBlurModeRow);
     }
 
     private FrameLayout getOrCreatePreviewContainer() {
