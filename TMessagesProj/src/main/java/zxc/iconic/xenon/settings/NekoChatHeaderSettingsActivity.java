@@ -51,6 +51,7 @@ public class NekoChatHeaderSettingsActivity extends BaseNekoSettingsActivity {
     private final int progressiveFadeBlurRow = rowId++;
     private final int progressiveFadeBlurSamplesRow = rowId++;
     private final int progressiveFadeBlurRefreshRateRow = rowId++;
+    private final int progressiveFadeBlurOtherActivitiesRow = rowId++;
     private final int blurredFadeBlurAmountRow = rowId++;
     private final int blurredFadePixelationRow = rowId++;
     private final int blurredFadeDimmingRow = rowId++;
@@ -102,6 +103,10 @@ public class NekoChatHeaderSettingsActivity extends BaseNekoSettingsActivity {
                                         }
                                     }),
                             NekoConfig.progressiveFadeBlurRefreshRate).slug("progressiveFadeBlurRefreshRate"));
+                    items.add(UItem.asCheck(progressiveFadeBlurOtherActivitiesRow,
+                            LocaleController.getString(R.string.ProgressiveFadeBlurOtherActivities),
+                            LocaleController.getString(R.string.ProgressiveFadeBlurOtherActivitiesInfo))
+                            .setChecked(NekoConfig.progressiveFadeBlurOtherActivities).slug("progressiveFadeBlurOtherActivities"));
                 }
             }
             items.add(SeekbarCellFactory.of(blurredFadeBlurAmountRow,
@@ -203,6 +208,12 @@ public class NekoChatHeaderSettingsActivity extends BaseNekoSettingsActivity {
                 listView.adapter.update(true);
             }
             notifyItemChanged(blurredFadeBlurAmountRow);
+        } else if (id == progressiveFadeBlurOtherActivitiesRow) {
+            NekoConfig.toggleProgressiveFadeBlurOtherActivities();
+            if (view instanceof TextCheckCell) {
+                ((TextCheckCell) view).setChecked(NekoConfig.progressiveFadeBlurOtherActivities);
+            }
+            showRestartBulletin();
         } else if (id == blurredFadeDimmingRow) {
             NekoConfig.toggleBlurredFadeDimming();
             if (view instanceof TextCheckCell) {
