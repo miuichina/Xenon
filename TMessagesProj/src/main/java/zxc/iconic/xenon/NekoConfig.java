@@ -842,7 +842,7 @@ public class NekoConfig {
     }
 
     public static void setProgressiveFadeBlurSamples(int value) {
-        progressiveFadeBlurSamples = Math.max(3, Math.min(25, value | 1));
+        progressiveFadeBlurSamples = Math.max(3, Math.min(25, value));
         SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("nekoconfig", Activity.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putInt("progressiveFadeBlurSamples", progressiveFadeBlurSamples);
