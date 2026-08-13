@@ -47852,6 +47852,14 @@ final BlurredBackgroundDrawable topPanelLayoutBackground = glassBackgroundDrawab
         }
         fadeHeight += dp(36 + 7) * getHashtagTabsShownT();
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && NekoConfig.progressiveFadeBlur) {
+            final int boundary = (int) (fadeHeight + dp(2));
+            chatActivityFadeView.setFadeZoneTop(boundary + dp(48));
+            chatActivityFadeView.setFadeHeightTop(dp(48), false);
+            chatActivityFadeView.setFadeTopAlpha(255);
+            return;
+        }
+
         if (NekoConfig.material3ChatHeaders && fadeBlurFactory == null) {
             fadeHeight += dp(16);
             chatActivityFadeView.setFadeTopAlpha(230);
@@ -48579,8 +48587,17 @@ final BlurredBackgroundDrawable topPanelLayoutBackground = glassBackgroundDrawab
         //}
     }
 
+    private long lastFadeBlurUpdateTime;
+
     private void invalidateFadeBlur() {
         if (fadeBlurCaptureView != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && NekoConfig.progressiveFadeBlur) {
+                final long now = SystemClock.uptimeMillis();
+                if (now - lastFadeBlurUpdateTime < 1000 / Math.max(15, NekoConfig.progressiveFadeBlurRefreshRate)) {
+                    return;
+                }
+                lastFadeBlurUpdateTime = now;
+            }
             fadeBlurCaptureView.invalidate(1);
         }
     }
@@ -48606,14 +48623,13 @@ final BlurredBackgroundDrawable topPanelLayoutBackground = glassBackgroundDrawab
             fadeBlurUnderSource.setColor(wallpaperColor);
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && NekoConfig.progressiveFadeBlur) {
-            fadeBlurSource.setPixelation(NekoConfig.blurredFadePixelation);
-            int headerHeight = actionBar != null ? actionBar.getMeasuredHeight() : 0;
+            final int pixelation = Math.max(2, NekoConfig.blurredFadePixelation);
+            fadeBlurSource.setPixelation(pixelation);
             int fadeZoneTop = chatActivityFadeView.getFadeZoneTop();
-            if (headerHeight <= 0) headerHeight = fadeZoneTop;
-            float topFraction = headerHeight > 0 ? Math.min(1f, headerHeight / (float) fh) : 1f;
+            float topFraction = fadeZoneTop > dp(48) ? Math.min(1f, (fadeZoneTop - dp(48)) / (float) fh) : 1f;
             int fadeZoneBottom = chatActivityFadeView.getFadeZoneBottom();
             float bottomFraction = fadeZoneBottom > 0 ? Math.min(1f, fadeZoneBottom / (float) fh) : 1f;
-            fadeBlurSource.setProgressiveBlur(AndroidUtilities.dpf2(NekoConfig.progressiveFadeBlurMaxRadius), fw, fh, topFraction, bottomFraction, NekoConfig.progressiveFadeBlurSamples);
+            fadeBlurSource.setProgressiveBlur(AndroidUtilities.dpf2(NekoConfig.progressiveFadeBlurMaxRadius) / pixelation, fw / pixelation, fh / pixelation, topFraction, bottomFraction, NekoConfig.progressiveFadeBlurSamples);
         } else {
             fadeBlurSource.setBlur(AndroidUtilities.dpf2(NekoConfig.blurredFadeBlurStrength));
             fadeBlurSource.setPixelation(NekoConfig.blurredFadePixelation);
