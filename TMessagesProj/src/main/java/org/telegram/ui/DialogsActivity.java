@@ -253,6 +253,7 @@ import org.telegram.ui.Components.SearchViewPager;
 import org.telegram.ui.Components.ShareTopView;
 import org.telegram.ui.Components.SharedMediaLayout;
 import org.telegram.ui.Components.SimpleThemeDescription;
+import org.telegram.ui.Components.ProgressiveFadeBlurController;
 import org.telegram.ui.Components.SizeNotifierFrameLayout;
 import org.telegram.ui.Components.StickersAlert;
 import org.telegram.ui.Components.SwipeGestureSettingsView;
@@ -543,6 +544,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     float panTranslationY;
 
     private View blurredView;
+    private ProgressiveFadeBlurController progressiveFadeController;
 
     private ItemOptions filterOptions;
 
@@ -940,6 +942,10 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
         @Override
         public void drawBlurRect(Canvas canvas, float y, Rect rectTmp, Paint blurScrimPaint, boolean top) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && NekoConfig.progressiveFadeBlurOtherActivities) {
+                canvas.drawRect(rectTmp, blurScrimPaint);
+                return;
+            }
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || !SharedConfig.chatBlurEnabled() || iBlur3SourceGlassFrosted == null || !BlurredBackgroundProviderImpl.checkBlurEnabled(currentAccount, resourceProvider)) {
                 canvas.drawRect(rectTmp, blurScrimPaint);
                 return;
@@ -1018,6 +1024,11 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 top = getActionBarTop();
             }
             rightSlidingDialogContainer.setCurrentTop(top + actionBarHeight);
+            if (progressiveFadeController != null) {
+                progressiveFadeController.setTopOffset(top + actionBar.getHeight());
+                progressiveFadeController.setFadeZoneTop(top + actionBar.getHeight() + dp(SEARCH_FIELD_HEIGHT) + dp(48));
+                progressiveFadeController.invalidate();
+            }
             float storiesAlpha = 1f;
             if (whiteActionBar) {
                 if (searchAnimationProgress == 1f) {
@@ -5411,6 +5422,10 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             final FrameLayout.LayoutParams layoutParams = LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT);
             contentView.addView(actionBar, layoutParams);
         //}
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && NekoConfig.progressiveFadeBlurOtherActivities) {
+            progressiveFadeController = new ProgressiveFadeBlurController(contentView, viewPages[0], contentView.indexOfChild(actionBar), () -> getThemedColor(Theme.key_windowBackgroundGray));
+            progressiveFadeController.setFadeZoneBottom(AndroidUtilities.dp(48));
+        }
         if (!onlySelect) {
             animatedStatusView = new AnimatedStatusView(context, 20, 60);
             contentView.addView(animatedStatusView, LayoutHelper.createFrame(20, 20, Gravity.LEFT | Gravity.TOP));
