@@ -21,6 +21,7 @@ public class ChatActivityFadeView extends View implements Theme.Colorable {
     private Drawable fadeDrawableTop;
     private Drawable fadeDrawableBottom;
     private int fadeZoneTop, fadeZoneBottom;
+    private int topOffset;
 
     public ChatActivityFadeView(Context context) {
         super(context);
@@ -96,6 +97,14 @@ public class ChatActivityFadeView extends View implements Theme.Colorable {
         }
     }
 
+    public void setTopOffset(int offset) {
+        if (topOffset != offset) {
+            topOffset = offset;
+            checkBounds();
+            invalidate();
+        }
+    }
+
     public int getFadeZoneTop() {
         return fadeZoneTop;
     }
@@ -124,9 +133,18 @@ public class ChatActivityFadeView extends View implements Theme.Colorable {
             ((BlurredBackgroundWithFadeDrawable) fadeDrawableTop).setDimFadeZoneTop(height);
         }
     }
+
+    public void setDimColor(int color) {
+        if (fadeDrawableTop instanceof BlurredBackgroundWithFadeDrawable) {
+            ((BlurredBackgroundWithFadeDrawable) fadeDrawableTop).setDimColor(color);
+        }
+        if (fadeDrawableBottom instanceof BlurredBackgroundWithFadeDrawable) {
+            ((BlurredBackgroundWithFadeDrawable) fadeDrawableBottom).setDimColor(color);
+        }
+    }
     
     private void checkBounds() {
-        fadeDrawableTop.setBounds(0, 0, getMeasuredWidth(), fadeZoneTop);
+        fadeDrawableTop.setBounds(0, topOffset, getMeasuredWidth(), Math.max(topOffset, fadeZoneTop));
         fadeDrawableBottom.setBounds(0, getMeasuredHeight() - fadeZoneBottom, getMeasuredWidth(), getMeasuredHeight());
     }
 
