@@ -64,7 +64,7 @@ public class BlurredBackgroundSourceRenderNode implements BlurredBackgroundSourc
         "        return inputTexture.eval(coord);\n" +
         "    }\n" +
         "    int h = samples / 2;\n" +
-        "    float stride = max(1.0, radius / float(h));\n" +
+        "    float stride = radius / float(h);\n" +
         "    float sigma = float(h) / 2.0;\n" +
         "    half4 result = half4(0.0);\n" +
         "    float totalWeight = 0.0;\n" +
@@ -174,18 +174,18 @@ public class BlurredBackgroundSourceRenderNode implements BlurredBackgroundSourc
 
         inRecording = true;
 
-        renderNode.setPosition(0, 0, width, height);
-        recordingCanvas = renderNode.beginRecording(width, height);
-        if (pixelationScale > 1f) {
-            recordingCanvas.scale(1f / pixelationScale, 1f / pixelationScale);
-            renderNode.setScaleX(pixelationScale);
-            renderNode.setScaleY(pixelationScale);
-            renderNode.setPivotX(0);
-            renderNode.setPivotY(0);
-        } else {
-            renderNode.setScaleX(1f);
-            renderNode.setScaleY(1f);
+        final float s = Math.max(1f, pixelationScale);
+        final int rw = Math.max(1, Math.round(width / s));
+        final int rh = Math.max(1, Math.round(height / s));
+        renderNode.setPosition(0, 0, rw, rh);
+        recordingCanvas = renderNode.beginRecording(rw, rh);
+        if (s > 1f) {
+            recordingCanvas.scale(1f / s, 1f / s);
         }
+        renderNode.setScaleX(s);
+        renderNode.setScaleY(s);
+        renderNode.setPivotX(0);
+        renderNode.setPivotY(0);
         return recordingCanvas;
     }
 

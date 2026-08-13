@@ -50,6 +50,7 @@ public class NekoChatHeaderSettingsActivity extends BaseNekoSettingsActivity {
     private final int blurredFadeViewRow = rowId++;
     private final int progressiveFadeBlurRow = rowId++;
     private final int progressiveFadeBlurSamplesRow = rowId++;
+    private final int progressiveFadeBlurRefreshRateRow = rowId++;
     private final int blurredFadeBlurAmountRow = rowId++;
     private final int blurredFadePixelationRow = rowId++;
     private final int blurredFadeDimmingRow = rowId++;
@@ -91,6 +92,16 @@ public class NekoChatHeaderSettingsActivity extends BaseNekoSettingsActivity {
                                         }
                                     }),
                             NekoConfig.progressiveFadeBlurSamples).slug("progressiveFadeBlurSamples"));
+                    items.add(SeekbarCellFactory.of(progressiveFadeBlurRefreshRateRow,
+                            new SeekbarConfig(LocaleController.getString(R.string.ProgressiveFadeBlurRefreshRate),
+                                    "15", "120", 15, 120, 1,
+                                    progress -> {
+                                        int v = Math.max(15, Math.min(120, Math.round(progress)));
+                                        if (v != NekoConfig.progressiveFadeBlurRefreshRate) {
+                                            NekoConfig.setProgressiveFadeBlurRefreshRate(v);
+                                        }
+                                    }),
+                            NekoConfig.progressiveFadeBlurRefreshRate).slug("progressiveFadeBlurRefreshRate"));
                 }
             }
             items.add(SeekbarCellFactory.of(blurredFadeBlurAmountRow,
